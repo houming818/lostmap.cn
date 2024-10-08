@@ -1,0 +1,72 @@
+{
+  "posts": [
+    {
+      "content": "。。。\n\n## 🏠 关于本站\n\n## 👨‍💻 博主是谁\n\n## ⛹ 兴趣爱好\n\n## 📬 联系我呀\n",
+      "data": {
+        "title": "关于",
+        "date": "2024-10-07 21:45:00",
+        "tags": [],
+        "published": true,
+        "hideInList": true,
+        "feature": "/post-images/about.jpg",
+        "isTop": false
+      },
+      "isEmpty": false,
+      "excerpt": "",
+      "abstract": "",
+      "fileName": "about"
+    },
+    {
+      "content": "👏  开始一个新的项目 **Lostmap** ！我们将开始完成一个向量数据库。  \n\n\n<!-- more -->\n\n",
+      "data": {
+        "title": "Lostmap！一个向量数据库！",
+        "date": "2024-10-07 21:45:00",
+        "tags": [
+          "lostmap"
+        ],
+        "published": true,
+        "hideInList": false,
+        "feature": "/post-images/hello-lostmap.jpg",
+        "isTop": false
+      },
+      "isEmpty": false,
+      "excerpt": "",
+      "abstract": "👏  开始一个新的项目 **Lostmap** ！我们将开始完成一个向量数据库。  ",
+      "fileName": "hello-lostmap"
+    }
+  ],
+  "tags": [
+    {
+      "name": "lostmap",
+      "slug": "k70EJPAdX3",
+      "used": true
+    },
+    {
+      "name": "Gridea",
+      "slug": "hKart9IaE9",
+      "used": false
+    }
+  ],
+  "menus": [
+    {
+      "link": "/",
+      "name": "首页",
+      "openType": "Internal"
+    },
+    {
+      "link": "/archives",
+      "name": "归档",
+      "openType": "Internal"
+    },
+    {
+      "link": "/post/about",
+      "name": "关于",
+      "openType": "Internal"
+    },
+    {
+      "link": "www.github.com",
+      "name": "Github",
+      "openType": "External"
+    }
+  ]
+}
