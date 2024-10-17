@@ -1,6 +1,25 @@
 {
   "posts": [
     {
+      "content": "。。。",
+      "data": {
+        "title": "研发计划",
+        "date": "2024-10-17 17:21:10",
+        "tags": [
+          "lostmap",
+          "manage"
+        ],
+        "published": true,
+        "hideInList": false,
+        "feature": "/post-images/yan-fa-ji-hua.webp",
+        "isTop": false
+      },
+      "isEmpty": false,
+      "excerpt": "",
+      "abstract": "",
+      "fileName": "yan-fa-ji-hua"
+    },
+    {
       "content": "。。。\n\n## 🏠 关于本站\n\n## 👨‍💻 博主是谁\n\n## ⛹ 兴趣爱好\n\n## 📬 联系我呀\n",
       "data": {
         "title": "关于",
@@ -26,7 +45,7 @@
         ],
         "published": true,
         "hideInList": false,
-        "feature": "/post-images/hello-lostmap.jpg",
+        "feature": "/post-images/hello-lostmap.webp",
         "isTop": false
       },
       "isEmpty": false,
@@ -36,6 +55,11 @@
     }
   ],
   "tags": [
+    {
+      "name": "manage",
+      "slug": "X4lXVevdcR",
+      "used": true
+    },
     {
       "name": "lostmap",
       "slug": "k70EJPAdX3",
@@ -64,7 +88,7 @@
       "openType": "Internal"
     },
     {
-      "link": "www.github.com",
+      "link": "https://github.com/houming818",
       "name": "Github",
       "openType": "External"
     }
