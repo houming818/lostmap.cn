@@ -1,9 +1,9 @@
 {
   "posts": [
     {
-      "content": "。。。",
+      "content": "# 研发计划\r\n\r\n## 计划中\r\n\r\n## 现在\r\n\r\n### v0.0.1\r\n> 不积跬步，无以至千里；不积小流，无以成江海\r\n- [ ] vdb server main\r\n    | module | 功能 | 状态 |\r\n    | - | - | - |\r\n    | web api | gin | ✔️ |\r\n    | vdb server | ??? | ❔ |\r\n    | hnsw map | HNSW搜索 | ✔️ | \r\n    | log | 接入`github.com/sirupsen/logrus` | ✔️ |\r\n\r\n- web api\r\n    | 功能 | url | 状态 |\r\n    | - | - | - |\r\n    | 查询系统信息 | /system/info | ✔️ |\r\n    | 插入向量 |/vdb/insert | ✔️ |\r\n    | 搜索邻近向量 | /vdb/search | ️️✔️ |\r\n\r\n- vdb server\r\n    | 功能 | x | 状态 |\r\n    | - | - | - |\r\n    | vdb index api | ??? | ??? |\r\n    | vdb index工厂 | 注册Index， |\r\n\r\n- hnsw map \r\n    | 功能 | x | 状态 |\r\n    | - | - | - |\r\n    | Algorithm Interface:: addPoint |  | ??? |\r\n    | Algorithm Interface:: searchKnn |  | ??? |\r\n    | 算法学习 | ? | |\r\n\r\n## 已完成\r\n\r\n",
       "data": {
-        "title": "研发计划",
+        "title": "研发看板",
         "date": "2024-10-17 17:21:10",
         "tags": [
           "lostmap",
