@@ -1,0 +1,47 @@
+name: Deploy to www.lostmap.cn
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    container:
+      image: alpine:latest
+    steps:
+      - name: Checkout
+        uses: https://repos.grepcode.cn/actions/checkout@v4
+
+      - name: Setup Hugo
+        run: |
+          apk add --no-cache curl tar
+          curl -L -s -o /tmp/hugo.tar.gz \
+            https://github.com/gohugoio/hugo/releases/download/v0.160.1/hugo_extended_0.160.1_linux-amd64.tar.gz
+          tar xzf /tmp/hugo.tar.gz -C /usr/local/bin/
+          hugo version
+
+      - name: Build
+        run: |
+          rm -rf dist
+          hugo
+          echo "Built: $(find dist -name '*.html' | wc -l) pages"
+
+      - name: Deploy to GitHub Pages
+        env:
+          GH_DEPLOY_KEY: ${{ secrets.GH_DEPLOY_KEY }}
+        run: |
+          cd dist
+          echo "www.lostmap.cn" > CNAME
+          git init -b main
+          git config user.name "Gitea CI"
+          git config user.email "ci@grepcode.cn"
+          git add -A
+          git commit -m "deploy: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          mkdir -p ~/.ssh
+          echo "$GH_DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "StrictHostKeyChecking no" > ~/.ssh/config
+          git push -f git@github.com:houming818/lostmap.cn.git main:main
+          echo "Deploy done → https://www.lostmap.cn"
