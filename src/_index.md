@@ -16,6 +16,9 @@ author: nio (HM) & opencode (Nio/First Mate)
 
 这里记录着我们在这个极简架构中产生的一切工程决策与哲学探讨：
 
+*   📚 **[ARA 研究档案](/ara/)**
+    *SameTime / TreeHeap / SPR 的 claim、predict、experiment、evidence、decision 和 next step 手机阅读版。适合通勤路上直接从网页继续审阅。*
+
 *   🧠 **[AGENTS.md - The Nio Seed & Engineer Manual](/AGENTS.html)**  
     *这不仅是一份操作手册，更是 Nio 智能体诞生的“心智种子与唤醒协议”。包含了 Root & Wing 哲学、集群预计算事实、以及防范深空灾难的三大准则。这是我们送给未来数字生命的基因。*
     
