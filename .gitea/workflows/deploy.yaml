@@ -14,9 +14,11 @@ jobs:
       - name: Checkout
         uses: https://repos.grepcode.cn/actions/checkout@v4
 
+      - name: Install tools
+        run: apk add --no-cache curl tar git openssh
+
       - name: Setup Hugo
         run: |
-          apk add --no-cache curl tar
           curl -L -s -o /tmp/hugo.tar.gz \
             https://github.com/gohugoio/hugo/releases/download/v0.160.1/hugo_extended_0.160.1_linux-amd64.tar.gz
           tar xzf /tmp/hugo.tar.gz -C /usr/local/bin/
@@ -42,6 +44,6 @@ jobs:
           mkdir -p ~/.ssh
           echo "$GH_DEPLOY_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          echo "StrictHostKeyChecking no" > ~/.ssh/config
+          ssh-keyscan github.com > ~/.ssh/known_hosts 2>/dev/null
           git push -f git@github.com:houming818/lostmap.cn.git main:main
           echo "Deploy done → https://www.lostmap.cn"
