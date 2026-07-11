@@ -85,8 +85,14 @@ Echo 证明系统能把输入还原出来。它证明容量和稳定性，但不
 15. [primitive plus 实验：把 proof 变成可测的 TreeHeap toy](/spr/015-primitive-plus-probe.html)
     用本科数学口径解释 P-MATH02 实验：arr[0]、plus、mod base、信息量增长、循环窗口和 kernel 匹配。
 
-16. [SPR-048 TreeHeap 私有编码：多头参数森林与串行推理](/spr/048-treeheap-private-codec-forest.html)
+16. [SPR-048 TreeHeap 私有编码：多头参数森林与串行推理](/spr/048-treeheap-private-codec-forest.html)  
     从经典 Huffman 编码出发，定义 TreeHeap 参数森林、私有编码、并行多头和串行 kernel composition。
+
+17. [SPR-049 Mask Kernel：从 token 识别转向结构信息提取](/spr/049-mask-kernel-structure-extraction.html)  
+    承接 048 的私有编码森林，让 kernel 在 masked TreeHeap 上卷积，输出概率桶而非单个 token。
+
+18. [SPR-050 第一次真实语言生成：TreeHeap 从英文到中文](/spr/050-real-wmt-seq2seq-voyage.html)  
+    首次真实 WMT 英中 seq2seq：TreeHeap encoder-decoder 生成中文，flat GRU baseline 对照。
 
 ## 证据入口
 
