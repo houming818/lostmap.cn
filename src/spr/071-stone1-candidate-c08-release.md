@@ -10,6 +10,8 @@ tags: [SPR, TreeHeap, SameTime, STONE-1, Release, Checkpoint, WMT, CLI, ARA]
 
 # STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型
 
+> **发布状态更新（2026-07-28）：该下载包保留为可复现实验制品，但暂停称为“英译中模型候选”。后续同族 C10 checkpoint 在三个无关英文输入上生成了近乎相同的“一带一路”循环；代码审计发现 teacher forcing 与可见 EOS 尾部可能掩盖 source 忽略。C08/C09 必须通过新的条件依赖审计后，才能恢复 STONE-1 候选或完成状态。详见 SPR-074。**
+
 今天，我们把 **SameTime STONE-1 Candidate C08** 的源码、checkpoint、tokenizer、命令行程序和实验记录一起公开。
 
 这是第一个可以由读者下载并实际输入英文句子的 TreeHeap 翻译候选版。它不是概念图，也不是只在训练脚本里存在的指标。
@@ -195,4 +197,3 @@ stone1-candidate-c08
 ```
 
 我们选择现在公开，是因为研究对象终于可以被别人运行、批评和复核。候选版的价值不在于把未完成的工作包装成答案，而在于把下一步争论变成可执行的实验。
-
