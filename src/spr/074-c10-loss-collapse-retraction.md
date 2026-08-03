@@ -28,15 +28,11 @@ why is the window wet? because the sky cried
 
 训练和 CLI 执行了两个不同任务。训练使用 teacher forcing：
 
-$$
-p(y_t\mid y^{gold}_{<t},x)
-$$
+$$ p(y_t\mid y^{gold}_{<t},x) $$
 
 预测第 $t$ 个中文 token 时，decoder 已经看到了正确中文前缀。CLI 自由生成只能读取自己的历史输出：
 
-$$
-p(y_t\mid y^{model}_{<t},x)
-$$
+$$ p(y_t\mid y^{model}_{<t},x) $$
 
 即使模型忽略英文，只要训练时看到了“苹果很”或“地球是”，仍可能猜出下一个字，NLL 因而可以下降。自由生成却从同一个 BOS 开始，一旦选中高频逗号，便可能滑进最强的中文模板。
 
@@ -79,9 +75,7 @@ C10 的 TreeHeap 有 256 个可见 leaf。短句只有约 6 到 11 个有效 pie
 
 固定中文 target，只打乱英文 source。真正依赖英文的模型应满足：
 
-$$
-L_{shuffle}-L_{native}>0
-$$
+$$ L_{shuffle}-L_{native}>0 $$
 
 ### Gate B：Empty source
 
@@ -116,9 +110,7 @@ BLEU / chrF
 
 可以尝试条件依赖约束：
 
-$$
-L_{dep}=\max\left(0,m+L_{native}-L_{wrong\ source}\right)
-$$
+$$ L_{dep}=\max\left(0,m+L_{native}-L_{wrong\ source}\right) $$
 
 它只是待验证的修复候选，不是预先正确的答案。
 

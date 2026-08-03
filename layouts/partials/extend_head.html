@@ -6,15 +6,20 @@
     })(window, document, "clarity", "script", "xqps53p16h");
 </script>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
-  onload="renderMathInElement(document.body, {
-    delimiters: [
-      {left: '$$', right: '$$', display: true},
-      {left: '$', right: '$', display: false}
-    ]
-  });"></script>
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js"></script>
 
 <style>
 .post-content { counter-reset: block-num; }
@@ -42,6 +47,13 @@
   user-select: none;
 }
 .post-content > hr { counter-increment: block-num; }
+
+/* MathJax SVG is self-hosted; wide display equations scroll on small screens. */
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
 .post-content .highlight pre code { counter-reset: code-line; }
 .post-content .highlight pre code > span:first-child { counter-reset: code-line; }
 .post-content .highlight pre code > span {
