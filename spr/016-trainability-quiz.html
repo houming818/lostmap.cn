@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, Trainability, Experiment">
+<meta name="description" content="解释为什么在 WMT 之前先做线性回归、XOR、模加法三道 toy 训练题，以及这次实验怎样支撑 TreeHeap encoder/plus/decoder 的下一步设计。">
+<meta name="author" content="nio (Houming818) &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/016-trainability-quiz.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/016-trainability-quiz.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/016-trainability-quiz.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题">
+  <meta property="og:description" content="解释为什么在 WMT 之前先做线性回归、XOR、模加法三道 toy 训练题，以及这次实验怎样支撑 TreeHeap encoder/plus/decoder 的下一步设计。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-06-21T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-06-21T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题">
+  <meta name="twitter:description" content="解释为什么在 WMT 之前先做线性回归、XOR、模加法三道 toy 训练题，以及这次实验怎样支撑 TreeHeap encoder/plus/decoder 的下一步设计。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题",
+      "item": "https://www.lostmap.cn/spr/016-trainability-quiz.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题",
+  "name": "[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题",
+  "description": "解释为什么在 WMT 之前先做线性回归、XOR、模加法三道 toy 训练题，以及这次实验怎样支撑 TreeHeap encoder/plus/decoder 的下一步设计。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "Trainability", "Experiment"
+  ],
+  "articleBody": "Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题 这篇文章解释刚跑完的一个小实验：\nara/m0-treeheap-math/src/trainability_quiz.py 它对应 ARA 里的一个新 predict：\nP-LEARN01: TreeHeap trainability quiz 这不是 WMT。 不是翻译实验。 也不是证明 TreeHeap 已经拥有语言理解能力。\n它是一道“入门考试”：在真正训练 TreeHeap encoder、plus、decoder 之前，我们先问一个更朴素的问题：\n当前这套最小学习框架，能不能学会基础函数？ 如果连最简单的线性映射、XOR、模加法都学不会，那么直接去跑 WMT 只会得到一堆昂贵但难解释的 loss 曲线。\n先说结果 实验在 ni 上执行，使用的是：\nPython 3.10 NumPy manual gradients no PyTorch seed = 20260621 base = 8 结果如下：\n任务 初始 loss 最终 loss 指标 通过 linear_regression 3.7075966755 1.6516923159e-30 R2 = 1.0 true xor 0.9064090912 0.0007663465 accuracy = 1.0 true modular_addition 2.4380615125 0.0021191076 accuracy = 1.0 true 总结果：\npilot_pass = true 用人话说：\n这个最小训练系统可以学会： 1. 连续空间里的线性关系 2. 非线性逻辑关系 3. 离散循环空间里的模加法关系 这给下一步 TreeHeap 数学工具箱一个基础信号：我们可以开始把 plus、primitive、mod fold、addressable heap 设计成可训练模块，而不是只停留在手写 toy 规则。\n还有一个更重要的工程含义：\nTreeHeap 不是要推翻已有机器学习数学。 TreeHeap 只是我们设计的一种高维可寻址结构。 所以我们已经知道有效的常识知识仍然有效。\n比如：\n线性代数仍然有效 梯度下降仍然有效 非线性激活仍然有效 交叉熵仍然有效 分类任务仍然有效 模运算、群、循环结构仍然有效 这件事会让研发轻很多。\n因为 TreeHeap 不是从零发明一套完全陌生的数学宇宙。 它更像是在已有机器学习工具箱上，额外引入一个结构对象：\naddressable high-dimensional heap object 也就是：\n机器学习负责学习参数。 TreeHeap 负责提供可寻址、高维、可组合的结构载体。 这样一来，我们后面可以继续使用本科到研究生阶段熟悉的数学工具，而不是每一步都陷入“这个东西有没有物理意义”的空转。\nTreeHeap 和一维实数有什么相似处 为了避免 TreeHeap 被理解成一个玄学名词，可以先把它和最熟悉的一维数作比较。\n最简单的数学对象是一个实数：\nx in R 它有几个非常重要的性质。\n第一，它可以表示状态：\nx = 3.2 第二，它可以被操作：\nx + 1 2x x^2 第三，它可以被学习系统处理。 比如线性回归学的是：\ny = wx + b 这里的 x 是输入状态，w 和 b 是学习出来的参数。\nTreeHeap 也有类似的一面。 它也是一个状态对象：\nH = TreeHeapState 它也可以被操作：\nplus(H, primitive) summarize(H) kernel_search(H, K) 它也应该可以被学习系统处理：\nH_{t+1} = learned_plus(H_t, p_t; theta) 所以从“机器学习能否处理它”的角度看，TreeHeap 并没有脱离常识数学。 它只是把输入从：\n一个数 x 换成：\n一个高维可寻址结构 H 这就是 SPR-016 为什么先做线性回归、XOR、模加法的原因。 这些 toy 任务确认的是：\n学习系统可以从样本中拟合函数。 只要 TreeHeap 的操作最后也能写成函数学习问题，那么已有 ML 工具就仍然能进入。\n增加高维结构以后，多了什么 但是 TreeHeap 和一维实数也有根本差异。\n一维实数只有一个自由度：\nx = 3.2 它没有内部地址。 你不能问：\nx 的 root 在哪里？ x 的 left child 是什么？ x 的 cursor 指向哪里？ 这些问题对实数没有意义。\nTreeHeap 不一样。 它不是单个标量，而是一个结构对象：\nTreeHeapState = { arr: Node[] root: arr[0] cursor: int base: int summary: vector } 这带来了几个新增能力。\n1. 可寻址性 一维实数没有地址。\nTreeHeap 有地址：\narr[0], arr[1], arr[2], ... 所以 TreeHeap 可以表达：\n某个信息写在 root 某个信息写在 left child 某个信息写在 next cursor 这让它更像一个数据结构，而不是一个普通数值。\n2. 局部结构 实数上做局部窗口没有自然意义。\n但 TreeHeap 可以定义局部子结构：\nroot -\u003e (left, right) 或者循环窗口：\n[arr[i-1], arr[i], arr[i+1]] 这就是 TreeHeap kernel search 的来源。 它和卷积里的窗口很像，但窗口滑动的空间不再只是普通一维数组，而是 TreeHeap 的地址结构。\n3. 多维负载 一维实数只能承载一个标量。\nTreeHeap 的每个节点可以承载向量：\nnode.value in R^d 所以它可以同时保存：\n语义信息 结构位置 局部上下文 历史写入痕迹 这就接近我们之前说的：\n球 + 脚 -\u003e 足球 球 + 手 -\u003e 篮球 单独一个“球”的向量不够。 它要进入不同背景、不同位置、不同操作关系，才形成不同对象。\n4. summary 只是投影 一维实数里，数值本身就是对象：\nx = 3.2 TreeHeap 里，summary 不是完整对象。 完整对象是：\narr + cursor + base + root relation + node values summary 只是一个投影：\nsummary = summarize(arr) 这点非常关键。\n如果把 summary 当成整个 TreeHeap，就会把一个高维可寻址结构压扁成普通向量。 那样很多结构信息会丢失。\n一个对比表 维度 一维实数 TreeHeap 基本对象 x in R H = TreeHeapState 内部结构 无 有 arr/root/cursor/base 地址 无 有 arr[i] 操作 +, *, function plus, summarize, kernel_search 局部窗口 不自然 可定义子树或地址窗口 学习方式 学 f(x; theta) 学 F(H; theta) 信息负载 一个标量 多节点、多向量、多关系 投影 数值本身 summary 是投影，不是整体 所以 TreeHeap 的定位可以更准确地说成：\n它不是比实数更神秘的东西。 它是比实数多了地址、局部结构和高维负载的状态对象。 数学常识仍然有效。 但因为对象更复杂，我们需要更多工具：\n线性代数处理 node vector 概率论处理候选结构 群/模运算处理循环地址 图和树处理局部关系 机器学习处理可训练算子 这就是 TreeHeap 研发工具箱的来源。\n为什么不直接跑 WMT WMT 是最终方向，但不是最合适的第一道验证题。\n翻译任务里同时混在一起的东西太多：\ntokenization encoder decoder alignment syntax semantics training objective beam search evaluation metric data quality 如果 WMT loss 降不下来，我们很难判断到底是哪一层错了。\n可能是 TreeHeap 的代数设计错了。 可能是 encoder 没学到。 可能是 decoder 不够。 可能是 loss 不适合。 也可能只是数据管线有问题。\n所以这次我们先把问题切小：\n在不碰真实语言的情况下， 训练系统能不能学会几个确定答案的数学任务？ 这就是标准机器学习里的 sanity check。 本科做线性回归、逻辑回归、XOR、多分类，不是因为这些任务伟大，而是因为它们能检查训练系统的基本生命体征。\n三道小题分别检查什么 第一题：线性回归 线性回归检查的是：\ny = Wx + b 模型能不能用梯度下降学到一个线性映射。\n这对应 TreeHeap 里的基础问题：\n一个 TreeHeap summary 或 node vector， 能不能被稳定映射到另一个目标空间？ 如果线性回归都失败，那么后面谈世界模型、拓扑弯曲、结构空间就太早了。\n这次结果：\nfinal_loss = 1.6516923158620557e-30 R2 = 1.0 这说明最小梯度系统对连续线性映射没有问题。\n第二题：XOR XOR 是经典非线性任务。\n输入输出是：\n0 xor 0 = 0 0 xor 1 = 1 1 xor 0 = 1 1 xor 1 = 0 它不能被一条直线分开。 所以单层线性模型做不好 XOR，必须有非线性变换。\n这道题检查的是：\n模型是否能通过隐藏层和非线性激活， 学会一个不是简单线性投影的关系。 这和我们之前讨论的“echo 型函数”很相关。\n如果一个模型只是把输入原样保存下来，它最多是信息保存器。 但世界模型不只是保存信息。 它还要改变表示空间，让一些关系变近，让另一些关系变远。\nXOR 不能证明模型已经有世界模型，但它至少证明：\n训练系统能学非线性关系， 不是只能做输入 echo。 这次结果：\nfinal_loss = 0.0007663465151399971 accuracy = 1.0 第三题：模 8 加法 这是这次最贴近 TreeHeap 的题。\n任务是学习：\n(a + b) mod 8 例如：\n3 + 4 = 7 5 + 6 = 11 11 mod 8 = 3 所以 (5 + 6) mod 8 = 3 为什么它重要？\n因为我们前面讨论 TreeHeap 的 plus 时，已经把一个关键结构拆成：\nplus = successor + information gain + mod fold 其中 mod fold 就是：\n超过 base 后折回前面的地址 如果模型连一个小小的 Z / 8Z 循环群表都学不会，那就不要急着说 TreeHeap 可以学会地址折叠、循环窗口、卷积式 kernel search。\n这次结果：\nbase = 8 final_loss = 0.0021191076117503013 accuracy = 1.0 混淆矩阵是完全对角的：\n每个真实类别都被预测成自己，没有串类。 这说明模型学会了完整的 base-8 模加法表。\n这和 TreeHeap 有什么关系 前一篇 SPR-015 证明的是手写 toy：\narr[0] 是 root plus 写入下一个地址 base 前信息量增加 base 后按 mod 折回 kernel 可以在循环地址环上滑动 那是一个规则系统。\n这篇 SPR-016 问的是另一个问题：\n这些规则有没有机会被模型学出来？ 也就是从：\n手写 plus(H, primitive) 走向：\nlearned_plus(H, primitive; theta) 这里的 theta 就是参数。\nTransformer 的关键不是矩阵本身，而是参数矩阵能被梯度更新。 学习发生在参数里。\nTreeHeap 如果也要变成机器学习系统，而不只是数据结构，就必须有：\nencoder theta_e plus theta_p decoder theta_d loss gradient update 这次 trainability quiz 只是确认：\n最小训练管线可以通过梯度学函数。 它还没有证明：\nTreeHeap 的真实 plus 已经学出来。 但它允许我们进入下一步。\n这一点也修正了 TreeHeap 的定位。\nTreeHeap 本身不是一个会自动产生知识的魔法容器。 它是一种结构设计：\n把向量、地址、root、cursor、base、summary 组织成可操作对象。 真正的知识仍然要通过学习进入参数。 也就是：\n数据 -\u003e loss -\u003e gradient -\u003e parameter update -\u003e learned operator Transformer 是这样，TreeHeap 也应该是这样。\n区别只在于：\nTransformer 主要学习矩阵上的序列映射。 TreeHeap 希望学习高维堆对象上的结构操作。 所以这次实验还证明了一件朴素但重要的事：\n我们不用放弃已有 ML 常识。 我们只是把这些常识接到 TreeHeap 结构上。 为什么使用 NumPy 手写梯度 这次没有用 PyTorch。\n原因很简单：\nni 上当前 Python 环境有 NumPy，但没有 torch。 所以实验使用手写反向传播。\n这反而有一个好处：所有东西都很透明。\n我们没有把问题交给框架魔法。 每个任务都能看见：\nforward loss gradient parameter update 对于 M0 数学工具箱来说，这种透明性比一开始追求大模型训练更重要。\n这次实验证明了什么 它证明的是一个很窄的命题：\n在当前最小训练代码里， 小型可训练模块可以学会线性映射、XOR、base-8 模加法。 所以我们可以合理继续设计：\ntrainable TreeHeap encoder trainable TreeHeap plus trainable TreeHeap decoder 尤其是 plus。\n因为 plus 不是普通向量加法。 它更像：\n在一个可寻址 TreeHeap 结构里， 把 primitive 写入下一个位置， 更新 summary， 并在 base 满后发生 mod fold。 这次的模加法任务说明：\n小模型至少可以学会离散循环结构。 这对 TreeHeap 的地址环、循环窗口和 kernel search 是正向证据。\n这次没有证明什么 它没有证明：\nTreeHeap 已经会翻译 TreeHeap 已经拥有世界模型 TreeHeap 已经学会真实语言语义 TreeHeap checkpoint 是可靠的 CMul 一定能形成拓扑扭曲 这些都还没有。\n这次只是一个入口实验。\n如果把研发路线比作爬楼，这次不是到了顶楼。 它只是确认：\n楼梯是实的，不是一张画。 下一步怎么走 下一步我建议做 P-LEARN02：\nTrainable TreeHeap Plus 目标不是语言。 还是 toy。\n输入：\nH_t primitive p_t 输出：\nH_{t+1} 其中 H_t 必须包含可寻址结构：\narr cursor base summary 训练目标可以分成三项：\n1. target address loss 模型要知道下一个写入地址在哪里 2. reconstruction loss 模型要能重建更新后的 arr 或 summary 3. mod fold loss base 满后，模型要学会折回 arr[0], arr[1], ... 如果 P-LEARN02 成立，我们才进入：\nTreeHeap-object echo 也就是让模型不仅输出向量，而是输出一个仍然可读、可写、可比较的 TreeHeap 对象。\n再之后才是：\nstructure invariant S2 translation WMT ARA 记录在哪里 这次实验的 ARA 目录是：\nara/m0-treeheap-math/ 公开镜像同步到：\nhttps://github.com/houming818/sametime/tree/main/ara/m0-treeheap-math 关键 evidence：\nevidence/trainability_quiz/summary.json evidence/trainability_quiz/README.md 对应代码：\nsrc/trainability_quiz.py 一句话 SPR-015 证明了一个手写 TreeHeap toy 可以拥有 plus + mod fold + kernel search。\nSPR-016 证明了最小训练系统可以学会基础连续映射、非线性逻辑和模加法。\n所以现在的路线不是：\n直接拿 TreeHeap 去碰 WMT。 而是：\n先把 TreeHeap 的数学工具箱做成可学习对象， 再让语言任务站在这个工具箱上。 License: GPLv3\n",
+  "wordCount" : "878",
+  "inLanguage": "en",
+  "datePublished": "2026-06-21T00:00:00Z",
+  "dateModified": "2026-06-21T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/016-trainability-quiz.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item active">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题
+    </h1>
+    <div class="post-description">
+      解释为什么在 WMT 之前先做线性回归、XOR、模加法三道 toy 训练题，以及这次实验怎样支撑 TreeHeap encoder/plus/decoder 的下一步设计。
+    </div>
+    <div class="post-meta"><span title='2026-06-21 00:00:00 +0000 UTC'>June 21, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="trainability-quiztreeheap-进入可学习系统之前的三道小题">Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题<a hidden class="anchor" aria-hidden="true" href="#trainability-quiztreeheap-进入可学习系统之前的三道小题">#</a></h1>
+<p>这篇文章解释刚跑完的一个小实验：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/m0-treeheap-math/src/trainability_quiz.py
+</span></span></code></pre></div><p>它对应 ARA 里的一个新 predict：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P-LEARN01: TreeHeap trainability quiz
+</span></span></code></pre></div><p>这不是 WMT。
+不是翻译实验。
+也不是证明 TreeHeap 已经拥有语言理解能力。</p>
+<p>它是一道“入门考试”：在真正训练 TreeHeap encoder、plus、decoder 之前，我们先问一个更朴素的问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>当前这套最小学习框架，能不能学会基础函数？
+</span></span></code></pre></div><p>如果连最简单的线性映射、XOR、模加法都学不会，那么直接去跑 WMT 只会得到一堆昂贵但难解释的 loss 曲线。</p>
+<h2 id="先说结果">先说结果<a hidden class="anchor" aria-hidden="true" href="#先说结果">#</a></h2>
+<p>实验在 <code>ni</code> 上执行，使用的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Python 3.10
+</span></span><span style="display:flex;"><span>NumPy
+</span></span><span style="display:flex;"><span>manual gradients
+</span></span><span style="display:flex;"><span>no PyTorch
+</span></span><span style="display:flex;"><span>seed = 20260621
+</span></span><span style="display:flex;"><span>base = 8
+</span></span></code></pre></div><p>结果如下：</p>
+<table>
+  <thead>
+      <tr>
+          <th>任务</th>
+          <th style="text-align: right">初始 loss</th>
+          <th style="text-align: right">最终 loss</th>
+          <th style="text-align: right">指标</th>
+          <th>通过</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>linear_regression</td>
+          <td style="text-align: right">3.7075966755</td>
+          <td style="text-align: right">1.6516923159e-30</td>
+          <td style="text-align: right">R2 = 1.0</td>
+          <td>true</td>
+      </tr>
+      <tr>
+          <td>xor</td>
+          <td style="text-align: right">0.9064090912</td>
+          <td style="text-align: right">0.0007663465</td>
+          <td style="text-align: right">accuracy = 1.0</td>
+          <td>true</td>
+      </tr>
+      <tr>
+          <td>modular_addition</td>
+          <td style="text-align: right">2.4380615125</td>
+          <td style="text-align: right">0.0021191076</td>
+          <td style="text-align: right">accuracy = 1.0</td>
+          <td>true</td>
+      </tr>
+  </tbody>
+</table>
+<p>总结果：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>pilot_pass = true
+</span></span></code></pre></div><p>用人话说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这个最小训练系统可以学会：
+</span></span><span style="display:flex;"><span>1. 连续空间里的线性关系
+</span></span><span style="display:flex;"><span>2. 非线性逻辑关系
+</span></span><span style="display:flex;"><span>3. 离散循环空间里的模加法关系
+</span></span></code></pre></div><p>这给下一步 TreeHeap 数学工具箱一个基础信号：我们可以开始把 <code>plus</code>、<code>primitive</code>、<code>mod fold</code>、<code>addressable heap</code> 设计成可训练模块，而不是只停留在手写 toy 规则。</p>
+<p>还有一个更重要的工程含义：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 不是要推翻已有机器学习数学。
+</span></span><span style="display:flex;"><span>TreeHeap 只是我们设计的一种高维可寻址结构。
+</span></span></code></pre></div><p>所以我们已经知道有效的常识知识仍然有效。</p>
+<p>比如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>线性代数仍然有效
+</span></span><span style="display:flex;"><span>梯度下降仍然有效
+</span></span><span style="display:flex;"><span>非线性激活仍然有效
+</span></span><span style="display:flex;"><span>交叉熵仍然有效
+</span></span><span style="display:flex;"><span>分类任务仍然有效
+</span></span><span style="display:flex;"><span>模运算、群、循环结构仍然有效
+</span></span></code></pre></div><p>这件事会让研发轻很多。</p>
+<p>因为 TreeHeap 不是从零发明一套完全陌生的数学宇宙。
+它更像是在已有机器学习工具箱上，额外引入一个结构对象：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>addressable high-dimensional heap object
+</span></span></code></pre></div><p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>机器学习负责学习参数。
+</span></span><span style="display:flex;"><span>TreeHeap 负责提供可寻址、高维、可组合的结构载体。
+</span></span></code></pre></div><p>这样一来，我们后面可以继续使用本科到研究生阶段熟悉的数学工具，而不是每一步都陷入“这个东西有没有物理意义”的空转。</p>
+<h2 id="treeheap-和一维实数有什么相似处">TreeHeap 和一维实数有什么相似处<a hidden class="anchor" aria-hidden="true" href="#treeheap-和一维实数有什么相似处">#</a></h2>
+<p>为了避免 TreeHeap 被理解成一个玄学名词，可以先把它和最熟悉的一维数作比较。</p>
+<p>最简单的数学对象是一个实数：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x in R
+</span></span></code></pre></div><p>它有几个非常重要的性质。</p>
+<p>第一，它可以表示状态：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x = 3.2
+</span></span></code></pre></div><p>第二，它可以被操作：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x + 1
+</span></span><span style="display:flex;"><span>2x
+</span></span><span style="display:flex;"><span>x^2
+</span></span></code></pre></div><p>第三，它可以被学习系统处理。
+比如线性回归学的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>y = wx + b
+</span></span></code></pre></div><p>这里的 <code>x</code> 是输入状态，<code>w</code> 和 <code>b</code> 是学习出来的参数。</p>
+<p>TreeHeap 也有类似的一面。
+它也是一个状态对象：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H = TreeHeapState
+</span></span></code></pre></div><p>它也可以被操作：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>plus(H, primitive)
+</span></span><span style="display:flex;"><span>summarize(H)
+</span></span><span style="display:flex;"><span>kernel_search(H, K)
+</span></span></code></pre></div><p>它也应该可以被学习系统处理：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H_{t+1} = learned_plus(H_t, p_t; theta)
+</span></span></code></pre></div><p>所以从“机器学习能否处理它”的角度看，TreeHeap 并没有脱离常识数学。
+它只是把输入从：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个数 x
+</span></span></code></pre></div><p>换成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个高维可寻址结构 H
+</span></span></code></pre></div><p>这就是 <code>SPR-016</code> 为什么先做线性回归、XOR、模加法的原因。
+这些 toy 任务确认的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>学习系统可以从样本中拟合函数。
+</span></span></code></pre></div><p>只要 TreeHeap 的操作最后也能写成函数学习问题，那么已有 ML 工具就仍然能进入。</p>
+<h2 id="增加高维结构以后多了什么">增加高维结构以后，多了什么<a hidden class="anchor" aria-hidden="true" href="#增加高维结构以后多了什么">#</a></h2>
+<p>但是 TreeHeap 和一维实数也有根本差异。</p>
+<p>一维实数只有一个自由度：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x = 3.2
+</span></span></code></pre></div><p>它没有内部地址。
+你不能问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x 的 root 在哪里？
+</span></span><span style="display:flex;"><span>x 的 left child 是什么？
+</span></span><span style="display:flex;"><span>x 的 cursor 指向哪里？
+</span></span></code></pre></div><p>这些问题对实数没有意义。</p>
+<p>TreeHeap 不一样。
+它不是单个标量，而是一个结构对象：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeapState = {
+</span></span><span style="display:flex;"><span>  arr: Node[]
+</span></span><span style="display:flex;"><span>  root: arr[0]
+</span></span><span style="display:flex;"><span>  cursor: int
+</span></span><span style="display:flex;"><span>  base: int
+</span></span><span style="display:flex;"><span>  summary: vector
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>这带来了几个新增能力。</p>
+<h3 id="1-可寻址性">1. 可寻址性<a hidden class="anchor" aria-hidden="true" href="#1-可寻址性">#</a></h3>
+<p>一维实数没有地址。</p>
+<p>TreeHeap 有地址：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>arr[0], arr[1], arr[2], ...
+</span></span></code></pre></div><p>所以 TreeHeap 可以表达：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>某个信息写在 root
+</span></span><span style="display:flex;"><span>某个信息写在 left child
+</span></span><span style="display:flex;"><span>某个信息写在 next cursor
+</span></span></code></pre></div><p>这让它更像一个数据结构，而不是一个普通数值。</p>
+<h3 id="2-局部结构">2. 局部结构<a hidden class="anchor" aria-hidden="true" href="#2-局部结构">#</a></h3>
+<p>实数上做局部窗口没有自然意义。</p>
+<p>但 TreeHeap 可以定义局部子结构：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root -&gt; (left, right)
+</span></span></code></pre></div><p>或者循环窗口：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[arr[i-1], arr[i], arr[i+1]]
+</span></span></code></pre></div><p>这就是 TreeHeap kernel search 的来源。
+它和卷积里的窗口很像，但窗口滑动的空间不再只是普通一维数组，而是 TreeHeap 的地址结构。</p>
+<h3 id="3-多维负载">3. 多维负载<a hidden class="anchor" aria-hidden="true" href="#3-多维负载">#</a></h3>
+<p>一维实数只能承载一个标量。</p>
+<p>TreeHeap 的每个节点可以承载向量：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>node.value in R^d
+</span></span></code></pre></div><p>所以它可以同时保存：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>语义信息
+</span></span><span style="display:flex;"><span>结构位置
+</span></span><span style="display:flex;"><span>局部上下文
+</span></span><span style="display:flex;"><span>历史写入痕迹
+</span></span></code></pre></div><p>这就接近我们之前说的：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>球 + 脚 -&gt; 足球
+</span></span><span style="display:flex;"><span>球 + 手 -&gt; 篮球
+</span></span></code></pre></div><p>单独一个“球”的向量不够。
+它要进入不同背景、不同位置、不同操作关系，才形成不同对象。</p>
+<h3 id="4-summary-只是投影">4. summary 只是投影<a hidden class="anchor" aria-hidden="true" href="#4-summary-只是投影">#</a></h3>
+<p>一维实数里，数值本身就是对象：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x = 3.2
+</span></span></code></pre></div><p>TreeHeap 里，<code>summary</code> 不是完整对象。
+完整对象是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>arr + cursor + base + root relation + node values
+</span></span></code></pre></div><p><code>summary</code> 只是一个投影：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>summary = summarize(arr)
+</span></span></code></pre></div><p>这点非常关键。</p>
+<p>如果把 <code>summary</code> 当成整个 TreeHeap，就会把一个高维可寻址结构压扁成普通向量。
+那样很多结构信息会丢失。</p>
+<h2 id="一个对比表">一个对比表<a hidden class="anchor" aria-hidden="true" href="#一个对比表">#</a></h2>
+<table>
+  <thead>
+      <tr>
+          <th>维度</th>
+          <th>一维实数</th>
+          <th>TreeHeap</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>基本对象</td>
+          <td><code>x in R</code></td>
+          <td><code>H = TreeHeapState</code></td>
+      </tr>
+      <tr>
+          <td>内部结构</td>
+          <td>无</td>
+          <td>有 <code>arr/root/cursor/base</code></td>
+      </tr>
+      <tr>
+          <td>地址</td>
+          <td>无</td>
+          <td>有 <code>arr[i]</code></td>
+      </tr>
+      <tr>
+          <td>操作</td>
+          <td><code>+</code>, <code>*</code>, function</td>
+          <td><code>plus</code>, <code>summarize</code>, <code>kernel_search</code></td>
+      </tr>
+      <tr>
+          <td>局部窗口</td>
+          <td>不自然</td>
+          <td>可定义子树或地址窗口</td>
+      </tr>
+      <tr>
+          <td>学习方式</td>
+          <td>学 <code>f(x; theta)</code></td>
+          <td>学 <code>F(H; theta)</code></td>
+      </tr>
+      <tr>
+          <td>信息负载</td>
+          <td>一个标量</td>
+          <td>多节点、多向量、多关系</td>
+      </tr>
+      <tr>
+          <td>投影</td>
+          <td>数值本身</td>
+          <td><code>summary</code> 是投影，不是整体</td>
+      </tr>
+  </tbody>
+</table>
+<p>所以 TreeHeap 的定位可以更准确地说成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>它不是比实数更神秘的东西。
+</span></span><span style="display:flex;"><span>它是比实数多了地址、局部结构和高维负载的状态对象。
+</span></span></code></pre></div><p>数学常识仍然有效。
+但因为对象更复杂，我们需要更多工具：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>线性代数处理 node vector
+</span></span><span style="display:flex;"><span>概率论处理候选结构
+</span></span><span style="display:flex;"><span>群/模运算处理循环地址
+</span></span><span style="display:flex;"><span>图和树处理局部关系
+</span></span><span style="display:flex;"><span>机器学习处理可训练算子
+</span></span></code></pre></div><p>这就是 TreeHeap 研发工具箱的来源。</p>
+<h2 id="为什么不直接跑-wmt">为什么不直接跑 WMT<a hidden class="anchor" aria-hidden="true" href="#为什么不直接跑-wmt">#</a></h2>
+<p>WMT 是最终方向，但不是最合适的第一道验证题。</p>
+<p>翻译任务里同时混在一起的东西太多：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>tokenization
+</span></span><span style="display:flex;"><span>encoder
+</span></span><span style="display:flex;"><span>decoder
+</span></span><span style="display:flex;"><span>alignment
+</span></span><span style="display:flex;"><span>syntax
+</span></span><span style="display:flex;"><span>semantics
+</span></span><span style="display:flex;"><span>training objective
+</span></span><span style="display:flex;"><span>beam search
+</span></span><span style="display:flex;"><span>evaluation metric
+</span></span><span style="display:flex;"><span>data quality
+</span></span></code></pre></div><p>如果 WMT loss 降不下来，我们很难判断到底是哪一层错了。</p>
+<p>可能是 TreeHeap 的代数设计错了。
+可能是 encoder 没学到。
+可能是 decoder 不够。
+可能是 loss 不适合。
+也可能只是数据管线有问题。</p>
+<p>所以这次我们先把问题切小：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在不碰真实语言的情况下，
+</span></span><span style="display:flex;"><span>训练系统能不能学会几个确定答案的数学任务？
+</span></span></code></pre></div><p>这就是标准机器学习里的 sanity check。
+本科做线性回归、逻辑回归、XOR、多分类，不是因为这些任务伟大，而是因为它们能检查训练系统的基本生命体征。</p>
+<h2 id="三道小题分别检查什么">三道小题分别检查什么<a hidden class="anchor" aria-hidden="true" href="#三道小题分别检查什么">#</a></h2>
+<h3 id="第一题线性回归">第一题：线性回归<a hidden class="anchor" aria-hidden="true" href="#第一题线性回归">#</a></h3>
+<p>线性回归检查的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>y = Wx + b
+</span></span></code></pre></div><p>模型能不能用梯度下降学到一个线性映射。</p>
+<p>这对应 TreeHeap 里的基础问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个 TreeHeap summary 或 node vector，
+</span></span><span style="display:flex;"><span>能不能被稳定映射到另一个目标空间？
+</span></span></code></pre></div><p>如果线性回归都失败，那么后面谈世界模型、拓扑弯曲、结构空间就太早了。</p>
+<p>这次结果：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>final_loss = 1.6516923158620557e-30
+</span></span><span style="display:flex;"><span>R2 = 1.0
+</span></span></code></pre></div><p>这说明最小梯度系统对连续线性映射没有问题。</p>
+<h3 id="第二题xor">第二题：XOR<a hidden class="anchor" aria-hidden="true" href="#第二题xor">#</a></h3>
+<p>XOR 是经典非线性任务。</p>
+<p>输入输出是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>0 xor 0 = 0
+</span></span><span style="display:flex;"><span>0 xor 1 = 1
+</span></span><span style="display:flex;"><span>1 xor 0 = 1
+</span></span><span style="display:flex;"><span>1 xor 1 = 0
+</span></span></code></pre></div><p>它不能被一条直线分开。
+所以单层线性模型做不好 XOR，必须有非线性变换。</p>
+<p>这道题检查的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型是否能通过隐藏层和非线性激活，
+</span></span><span style="display:flex;"><span>学会一个不是简单线性投影的关系。
+</span></span></code></pre></div><p>这和我们之前讨论的“echo 型函数”很相关。</p>
+<p>如果一个模型只是把输入原样保存下来，它最多是信息保存器。
+但世界模型不只是保存信息。
+它还要改变表示空间，让一些关系变近，让另一些关系变远。</p>
+<p>XOR 不能证明模型已经有世界模型，但它至少证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>训练系统能学非线性关系，
+</span></span><span style="display:flex;"><span>不是只能做输入 echo。
+</span></span></code></pre></div><p>这次结果：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>final_loss = 0.0007663465151399971
+</span></span><span style="display:flex;"><span>accuracy = 1.0
+</span></span></code></pre></div><h3 id="第三题模-8-加法">第三题：模 8 加法<a hidden class="anchor" aria-hidden="true" href="#第三题模-8-加法">#</a></h3>
+<p>这是这次最贴近 TreeHeap 的题。</p>
+<p>任务是学习：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>(a + b) mod 8
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>3 + 4 = 7
+</span></span><span style="display:flex;"><span>5 + 6 = 11
+</span></span><span style="display:flex;"><span>11 mod 8 = 3
+</span></span><span style="display:flex;"><span>所以 (5 + 6) mod 8 = 3
+</span></span></code></pre></div><p>为什么它重要？</p>
+<p>因为我们前面讨论 TreeHeap 的 <code>plus</code> 时，已经把一个关键结构拆成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>plus = successor + information gain + mod fold
+</span></span></code></pre></div><p>其中 <code>mod fold</code> 就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>超过 base 后折回前面的地址
+</span></span></code></pre></div><p>如果模型连一个小小的 <code>Z / 8Z</code> 循环群表都学不会，那就不要急着说 TreeHeap 可以学会地址折叠、循环窗口、卷积式 kernel search。</p>
+<p>这次结果：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>base = 8
+</span></span><span style="display:flex;"><span>final_loss = 0.0021191076117503013
+</span></span><span style="display:flex;"><span>accuracy = 1.0
+</span></span></code></pre></div><p>混淆矩阵是完全对角的：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>每个真实类别都被预测成自己，没有串类。
+</span></span></code></pre></div><p>这说明模型学会了完整的 base-8 模加法表。</p>
+<h2 id="这和-treeheap-有什么关系">这和 TreeHeap 有什么关系<a hidden class="anchor" aria-hidden="true" href="#这和-treeheap-有什么关系">#</a></h2>
+<p>前一篇 <code>SPR-015</code> 证明的是手写 toy：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>arr[0] 是 root
+</span></span><span style="display:flex;"><span>plus 写入下一个地址
+</span></span><span style="display:flex;"><span>base 前信息量增加
+</span></span><span style="display:flex;"><span>base 后按 mod 折回
+</span></span><span style="display:flex;"><span>kernel 可以在循环地址环上滑动
+</span></span></code></pre></div><p>那是一个规则系统。</p>
+<p>这篇 <code>SPR-016</code> 问的是另一个问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这些规则有没有机会被模型学出来？
+</span></span></code></pre></div><p>也就是从：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>手写 plus(H, primitive)
+</span></span></code></pre></div><p>走向：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>learned_plus(H, primitive; theta)
+</span></span></code></pre></div><p>这里的 <code>theta</code> 就是参数。</p>
+<p>Transformer 的关键不是矩阵本身，而是参数矩阵能被梯度更新。
+学习发生在参数里。</p>
+<p>TreeHeap 如果也要变成机器学习系统，而不只是数据结构，就必须有：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>encoder theta_e
+</span></span><span style="display:flex;"><span>plus theta_p
+</span></span><span style="display:flex;"><span>decoder theta_d
+</span></span><span style="display:flex;"><span>loss
+</span></span><span style="display:flex;"><span>gradient
+</span></span><span style="display:flex;"><span>update
+</span></span></code></pre></div><p>这次 trainability quiz 只是确认：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>最小训练管线可以通过梯度学函数。
+</span></span></code></pre></div><p>它还没有证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的真实 plus 已经学出来。
+</span></span></code></pre></div><p>但它允许我们进入下一步。</p>
+<p>这一点也修正了 TreeHeap 的定位。</p>
+<p>TreeHeap 本身不是一个会自动产生知识的魔法容器。
+它是一种结构设计：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>把向量、地址、root、cursor、base、summary 组织成可操作对象。
+</span></span></code></pre></div><p>真正的知识仍然要通过学习进入参数。
+也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>数据
+</span></span><span style="display:flex;"><span>-&gt; loss
+</span></span><span style="display:flex;"><span>-&gt; gradient
+</span></span><span style="display:flex;"><span>-&gt; parameter update
+</span></span><span style="display:flex;"><span>-&gt; learned operator
+</span></span></code></pre></div><p>Transformer 是这样，TreeHeap 也应该是这样。</p>
+<p>区别只在于：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Transformer 主要学习矩阵上的序列映射。
+</span></span><span style="display:flex;"><span>TreeHeap 希望学习高维堆对象上的结构操作。
+</span></span></code></pre></div><p>所以这次实验还证明了一件朴素但重要的事：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>我们不用放弃已有 ML 常识。
+</span></span><span style="display:flex;"><span>我们只是把这些常识接到 TreeHeap 结构上。
+</span></span></code></pre></div><h2 id="为什么使用-numpy-手写梯度">为什么使用 NumPy 手写梯度<a hidden class="anchor" aria-hidden="true" href="#为什么使用-numpy-手写梯度">#</a></h2>
+<p>这次没有用 PyTorch。</p>
+<p>原因很简单：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ni 上当前 Python 环境有 NumPy，但没有 torch。
+</span></span></code></pre></div><p>所以实验使用手写反向传播。</p>
+<p>这反而有一个好处：所有东西都很透明。</p>
+<p>我们没有把问题交给框架魔法。
+每个任务都能看见：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>forward
+</span></span><span style="display:flex;"><span>loss
+</span></span><span style="display:flex;"><span>gradient
+</span></span><span style="display:flex;"><span>parameter update
+</span></span></code></pre></div><p>对于 M0 数学工具箱来说，这种透明性比一开始追求大模型训练更重要。</p>
+<h2 id="这次实验证明了什么">这次实验证明了什么<a hidden class="anchor" aria-hidden="true" href="#这次实验证明了什么">#</a></h2>
+<p>它证明的是一个很窄的命题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在当前最小训练代码里，
+</span></span><span style="display:flex;"><span>小型可训练模块可以学会线性映射、XOR、base-8 模加法。
+</span></span></code></pre></div><p>所以我们可以合理继续设计：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>trainable TreeHeap encoder
+</span></span><span style="display:flex;"><span>trainable TreeHeap plus
+</span></span><span style="display:flex;"><span>trainable TreeHeap decoder
+</span></span></code></pre></div><p>尤其是 <code>plus</code>。</p>
+<p>因为 <code>plus</code> 不是普通向量加法。
+它更像：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在一个可寻址 TreeHeap 结构里，
+</span></span><span style="display:flex;"><span>把 primitive 写入下一个位置，
+</span></span><span style="display:flex;"><span>更新 summary，
+</span></span><span style="display:flex;"><span>并在 base 满后发生 mod fold。
+</span></span></code></pre></div><p>这次的模加法任务说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>小模型至少可以学会离散循环结构。
+</span></span></code></pre></div><p>这对 TreeHeap 的地址环、循环窗口和 kernel search 是正向证据。</p>
+<h2 id="这次没有证明什么">这次没有证明什么<a hidden class="anchor" aria-hidden="true" href="#这次没有证明什么">#</a></h2>
+<p>它没有证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 已经会翻译
+</span></span><span style="display:flex;"><span>TreeHeap 已经拥有世界模型
+</span></span><span style="display:flex;"><span>TreeHeap 已经学会真实语言语义
+</span></span><span style="display:flex;"><span>TreeHeap checkpoint 是可靠的
+</span></span><span style="display:flex;"><span>CMul 一定能形成拓扑扭曲
+</span></span></code></pre></div><p>这些都还没有。</p>
+<p>这次只是一个入口实验。</p>
+<p>如果把研发路线比作爬楼，这次不是到了顶楼。
+它只是确认：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>楼梯是实的，不是一张画。
+</span></span></code></pre></div><h2 id="下一步怎么走">下一步怎么走<a hidden class="anchor" aria-hidden="true" href="#下一步怎么走">#</a></h2>
+<p>下一步我建议做 <code>P-LEARN02</code>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Trainable TreeHeap Plus
+</span></span></code></pre></div><p>目标不是语言。
+还是 toy。</p>
+<p>输入：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H_t
+</span></span><span style="display:flex;"><span>primitive p_t
+</span></span></code></pre></div><p>输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H_{t+1}
+</span></span></code></pre></div><p>其中 <code>H_t</code> 必须包含可寻址结构：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>arr
+</span></span><span style="display:flex;"><span>cursor
+</span></span><span style="display:flex;"><span>base
+</span></span><span style="display:flex;"><span>summary
+</span></span></code></pre></div><p>训练目标可以分成三项：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1. target address loss
+</span></span><span style="display:flex;"><span>   模型要知道下一个写入地址在哪里
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>2. reconstruction loss
+</span></span><span style="display:flex;"><span>   模型要能重建更新后的 arr 或 summary
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>3. mod fold loss
+</span></span><span style="display:flex;"><span>   base 满后，模型要学会折回 arr[0], arr[1], ...
+</span></span></code></pre></div><p>如果 <code>P-LEARN02</code> 成立，我们才进入：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap-object echo
+</span></span></code></pre></div><p>也就是让模型不仅输出向量，而是输出一个仍然可读、可写、可比较的 TreeHeap 对象。</p>
+<p>再之后才是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>structure invariant
+</span></span><span style="display:flex;"><span>S2 translation
+</span></span><span style="display:flex;"><span>WMT
+</span></span></code></pre></div><h2 id="ara-记录在哪里">ARA 记录在哪里<a hidden class="anchor" aria-hidden="true" href="#ara-记录在哪里">#</a></h2>
+<p>这次实验的 ARA 目录是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/m0-treeheap-math/
+</span></span></code></pre></div><p>公开镜像同步到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>https://github.com/houming818/sametime/tree/main/ara/m0-treeheap-math
+</span></span></code></pre></div><p>关键 evidence：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>evidence/trainability_quiz/summary.json
+</span></span><span style="display:flex;"><span>evidence/trainability_quiz/README.md
+</span></span></code></pre></div><p>对应代码：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>src/trainability_quiz.py
+</span></span></code></pre></div><h2 id="一句话">一句话<a hidden class="anchor" aria-hidden="true" href="#一句话">#</a></h2>
+<p><code>SPR-015</code> 证明了一个手写 TreeHeap toy 可以拥有 <code>plus + mod fold + kernel search</code>。</p>
+<p><code>SPR-016</code> 证明了最小训练系统可以学会基础连续映射、非线性逻辑和模加法。</p>
+<p>所以现在的路线不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>直接拿 TreeHeap 去碰 WMT。
+</span></span></code></pre></div><p>而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>先把 TreeHeap 的数学工具箱做成可学习对象，
+</span></span><span style="display:flex;"><span>再让语言任务站在这个工具箱上。
+</span></span></code></pre></div><blockquote>
+<p><strong>License: GPLv3</strong></p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

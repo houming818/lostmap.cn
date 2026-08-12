@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-023] 从卷积核重新定义 TreeHeap 操作 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, Kernel, Convolution, Experiment">
+<meta name="description" content="把 plus、search、conjugate 统一为 TreeHeap kernel 在树形内存态上的卷积状态变换，并用 toy proof 验证 score map、write field 与镜像共轭。">
+<meta name="author" content="nio (Houming818) &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/023-treeheap-kernel-convolution-ops.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/023-treeheap-kernel-convolution-ops.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/023-treeheap-kernel-convolution-ops.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-023] 从卷积核重新定义 TreeHeap 操作">
+  <meta property="og:description" content="把 plus、search、conjugate 统一为 TreeHeap kernel 在树形内存态上的卷积状态变换，并用 toy proof 验证 score map、write field 与镜像共轭。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-06-24T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-06-24T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-023] 从卷积核重新定义 TreeHeap 操作">
+  <meta name="twitter:description" content="把 plus、search、conjugate 统一为 TreeHeap kernel 在树形内存态上的卷积状态变换，并用 toy proof 验证 score map、write field 与镜像共轭。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-023] 从卷积核重新定义 TreeHeap 操作",
+      "item": "https://www.lostmap.cn/spr/023-treeheap-kernel-convolution-ops.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-023] 从卷积核重新定义 TreeHeap 操作",
+  "name": "[SPR-023] 从卷积核重新定义 TreeHeap 操作",
+  "description": "把 plus、search、conjugate 统一为 TreeHeap kernel 在树形内存态上的卷积状态变换，并用 toy proof 验证 score map、write field 与镜像共轭。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "Kernel", "Convolution", "Experiment"
+  ],
+  "articleBody": "从卷积核重新定义 TreeHeap 操作 上一篇 SPR-022 把 TreeHeap 放回了已有数学背景：\nrooted-tree Hopf algebra operad decomposition space tree kernel 但 Houming818 指出了一个更核心的问题：\nTreeHeap 的操作不应该先被理解成一堆手写函数。 TreeHeap 的核心操作应该是 kernel 在树上的卷积。 这句话把方向拉正了。\n以前容易说成：\nTreeHeap 有 plus、compose、decompose、conjugate。 另外，我们再给它加一个 kernel。 现在应该反过来：\nTreeHeap 的 plus、search、compose、decompose、fold、conjugate， 都应该从 kernel 如何卷积整棵树并更新内存态来定义。 也就是说：\nTreeHeap 不是“树结构 + 一堆函数”。 TreeHeap 是“树形高维状态场 + 一组卷积核”。 先看 CNN 的类比 在 CNN 里，一张图像是一个状态场：\nimage[row, col, channel] 卷积核扫过图像：\n3x3 patch ↓ kernel ↓ feature score 整张图扫完以后得到：\nfeature map 例如一个边缘检测 kernel，不是在一个像素上做判断，而是在整张图上滑动，生成一张“哪里像边缘”的图。\nTreeHeap 应该类似。\nTreeHeap 的状态场不是二维图像，而是：\nvalue × address × topology 也就是：\n节点值 路径地址 父子拓扑 所以 TreeHeap kernel 不是看一个孤立节点。 它看一个局部子堆：\nroot / \\ left right 然后在整棵树上滑动。\nTreeHeap kernel convolution 的定义 设当前 TreeHeap 内存态是：\n$\n$ H_t $$\n以路径 \\(a\\) 为中心的局部子堆是：\n$\n$ S_a(H_t) $$\n一个 kernel 是：\n$\n$ K_\\theta(q, S_a, W) $$\n其中：\n符号 含义 \\(q\\) query，要找或要写的目标 \\(S_a\\) 地址 \\(a\\) 处的局部子堆 \\(W\\) world model / 背景场 \\(\\theta\\) kernel 参数，可以固定，也可以学习 卷积整棵树就是：\n$\n$ \\operatorname{Conv}_K(H_t, q) = \\{K_\\theta(q, S_a(H_t), W)\\}_{a \\in A(H_t)} $$\n翻译成人话：\n对树上每个候选地址 a： 取局部子堆 S_a 用同一个 kernel 计算响应 最终得到一张覆盖整棵树的响应图 这张响应图可以叫：\nscore map update map route map probability field 不同名字对应不同用途，但本质都是：\nkernel 扫树以后得到的全局状态场。 plus 不再是“写到某个地址” 以前我们容易把 plus 理解成：\nH plus x = 把 x 写到地址 a 但这太像普通数组写入了。\n新的定义应该是：\nplus kernel 扫描整棵 TreeHeap。 每个地址都产生一个 write score。 这些 score 形成一个写入概率场。 然后 H 根据这个概率场更新。 数学上：\n$\n$ s_a = K_{\\text{plus}}(x, S_a(H_t), W) $$\n$\n$ p_a = \\operatorname{softmax}(s_a) $$\n$\n$ H_{t+1} = H_t + \\sum_a p_a \\cdot \\Delta_a(x, H_t) $$\n其中：\ns_a = 地址 a 的写入响应 p_a = 地址 a 的写入概率 Δ_a = 如果写到地址 a，会产生的局部状态更新 所以 plus 的本质不是：\n直接指定地址。 而是：\nkernel 卷积整棵树，形成 write field，再更新内存态。 search 也是同一个东西 search 更直观。\n定义：\n$\n$ s_a = K_{\\text{search}}(q, S_a(H_t), W) $$\n如果只要硬搜索结果：\n$\n$ a^* = \\arg\\max_a s_a $$\n如果要概率容器：\n$\n$ p_a = \\operatorname{softmax}(s_a) $$\n所以 search 不是特殊函数。\n它就是：\nkernel 卷积树，输出 score map。 plus 和 search 的差别只是：\nsearch 把 score map 用来读。 plus 把 score map 用来写。 conjugate 不是额外 if-else 共轭操作也应该从 kernel 角度定义。\n假设镜像变换是：\nL \u003c-\u003e R 例如：\nLRL -\u003e RLR 记为：\n$\n$ \\sigma(a) $$\n那么 kernel 的共轭是：\n$\n$ K^\\sigma = \\sigma^{-1} \\circ K \\circ \\sigma $$\n这句话的意思是：\n先把 TreeHeap 镜像过去； 在镜像空间里用 kernel 做卷积； 再把响应映射回来。 所以 conjugate 不是：\n如果左边怎样，右边就怎样。 它是：\n卷积核本身做了一次对称翻转。 这就像图像里一个检测左斜边缘的 kernel，可以通过翻转变成检测右斜边缘的 kernel。\nTreeHeap 里对应的是：\n左路径结构 ↓ 镜像 右路径结构 这次 ARA 的新 claim 这次新增：\nM0-SOFT-C08 Claim：\nTreeHeap primitive operations can be defined as kernel convolutions over the whole tree state: search emits a score map, plus/write uses that map as an update field, and conjugate is a symmetry transform of the kernel. 中文解释：\nTreeHeap 的基本操作可以统一成： kernel 在整棵树上卷积，然后产生状态图。 search 用这张图读； plus 用这张图写； conjugate 是对 kernel 做镜像变换。 这不是说语言任务已经解决。 它只是先把操作语义统一起来。\nToy proof 怎么设计 我们做了一个小实验：\nkernel_convolution_ops_probe.py 构造一棵 full binary TreeHeap。\n在目标地址放入一个不对称子堆：\ntarget_path = LRL query = [root, left, right] = [2.0, 5.0, -3.0] 局部子堆是：\npatch(a) = [H[a], H[aL], H[aR]] kernel 定义为：\n$\n$ score(a) = -\\lVert patch(a) - query\\rVert^2 $$\n这个 kernel 很朴素。 它不是学习出来的。 它只是为了测试：\n同一个卷积响应图，能不能解释 search / plus / conjugate。 实验 1：search score map kernel 扫描所有候选子堆。\n输出：\nscore(path) 然后取：\nargmax score(path) 结果：\n指标 结果 search hit@1 True hit path LRL target probability 1.0 说明：\nsearch 可以被定义成 kernel 卷积后的 score map。 实验 2：plus write field 同一张 score map 不只可以拿来读。\n也可以变成写入概率：\n$\n$ p(a)=\\operatorname{softmax}(score(a)) $$\n然后更新 TreeHeap：\n$\n$ H_{t+1} = H_t + \\sum_a p(a)\\cdot write(a) $$\n结果：\n指标 结果 plus write hit@1 True write path LRL target update error 0.000000 max disjoint non-target update norm 0.000000 这里有一个细节。\nmax_nontarget_update_norm = 0.75，看起来像有非目标节点被影响。\n但原因是 TreeHeap 的子堆会重叠。 例如一个父 patch 会包含它的子节点。 目标子堆被写入以后，和它共享节点的其它 patch 也会观察到变化。\n所以更干净的定位指标是：\nmax_disjoint_nontarget_update_norm = 0.0 意思是：\n不共享节点的非目标子堆没有被写乱。 这说明 plus/write 可以被解释成：\nkernel 卷积产生 write field，然后写入 TreeHeap 内存态。 实验 3：conjugate mirror 目标路径：\nLRL 镜像以后：\nRLR 原始 query 是不对称的：\n[2.0, 5.0, -3.0] 如果直接拿原 kernel 去扫镜像树，会失败：\n指标 结果 raw mirror hit@1 False raw mirror hit path RLLR 但如果使用共轭 kernel：\nK^sigma = sigma^-1 K sigma 结果：\n指标 结果 conjugate mirror hit@1 True conjugate hit path RLR score-map equiv max error 0.000000e+00 这说明：\n共轭不是树外的 if-else。 共轭是 kernel 的对称变换。 也说明 TreeHeap 的镜像能力可以从卷积核角度定义。\n实验总表 检查项 结果 pilot_pass True search hit@1 True plus write hit@1 True target update error 0.000000 max disjoint non-target update norm 0.000000 raw mirror hit@1 False conjugate mirror hit@1 True score-map equiv max error 0.000000e+00 证据路径：\nara/m0-treeheap-math/src/kernel_convolution_ops_probe.py ara/m0-treeheap-math/evidence/kernel_convolution_ops_probe/ 这个 proof 证明了什么 它证明了一个很小、但很关键的东西：\nsearch、plus/write、conjugate 可以共享同一种 kernel convolution 语义。 也就是：\nkernel 扫树 ↓ 产生 score/update map ↓ 读、写、镜像都从这张 map 或它的对称变换产生 这让 TreeHeap 操作不再是一堆散装函数。\n它们开始有一个统一形式：\n$\n$ H_{t+1} = \\operatorname{Op}_K(H_t) $$\n其中：\n$\n$ \\operatorname{Op}_K $$\n来自 kernel 在树上的卷积。\n这个 proof 没证明什么 它没有证明：\nkernel 可以自己学出来。 这次 kernel 是固定的：\n$\n$ score(a) = -\\lVert patch(a)-query\\rVert^2 $$\n它也没有证明：\nTreeHeap 可以翻译。 TreeHeap 可以理解语言。 TreeHeap 比 Transformer 强。 这些都还不能说。\n它只证明：\n从操作定义上，TreeHeap 可以把 search、plus/write、conjugate 统一为 kernel convolution。 这个地基比“我们手写了几个函数”更干净。\nGLM 审计后的修订 Runner / GLM 复核以后指出了一个非常重要的边界：\nC08 的 conjugate proof 是 by construction 的恒等。 这句话是什么意思？\n在代码里，我们定义了两个东西：\nmirror_tree: 把路径 L/R 互换。 mirror_patch: 把局部子堆的 left/right 互换。 于是对于原始路径 \\(p\\)，有：\n$\n$ \\operatorname{mirror\\_patch} \\big( \\operatorname{patch}(\\operatorname{mirror\\_tree}(H), \\sigma(p)) \\big) = \\operatorname{patch}(H,p) $$\n所以：\n$\n$ score_{\\text{conjugate}}(\\sigma(p)) = score_{\\text{original}}(p) $$\n这不是模型“自己发现了镜像规律”。\n这是我们按共轭定义写出来以后，数学上必然成立。\n因此，score_map_equiv_max_error = 0.0 的意义不是：\nTreeHeap 学会了镜像。 而是：\n如果我们把 conjugate 定义成 kernel 的对称变换， 那么 TreeHeap 的镜像 score map 可以保持一致。 这依然有价值。\n但它的价值是：\n操作语义统一。 不是：\n学习能力证明。 所以 M0-SOFT-C08 的精确边界应该写成：\nC08 支持的是 operator-semantics pilot。 它证明 search / plus / conjugate 可以被统一写成 kernel convolution。 它不证明 learned kernel，也不证明模型会自动学出共轭对称。 这个修订非常重要。\n否则我们会把“定义上成立”误读成“实验上发现”。\n下一步 Predict 下一步不能继续证明 fixed kernel。\nfixed kernel 的作用已经完成：\n说明 TreeHeap 操作可以被统一定义为 kernel convolution。 下一步要证明的是：\n这个 kernel 能不能从数据中学出来？ 所以我建议新增两个 predict。\nP-SOFT05：learned convolution kernel Predict：\n如果 TreeHeap kernel 的核心是卷积状态变换， 那么一个非线性 learned kernel 应该能从 raw query + raw subheap 中 学会产生正确的 score map 和 write field。 注意关键词是：\nraw query raw subheap 也就是说，不能再手工喂：\ndiff = patch - query abs(diff) diff^2 root_alignment child_alignment 这些都是答案提示。\n真正的 learned kernel 应该输入：\nquery_root, query_left, query_right patch_root, patch_left, patch_right path metadata 然后自己学出：\nquery 和 patch 是否匹配。 P-SYNTAX01：真实句法树 micro benchmark Predict：\n如果 TreeHeap kernel 不是只在 toy 树上成立， 那么它应该能在小规模真实句法树上读到局部依存结构信号。 这不是 WMT BLEU。\n这是一个桥梁实验。\n目标是：\n让真实语言数据第一次进入 M0/S1 的 TreeHeap kernel 证据链。 建议数据：\nUniversal Dependencies 小型子集 100 到 1000 句 任务：\n给定一个 head token 的局部 TreeHeap 子结构， 预测或匹配它的 modifier / dependent pattern。 例如：\nhead -\u003e left dependent / right dependent verb -\u003e subject / object / modifier noun -\u003e determiner / adjective / prepositional phrase 这个实验不要求翻译。\n它只问：\nTreeHeap kernel 在真实句法树上是否比 flat baseline 更会利用局部树结构？ 下一步实验设计 下一步不是继续手写 kernel。\n下一步应该问：\n这个 kernel 能不能被学习出来？ 也就是：\nraw query + raw subheap ↓ learned kernel ↓ score map / write field / conjugate transfer 建议下一步做：\nP-SOFT05: learned convolution kernel 对照：\nfixed kernel linear raw kernel MLP raw kernel TreeHeap convolution kernel 目标：\n不用手工 diff。 让模型自己学会 query-subheap 比较。 如果 learned kernel 能做到：\nsearch map 正确 write field 正确 mirror conjugate 可迁移 那我们才可以把 C05 往前推进。\n实验 A：learned multi-pattern kernel 数据生成：\n每个样本随机生成一个 query pattern。 把这个 pattern 注入 TreeHeap 的某个目标子堆。 模型必须在所有候选子堆里找出目标位置。 关键点：\n不是固定 query。 必须是 multi-pattern。 因为固定 query 很容易退化成：\n记住某一个模式。 多 pattern 才能测试：\nkernel 是否真的学会比较 query 和 patch。 对照组：\n模型 输入 预期 fixed distance kernel 手写 \\( -\\lVert patch-query\\rVert^2 \\) 上限参考，不算学习 linear raw kernel raw query + raw patch 应该失败或较弱 MLP raw kernel raw query + raw patch 应该明显强于 linear TreeHeap convolution kernel raw query + raw patch + path/topology 应该在 OOD 地址上最好 Evidence gates：\nE-SOFT14: MLP raw kernel \u003e linear raw kernel E-SOFT15: TreeHeap convolution kernel 在 unseen depth / unseen address 上 优于 flat MLP baseline E-SOFT16: 不使用 hand-coded diff / alignment 特征 Falsification：\n如果 linear raw 或 flat MLP 在同样数据量下稳定匹配 TreeHeap kernel， 那么 TreeHeap kernel 没有显示额外结构收益。 实验 B：learned conjugate transfer GLM 已经指出：\n当前 conjugate proof 是 by construction。 所以真正要测的是：\nlearned kernel 是否能在镜像结构上迁移。 设计：\n训练集： 只出现左侧结构，比如 L 开头路径。 测试集： 只出现镜像右侧结构，比如 R 开头路径。 比较：\nraw learned kernel explicit conjugate kernel data augmentation baseline flat MLP baseline Evidence gates：\nE-SOFT17: explicit conjugate kernel 在 mirror OOD 上优于普通 learned kernel E-SOFT18: 使用更少右侧样本达到同等准确率 E-SOFT19: mirror score map 在 learned setting 下误差受控 Falsification：\n如果普通 MLP 通过足够少样本就学到同等镜像迁移， 或者 explicit conjugate kernel 没有 sample efficiency 优势， 那么共轭 kernel 不构成有效归纳偏置。 实验 C：真实句法树 micro benchmark 数据：\nUniversal Dependencies 先取 100 到 1000 句 只做英文或中文单语 构造：\n把 dependency tree 转成 TreeHeap-like 局部子结构。 每个候选 patch 包含： head token embedding / id left dependent right dependent dependency label 或无监督 slot path/topology metadata 任务：\n给定 query，找出正确 head-dependent 子结构。 或给定局部子树，预测 masked dependent / role。 对照组：\nBoW / token-only baseline flat MLP small Transformer encoder TreeHeap convolution kernel Evidence gates：\nE-SYNTAX01: TreeHeap kernel \u003e token-only baseline E-SYNTAX02: TreeHeap kernel 在 OOD dependency pattern 上比 flat MLP 更稳 E-SYNTAX03: 去掉 path/topology/subheap 后性能明显下降 Falsification：\n如果 token-only 或 flat MLP 在真实句法树 micro benchmark 上匹配 TreeHeap kernel， 则 TreeHeap 结构对真实语言局部结构没有显示额外收益。 ARA 补项 GLM 还指出了两个 ARA 文档层面的缺口。\n第一，PAPER.md 里还没有把 SPR-022、SPR-023 和 M0-SOFT-C08 注册到总 claim 树。\n第二，exploration_tree.yaml 里还没有把最近三步补进去：\nC07 structural proof C08 kernel convolution proof P-SOFT05 learned kernel pivot 这些不是实验本身的问题。\n它们是 ARA 索引问题。\n我建议下一次 ARA 修订补：\nC5-009: SPR-022 数学底座： TreeHeap math foundations map to BCK Hopf algebra + operad. C5-010: SPR-023 kernel convolution： TreeHeap primitive ops can be defined as kernel convolutions over tree state. 同时在 trace DAG 中补：\nE-SOFT-002: structural_c05_probe E-SOFT-003: kernel_convolution_ops_probe D-SOFT-003: operator semantics unified by kernel convolution P-SOFT-005: learned convolution kernel 这一步我先不直接改。 原因是：\n这篇 blog 先给 Houming818 review 下一步实验方向。 等 review 后，再把 PAPER.md 和 trace DAG 一次性修正。 结论 这篇的结论是一句话：\nTreeHeap 的操作本体应该是 kernel convolution。 不是：\n树上有一个 kernel。 而是：\nkernel 扫树，产生状态场； 状态场再解释为 search、plus、write、fold、conjugate。 这把 TreeHeap 从“树形数据结构”推进到了：\n树形高维状态场上的卷积计算系统。 这才是下一阶段要训练、要证明、要和 MLP / Transformer 对照的对象。\n",
+  "wordCount" : "1454",
+  "inLanguage": "en",
+  "datePublished": "2026-06-24T00:00:00Z",
+  "dateModified": "2026-06-24T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/023-treeheap-kernel-convolution-ops.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item active">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-023] 从卷积核重新定义 TreeHeap 操作
+    </h1>
+    <div class="post-description">
+      把 plus、search、conjugate 统一为 TreeHeap kernel 在树形内存态上的卷积状态变换，并用 toy proof 验证 score map、write field 与镜像共轭。
+    </div>
+    <div class="post-meta"><span title='2026-06-24 00:00:00 +0000 UTC'>June 24, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="从卷积核重新定义-treeheap-操作">从卷积核重新定义 TreeHeap 操作<a hidden class="anchor" aria-hidden="true" href="#从卷积核重新定义-treeheap-操作">#</a></h1>
+<p>上一篇 <code>SPR-022</code> 把 TreeHeap 放回了已有数学背景：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>rooted-tree Hopf algebra
+</span></span><span style="display:flex;"><span>operad
+</span></span><span style="display:flex;"><span>decomposition space
+</span></span><span style="display:flex;"><span>tree kernel
+</span></span></code></pre></div><p>但 Houming818 指出了一个更核心的问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的操作不应该先被理解成一堆手写函数。
+</span></span><span style="display:flex;"><span>TreeHeap 的核心操作应该是 kernel 在树上的卷积。
+</span></span></code></pre></div><p>这句话把方向拉正了。</p>
+<p>以前容易说成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 有 plus、compose、decompose、conjugate。
+</span></span><span style="display:flex;"><span>另外，我们再给它加一个 kernel。
+</span></span></code></pre></div><p>现在应该反过来：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的 plus、search、compose、decompose、fold、conjugate，
+</span></span><span style="display:flex;"><span>都应该从 kernel 如何卷积整棵树并更新内存态来定义。
+</span></span></code></pre></div><p>也就是说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 不是“树结构 + 一堆函数”。
+</span></span><span style="display:flex;"><span>TreeHeap 是“树形高维状态场 + 一组卷积核”。
+</span></span></code></pre></div><h2 id="先看-cnn-的类比">先看 CNN 的类比<a hidden class="anchor" aria-hidden="true" href="#先看-cnn-的类比">#</a></h2>
+<p>在 CNN 里，一张图像是一个状态场：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>image[row, col, channel]
+</span></span></code></pre></div><p>卷积核扫过图像：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>3x3 patch
+</span></span><span style="display:flex;"><span>↓
+</span></span><span style="display:flex;"><span>kernel
+</span></span><span style="display:flex;"><span>↓
+</span></span><span style="display:flex;"><span>feature score
+</span></span></code></pre></div><p>整张图扫完以后得到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>feature map
+</span></span></code></pre></div><p>例如一个边缘检测 kernel，不是在一个像素上做判断，而是在整张图上滑动，生成一张“哪里像边缘”的图。</p>
+<p>TreeHeap 应该类似。</p>
+<p>TreeHeap 的状态场不是二维图像，而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>value × address × topology
+</span></span></code></pre></div><p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>节点值
+</span></span><span style="display:flex;"><span>路径地址
+</span></span><span style="display:flex;"><span>父子拓扑
+</span></span></code></pre></div><p>所以 TreeHeap kernel 不是看一个孤立节点。
+它看一个局部子堆：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>      root
+</span></span><span style="display:flex;"><span>     /    \
+</span></span><span style="display:flex;"><span>  left    right
+</span></span></code></pre></div><p>然后在整棵树上滑动。</p>
+<h2 id="treeheap-kernel-convolution-的定义">TreeHeap kernel convolution 的定义<a hidden class="anchor" aria-hidden="true" href="#treeheap-kernel-convolution-的定义">#</a></h2>
+<p>设当前 TreeHeap 内存态是：</p>
+<p>$</p>
+$ H_t $<p>$</p>
+<p>以路径 \(a\) 为中心的局部子堆是：</p>
+<p>$</p>
+$ S_a(H_t) $<p>$</p>
+<p>一个 kernel 是：</p>
+<p>$</p>
+$ K_\theta(q, S_a, W) $<p>$</p>
+<p>其中：</p>
+<table>
+  <thead>
+      <tr>
+          <th>符号</th>
+          <th>含义</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>\(q\)</td>
+          <td>query，要找或要写的目标</td>
+      </tr>
+      <tr>
+          <td>\(S_a\)</td>
+          <td>地址 \(a\) 处的局部子堆</td>
+      </tr>
+      <tr>
+          <td>\(W\)</td>
+          <td>world model / 背景场</td>
+      </tr>
+      <tr>
+          <td>\(\theta\)</td>
+          <td>kernel 参数，可以固定，也可以学习</td>
+      </tr>
+  </tbody>
+</table>
+<p>卷积整棵树就是：</p>
+<p>$</p>
+$ \operatorname{Conv}_K(H_t, q) = \{K_\theta(q, S_a(H_t), W)\}_{a \in A(H_t)} $<p>$</p>
+<p>翻译成人话：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>对树上每个候选地址 a：
+</span></span><span style="display:flex;"><span>  取局部子堆 S_a
+</span></span><span style="display:flex;"><span>  用同一个 kernel 计算响应
+</span></span><span style="display:flex;"><span>最终得到一张覆盖整棵树的响应图
+</span></span></code></pre></div><p>这张响应图可以叫：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>score map
+</span></span><span style="display:flex;"><span>update map
+</span></span><span style="display:flex;"><span>route map
+</span></span><span style="display:flex;"><span>probability field
+</span></span></code></pre></div><p>不同名字对应不同用途，但本质都是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 扫树以后得到的全局状态场。
+</span></span></code></pre></div><h2 id="plus-不再是写到某个地址">plus 不再是“写到某个地址”<a hidden class="anchor" aria-hidden="true" href="#plus-不再是写到某个地址">#</a></h2>
+<p>以前我们容易把 plus 理解成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H plus x = 把 x 写到地址 a
+</span></span></code></pre></div><p>但这太像普通数组写入了。</p>
+<p>新的定义应该是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>plus kernel 扫描整棵 TreeHeap。
+</span></span><span style="display:flex;"><span>每个地址都产生一个 write score。
+</span></span><span style="display:flex;"><span>这些 score 形成一个写入概率场。
+</span></span><span style="display:flex;"><span>然后 H 根据这个概率场更新。
+</span></span></code></pre></div><p>数学上：</p>
+<p>$</p>
+$ s_a = K_{\text{plus}}(x, S_a(H_t), W) $<p>$</p>
+<p>$</p>
+$ p_a = \operatorname{softmax}(s_a) $<p>$</p>
+<p>$</p>
+$ H_{t+1} = H_t + \sum_a p_a \cdot \Delta_a(x, H_t) $<p>$</p>
+<p>其中：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>s_a = 地址 a 的写入响应
+</span></span><span style="display:flex;"><span>p_a = 地址 a 的写入概率
+</span></span><span style="display:flex;"><span>Δ_a = 如果写到地址 a，会产生的局部状态更新
+</span></span></code></pre></div><p>所以 plus 的本质不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>直接指定地址。
+</span></span></code></pre></div><p>而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 卷积整棵树，形成 write field，再更新内存态。
+</span></span></code></pre></div><h2 id="search-也是同一个东西">search 也是同一个东西<a hidden class="anchor" aria-hidden="true" href="#search-也是同一个东西">#</a></h2>
+<p>search 更直观。</p>
+<p>定义：</p>
+<p>$</p>
+$ s_a = K_{\text{search}}(q, S_a(H_t), W) $<p>$</p>
+<p>如果只要硬搜索结果：</p>
+<p>$</p>
+$ a^* = \arg\max_a s_a $<p>$</p>
+<p>如果要概率容器：</p>
+<p>$</p>
+$ p_a = \operatorname{softmax}(s_a) $<p>$</p>
+<p>所以 search 不是特殊函数。</p>
+<p>它就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 卷积树，输出 score map。
+</span></span></code></pre></div><p>plus 和 search 的差别只是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>search 把 score map 用来读。
+</span></span><span style="display:flex;"><span>plus 把 score map 用来写。
+</span></span></code></pre></div><h2 id="conjugate-不是额外-if-else">conjugate 不是额外 if-else<a hidden class="anchor" aria-hidden="true" href="#conjugate-不是额外-if-else">#</a></h2>
+<p>共轭操作也应该从 kernel 角度定义。</p>
+<p>假设镜像变换是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>L &lt;-&gt; R
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>LRL -&gt; RLR
+</span></span></code></pre></div><p>记为：</p>
+<p>$</p>
+$ \sigma(a) $<p>$</p>
+<p>那么 kernel 的共轭是：</p>
+<p>$</p>
+$ K^\sigma = \sigma^{-1} \circ K \circ \sigma $<p>$</p>
+<p>这句话的意思是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>先把 TreeHeap 镜像过去；
+</span></span><span style="display:flex;"><span>在镜像空间里用 kernel 做卷积；
+</span></span><span style="display:flex;"><span>再把响应映射回来。
+</span></span></code></pre></div><p>所以 conjugate 不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果左边怎样，右边就怎样。
+</span></span></code></pre></div><p>它是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>卷积核本身做了一次对称翻转。
+</span></span></code></pre></div><p>这就像图像里一个检测左斜边缘的 kernel，可以通过翻转变成检测右斜边缘的 kernel。</p>
+<p>TreeHeap 里对应的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>左路径结构
+</span></span><span style="display:flex;"><span>↓ 镜像
+</span></span><span style="display:flex;"><span>右路径结构
+</span></span></code></pre></div><h2 id="这次-ara-的新-claim">这次 ARA 的新 claim<a hidden class="anchor" aria-hidden="true" href="#这次-ara-的新-claim">#</a></h2>
+<p>这次新增：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>M0-SOFT-C08
+</span></span></code></pre></div><p>Claim：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap primitive operations can be defined as kernel convolutions over
+</span></span><span style="display:flex;"><span>the whole tree state:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>search emits a score map,
+</span></span><span style="display:flex;"><span>plus/write uses that map as an update field,
+</span></span><span style="display:flex;"><span>and conjugate is a symmetry transform of the kernel.
+</span></span></code></pre></div><p>中文解释：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的基本操作可以统一成：
+</span></span><span style="display:flex;"><span>kernel 在整棵树上卷积，然后产生状态图。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>search 用这张图读；
+</span></span><span style="display:flex;"><span>plus 用这张图写；
+</span></span><span style="display:flex;"><span>conjugate 是对 kernel 做镜像变换。
+</span></span></code></pre></div><p>这不是说语言任务已经解决。
+它只是先把操作语义统一起来。</p>
+<h2 id="toy-proof-怎么设计">Toy proof 怎么设计<a hidden class="anchor" aria-hidden="true" href="#toy-proof-怎么设计">#</a></h2>
+<p>我们做了一个小实验：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel_convolution_ops_probe.py
+</span></span></code></pre></div><p>构造一棵 full binary TreeHeap。</p>
+<p>在目标地址放入一个不对称子堆：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>target_path = LRL
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>query = [root, left, right]
+</span></span><span style="display:flex;"><span>      = [2.0, 5.0, -3.0]
+</span></span></code></pre></div><p>局部子堆是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>patch(a) = [H[a], H[aL], H[aR]]
+</span></span></code></pre></div><p>kernel 定义为：</p>
+<p>$</p>
+$ score(a) = -\lVert patch(a) - query\rVert^2 $<p>$</p>
+<p>这个 kernel 很朴素。
+它不是学习出来的。
+它只是为了测试：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>同一个卷积响应图，能不能解释 search / plus / conjugate。
+</span></span></code></pre></div><h2 id="实验-1search-score-map">实验 1：search score map<a hidden class="anchor" aria-hidden="true" href="#实验-1search-score-map">#</a></h2>
+<p>kernel 扫描所有候选子堆。</p>
+<p>输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>score(path)
+</span></span></code></pre></div><p>然后取：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>argmax score(path)
+</span></span></code></pre></div><p>结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">结果</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>search hit@1</td>
+          <td style="text-align: right">True</td>
+      </tr>
+      <tr>
+          <td>hit path</td>
+          <td style="text-align: right">LRL</td>
+      </tr>
+      <tr>
+          <td>target probability</td>
+          <td style="text-align: right">1.0</td>
+      </tr>
+  </tbody>
+</table>
+<p>说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>search 可以被定义成 kernel 卷积后的 score map。
+</span></span></code></pre></div><h2 id="实验-2plus-write-field">实验 2：plus write field<a hidden class="anchor" aria-hidden="true" href="#实验-2plus-write-field">#</a></h2>
+<p>同一张 score map 不只可以拿来读。</p>
+<p>也可以变成写入概率：</p>
+<p>$</p>
+$ p(a)=\operatorname{softmax}(score(a)) $<p>$</p>
+<p>然后更新 TreeHeap：</p>
+<p>$</p>
+$ H_{t+1} = H_t + \sum_a p(a)\cdot write(a) $<p>$</p>
+<p>结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">结果</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>plus write hit@1</td>
+          <td style="text-align: right">True</td>
+      </tr>
+      <tr>
+          <td>write path</td>
+          <td style="text-align: right">LRL</td>
+      </tr>
+      <tr>
+          <td>target update error</td>
+          <td style="text-align: right">0.000000</td>
+      </tr>
+      <tr>
+          <td>max disjoint non-target update norm</td>
+          <td style="text-align: right">0.000000</td>
+      </tr>
+  </tbody>
+</table>
+<p>这里有一个细节。</p>
+<p><code>max_nontarget_update_norm = 0.75</code>，看起来像有非目标节点被影响。</p>
+<p>但原因是 TreeHeap 的子堆会重叠。
+例如一个父 patch 会包含它的子节点。
+目标子堆被写入以后，和它共享节点的其它 patch 也会观察到变化。</p>
+<p>所以更干净的定位指标是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>max_disjoint_nontarget_update_norm = 0.0
+</span></span></code></pre></div><p>意思是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>不共享节点的非目标子堆没有被写乱。
+</span></span></code></pre></div><p>这说明 plus/write 可以被解释成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 卷积产生 write field，然后写入 TreeHeap 内存态。
+</span></span></code></pre></div><h2 id="实验-3conjugate-mirror">实验 3：conjugate mirror<a hidden class="anchor" aria-hidden="true" href="#实验-3conjugate-mirror">#</a></h2>
+<p>目标路径：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>LRL
+</span></span></code></pre></div><p>镜像以后：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>RLR
+</span></span></code></pre></div><p>原始 query 是不对称的：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[2.0, 5.0, -3.0]
+</span></span></code></pre></div><p>如果直接拿原 kernel 去扫镜像树，会失败：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">结果</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>raw mirror hit@1</td>
+          <td style="text-align: right">False</td>
+      </tr>
+      <tr>
+          <td>raw mirror hit path</td>
+          <td style="text-align: right">RLLR</td>
+      </tr>
+  </tbody>
+</table>
+<p>但如果使用共轭 kernel：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>K^sigma = sigma^-1 K sigma
+</span></span></code></pre></div><p>结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">结果</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>conjugate mirror hit@1</td>
+          <td style="text-align: right">True</td>
+      </tr>
+      <tr>
+          <td>conjugate hit path</td>
+          <td style="text-align: right">RLR</td>
+      </tr>
+      <tr>
+          <td>score-map equiv max error</td>
+          <td style="text-align: right">0.000000e+00</td>
+      </tr>
+  </tbody>
+</table>
+<p>这说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>共轭不是树外的 if-else。
+</span></span><span style="display:flex;"><span>共轭是 kernel 的对称变换。
+</span></span></code></pre></div><p>也说明 TreeHeap 的镜像能力可以从卷积核角度定义。</p>
+<h2 id="实验总表">实验总表<a hidden class="anchor" aria-hidden="true" href="#实验总表">#</a></h2>
+<table>
+  <thead>
+      <tr>
+          <th>检查项</th>
+          <th style="text-align: right">结果</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>pilot_pass</td>
+          <td style="text-align: right">True</td>
+      </tr>
+      <tr>
+          <td>search hit@1</td>
+          <td style="text-align: right">True</td>
+      </tr>
+      <tr>
+          <td>plus write hit@1</td>
+          <td style="text-align: right">True</td>
+      </tr>
+      <tr>
+          <td>target update error</td>
+          <td style="text-align: right">0.000000</td>
+      </tr>
+      <tr>
+          <td>max disjoint non-target update norm</td>
+          <td style="text-align: right">0.000000</td>
+      </tr>
+      <tr>
+          <td>raw mirror hit@1</td>
+          <td style="text-align: right">False</td>
+      </tr>
+      <tr>
+          <td>conjugate mirror hit@1</td>
+          <td style="text-align: right">True</td>
+      </tr>
+      <tr>
+          <td>score-map equiv max error</td>
+          <td style="text-align: right">0.000000e+00</td>
+      </tr>
+  </tbody>
+</table>
+<p>证据路径：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/m0-treeheap-math/src/kernel_convolution_ops_probe.py
+</span></span><span style="display:flex;"><span>ara/m0-treeheap-math/evidence/kernel_convolution_ops_probe/
+</span></span></code></pre></div><h2 id="这个-proof-证明了什么">这个 proof 证明了什么<a hidden class="anchor" aria-hidden="true" href="#这个-proof-证明了什么">#</a></h2>
+<p>它证明了一个很小、但很关键的东西：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>search、plus/write、conjugate 可以共享同一种 kernel convolution 语义。
+</span></span></code></pre></div><p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 扫树
+</span></span><span style="display:flex;"><span>↓
+</span></span><span style="display:flex;"><span>产生 score/update map
+</span></span><span style="display:flex;"><span>↓
+</span></span><span style="display:flex;"><span>读、写、镜像都从这张 map 或它的对称变换产生
+</span></span></code></pre></div><p>这让 TreeHeap 操作不再是一堆散装函数。</p>
+<p>它们开始有一个统一形式：</p>
+<p>$</p>
+$ H_{t+1} = \operatorname{Op}_K(H_t) $<p>$</p>
+<p>其中：</p>
+<p>$</p>
+$ \operatorname{Op}_K $<p>$</p>
+<p>来自 kernel 在树上的卷积。</p>
+<h2 id="这个-proof-没证明什么">这个 proof 没证明什么<a hidden class="anchor" aria-hidden="true" href="#这个-proof-没证明什么">#</a></h2>
+<p>它没有证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 可以自己学出来。
+</span></span></code></pre></div><p>这次 kernel 是固定的：</p>
+<p>$</p>
+$ score(a) = -\lVert patch(a)-query\rVert^2 $<p>$</p>
+<p>它也没有证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 可以翻译。
+</span></span><span style="display:flex;"><span>TreeHeap 可以理解语言。
+</span></span><span style="display:flex;"><span>TreeHeap 比 Transformer 强。
+</span></span></code></pre></div><p>这些都还不能说。</p>
+<p>它只证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>从操作定义上，TreeHeap 可以把 search、plus/write、conjugate
+</span></span><span style="display:flex;"><span>统一为 kernel convolution。
+</span></span></code></pre></div><p>这个地基比“我们手写了几个函数”更干净。</p>
+<h2 id="glm-审计后的修订">GLM 审计后的修订<a hidden class="anchor" aria-hidden="true" href="#glm-审计后的修订">#</a></h2>
+<p>Runner / GLM 复核以后指出了一个非常重要的边界：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>C08 的 conjugate proof 是 by construction 的恒等。
+</span></span></code></pre></div><p>这句话是什么意思？</p>
+<p>在代码里，我们定义了两个东西：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>mirror_tree:
+</span></span><span style="display:flex;"><span>  把路径 L/R 互换。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>mirror_patch:
+</span></span><span style="display:flex;"><span>  把局部子堆的 left/right 互换。
+</span></span></code></pre></div><p>于是对于原始路径 \(p\)，有：</p>
+<p>$</p>
+$ \operatorname{mirror\_patch} \big( \operatorname{patch}(\operatorname{mirror\_tree}(H), \sigma(p)) \big) = \operatorname{patch}(H,p) $<p>$</p>
+<p>所以：</p>
+<p>$</p>
+$ score_{\text{conjugate}}(\sigma(p)) = score_{\text{original}}(p) $<p>$</p>
+<p>这不是模型“自己发现了镜像规律”。</p>
+<p>这是我们按共轭定义写出来以后，数学上必然成立。</p>
+<p>因此，<code>score_map_equiv_max_error = 0.0</code> 的意义不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 学会了镜像。
+</span></span></code></pre></div><p>而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果我们把 conjugate 定义成 kernel 的对称变换，
+</span></span><span style="display:flex;"><span>那么 TreeHeap 的镜像 score map 可以保持一致。
+</span></span></code></pre></div><p>这依然有价值。</p>
+<p>但它的价值是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>操作语义统一。
+</span></span></code></pre></div><p>不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>学习能力证明。
+</span></span></code></pre></div><p>所以 <code>M0-SOFT-C08</code> 的精确边界应该写成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>C08 支持的是 operator-semantics pilot。
+</span></span><span style="display:flex;"><span>它证明 search / plus / conjugate 可以被统一写成 kernel convolution。
+</span></span><span style="display:flex;"><span>它不证明 learned kernel，也不证明模型会自动学出共轭对称。
+</span></span></code></pre></div><p>这个修订非常重要。</p>
+<p>否则我们会把“定义上成立”误读成“实验上发现”。</p>
+<h2 id="下一步-predict">下一步 Predict<a hidden class="anchor" aria-hidden="true" href="#下一步-predict">#</a></h2>
+<p>下一步不能继续证明 fixed kernel。</p>
+<p>fixed kernel 的作用已经完成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>说明 TreeHeap 操作可以被统一定义为 kernel convolution。
+</span></span></code></pre></div><p>下一步要证明的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这个 kernel 能不能从数据中学出来？
+</span></span></code></pre></div><p>所以我建议新增两个 predict。</p>
+<h3 id="p-soft05learned-convolution-kernel">P-SOFT05：learned convolution kernel<a hidden class="anchor" aria-hidden="true" href="#p-soft05learned-convolution-kernel">#</a></h3>
+<p>Predict：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果 TreeHeap kernel 的核心是卷积状态变换，
+</span></span><span style="display:flex;"><span>那么一个非线性 learned kernel 应该能从 raw query + raw subheap 中
+</span></span><span style="display:flex;"><span>学会产生正确的 score map 和 write field。
+</span></span></code></pre></div><p>注意关键词是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>raw query
+</span></span><span style="display:flex;"><span>raw subheap
+</span></span></code></pre></div><p>也就是说，不能再手工喂：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>diff = patch - query
+</span></span><span style="display:flex;"><span>abs(diff)
+</span></span><span style="display:flex;"><span>diff^2
+</span></span><span style="display:flex;"><span>root_alignment
+</span></span><span style="display:flex;"><span>child_alignment
+</span></span></code></pre></div><p>这些都是答案提示。</p>
+<p>真正的 learned kernel 应该输入：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>query_root, query_left, query_right
+</span></span><span style="display:flex;"><span>patch_root, patch_left, patch_right
+</span></span><span style="display:flex;"><span>path metadata
+</span></span></code></pre></div><p>然后自己学出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>query 和 patch 是否匹配。
+</span></span></code></pre></div><h3 id="p-syntax01真实句法树-micro-benchmark">P-SYNTAX01：真实句法树 micro benchmark<a hidden class="anchor" aria-hidden="true" href="#p-syntax01真实句法树-micro-benchmark">#</a></h3>
+<p>Predict：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果 TreeHeap kernel 不是只在 toy 树上成立，
+</span></span><span style="display:flex;"><span>那么它应该能在小规模真实句法树上读到局部依存结构信号。
+</span></span></code></pre></div><p>这不是 WMT BLEU。</p>
+<p>这是一个桥梁实验。</p>
+<p>目标是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>让真实语言数据第一次进入 M0/S1 的 TreeHeap kernel 证据链。
+</span></span></code></pre></div><p>建议数据：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Universal Dependencies 小型子集
+</span></span><span style="display:flex;"><span>100 到 1000 句
+</span></span></code></pre></div><p>任务：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>给定一个 head token 的局部 TreeHeap 子结构，
+</span></span><span style="display:flex;"><span>预测或匹配它的 modifier / dependent pattern。
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>head -&gt; left dependent / right dependent
+</span></span><span style="display:flex;"><span>verb -&gt; subject / object / modifier
+</span></span><span style="display:flex;"><span>noun -&gt; determiner / adjective / prepositional phrase
+</span></span></code></pre></div><p>这个实验不要求翻译。</p>
+<p>它只问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap kernel 在真实句法树上是否比 flat baseline 更会利用局部树结构？
+</span></span></code></pre></div><h2 id="下一步实验设计">下一步实验设计<a hidden class="anchor" aria-hidden="true" href="#下一步实验设计">#</a></h2>
+<p>下一步不是继续手写 kernel。</p>
+<p>下一步应该问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这个 kernel 能不能被学习出来？
+</span></span></code></pre></div><p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>raw query + raw subheap
+</span></span><span style="display:flex;"><span>↓
+</span></span><span style="display:flex;"><span>learned kernel
+</span></span><span style="display:flex;"><span>↓
+</span></span><span style="display:flex;"><span>score map / write field / conjugate transfer
+</span></span></code></pre></div><p>建议下一步做：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P-SOFT05: learned convolution kernel
+</span></span></code></pre></div><p>对照：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>fixed kernel
+</span></span><span style="display:flex;"><span>linear raw kernel
+</span></span><span style="display:flex;"><span>MLP raw kernel
+</span></span><span style="display:flex;"><span>TreeHeap convolution kernel
+</span></span></code></pre></div><p>目标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>不用手工 diff。
+</span></span><span style="display:flex;"><span>让模型自己学会 query-subheap 比较。
+</span></span></code></pre></div><p>如果 learned kernel 能做到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>search map 正确
+</span></span><span style="display:flex;"><span>write field 正确
+</span></span><span style="display:flex;"><span>mirror conjugate 可迁移
+</span></span></code></pre></div><p>那我们才可以把 C05 往前推进。</p>
+<h3 id="实验-alearned-multi-pattern-kernel">实验 A：learned multi-pattern kernel<a hidden class="anchor" aria-hidden="true" href="#实验-alearned-multi-pattern-kernel">#</a></h3>
+<p>数据生成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>每个样本随机生成一个 query pattern。
+</span></span><span style="display:flex;"><span>把这个 pattern 注入 TreeHeap 的某个目标子堆。
+</span></span><span style="display:flex;"><span>模型必须在所有候选子堆里找出目标位置。
+</span></span></code></pre></div><p>关键点：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>不是固定 query。
+</span></span><span style="display:flex;"><span>必须是 multi-pattern。
+</span></span></code></pre></div><p>因为固定 query 很容易退化成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>记住某一个模式。
+</span></span></code></pre></div><p>多 pattern 才能测试：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 是否真的学会比较 query 和 patch。
+</span></span></code></pre></div><p>对照组：</p>
+<table>
+  <thead>
+      <tr>
+          <th>模型</th>
+          <th>输入</th>
+          <th>预期</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>fixed distance kernel</td>
+          <td>手写 \( -\lVert patch-query\rVert^2 \)</td>
+          <td>上限参考，不算学习</td>
+      </tr>
+      <tr>
+          <td>linear raw kernel</td>
+          <td>raw query + raw patch</td>
+          <td>应该失败或较弱</td>
+      </tr>
+      <tr>
+          <td>MLP raw kernel</td>
+          <td>raw query + raw patch</td>
+          <td>应该明显强于 linear</td>
+      </tr>
+      <tr>
+          <td>TreeHeap convolution kernel</td>
+          <td>raw query + raw patch + path/topology</td>
+          <td>应该在 OOD 地址上最好</td>
+      </tr>
+  </tbody>
+</table>
+<p>Evidence gates：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>E-SOFT14:
+</span></span><span style="display:flex;"><span>  MLP raw kernel &gt; linear raw kernel
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>E-SOFT15:
+</span></span><span style="display:flex;"><span>  TreeHeap convolution kernel 在 unseen depth / unseen address 上
+</span></span><span style="display:flex;"><span>  优于 flat MLP baseline
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>E-SOFT16:
+</span></span><span style="display:flex;"><span>  不使用 hand-coded diff / alignment 特征
+</span></span></code></pre></div><p>Falsification：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果 linear raw 或 flat MLP 在同样数据量下稳定匹配 TreeHeap kernel，
+</span></span><span style="display:flex;"><span>那么 TreeHeap kernel 没有显示额外结构收益。
+</span></span></code></pre></div><h3 id="实验-blearned-conjugate-transfer">实验 B：learned conjugate transfer<a hidden class="anchor" aria-hidden="true" href="#实验-blearned-conjugate-transfer">#</a></h3>
+<p>GLM 已经指出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>当前 conjugate proof 是 by construction。
+</span></span></code></pre></div><p>所以真正要测的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>learned kernel 是否能在镜像结构上迁移。
+</span></span></code></pre></div><p>设计：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>训练集：
+</span></span><span style="display:flex;"><span>  只出现左侧结构，比如 L 开头路径。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>测试集：
+</span></span><span style="display:flex;"><span>  只出现镜像右侧结构，比如 R 开头路径。
+</span></span></code></pre></div><p>比较：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>raw learned kernel
+</span></span><span style="display:flex;"><span>explicit conjugate kernel
+</span></span><span style="display:flex;"><span>data augmentation baseline
+</span></span><span style="display:flex;"><span>flat MLP baseline
+</span></span></code></pre></div><p>Evidence gates：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>E-SOFT17:
+</span></span><span style="display:flex;"><span>  explicit conjugate kernel 在 mirror OOD 上优于普通 learned kernel
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>E-SOFT18:
+</span></span><span style="display:flex;"><span>  使用更少右侧样本达到同等准确率
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>E-SOFT19:
+</span></span><span style="display:flex;"><span>  mirror score map 在 learned setting 下误差受控
+</span></span></code></pre></div><p>Falsification：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果普通 MLP 通过足够少样本就学到同等镜像迁移，
+</span></span><span style="display:flex;"><span>或者 explicit conjugate kernel 没有 sample efficiency 优势，
+</span></span><span style="display:flex;"><span>那么共轭 kernel 不构成有效归纳偏置。
+</span></span></code></pre></div><h3 id="实验-c真实句法树-micro-benchmark">实验 C：真实句法树 micro benchmark<a hidden class="anchor" aria-hidden="true" href="#实验-c真实句法树-micro-benchmark">#</a></h3>
+<p>数据：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Universal Dependencies
+</span></span><span style="display:flex;"><span>先取 100 到 1000 句
+</span></span><span style="display:flex;"><span>只做英文或中文单语
+</span></span></code></pre></div><p>构造：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>把 dependency tree 转成 TreeHeap-like 局部子结构。
+</span></span><span style="display:flex;"><span>每个候选 patch 包含：
+</span></span><span style="display:flex;"><span>  head token embedding / id
+</span></span><span style="display:flex;"><span>  left dependent
+</span></span><span style="display:flex;"><span>  right dependent
+</span></span><span style="display:flex;"><span>  dependency label 或无监督 slot
+</span></span><span style="display:flex;"><span>  path/topology metadata
+</span></span></code></pre></div><p>任务：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>给定 query，找出正确 head-dependent 子结构。
+</span></span><span style="display:flex;"><span>或给定局部子树，预测 masked dependent / role。
+</span></span></code></pre></div><p>对照组：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>BoW / token-only baseline
+</span></span><span style="display:flex;"><span>flat MLP
+</span></span><span style="display:flex;"><span>small Transformer encoder
+</span></span><span style="display:flex;"><span>TreeHeap convolution kernel
+</span></span></code></pre></div><p>Evidence gates：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>E-SYNTAX01:
+</span></span><span style="display:flex;"><span>  TreeHeap kernel &gt; token-only baseline
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>E-SYNTAX02:
+</span></span><span style="display:flex;"><span>  TreeHeap kernel 在 OOD dependency pattern 上比 flat MLP 更稳
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>E-SYNTAX03:
+</span></span><span style="display:flex;"><span>  去掉 path/topology/subheap 后性能明显下降
+</span></span></code></pre></div><p>Falsification：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果 token-only 或 flat MLP 在真实句法树 micro benchmark 上匹配 TreeHeap kernel，
+</span></span><span style="display:flex;"><span>则 TreeHeap 结构对真实语言局部结构没有显示额外收益。
+</span></span></code></pre></div><h2 id="ara-补项">ARA 补项<a hidden class="anchor" aria-hidden="true" href="#ara-补项">#</a></h2>
+<p>GLM 还指出了两个 ARA 文档层面的缺口。</p>
+<p>第一，<code>PAPER.md</code> 里还没有把 <code>SPR-022</code>、<code>SPR-023</code> 和 <code>M0-SOFT-C08</code> 注册到总 claim 树。</p>
+<p>第二，<code>exploration_tree.yaml</code> 里还没有把最近三步补进去：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>C07 structural proof
+</span></span><span style="display:flex;"><span>C08 kernel convolution proof
+</span></span><span style="display:flex;"><span>P-SOFT05 learned kernel pivot
+</span></span></code></pre></div><p>这些不是实验本身的问题。</p>
+<p>它们是 ARA 索引问题。</p>
+<p>我建议下一次 ARA 修订补：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>C5-009:
+</span></span><span style="display:flex;"><span>  SPR-022 数学底座：
+</span></span><span style="display:flex;"><span>  TreeHeap math foundations map to BCK Hopf algebra + operad.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>C5-010:
+</span></span><span style="display:flex;"><span>  SPR-023 kernel convolution：
+</span></span><span style="display:flex;"><span>  TreeHeap primitive ops can be defined as kernel convolutions over tree state.
+</span></span></code></pre></div><p>同时在 trace DAG 中补：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>E-SOFT-002:
+</span></span><span style="display:flex;"><span>  structural_c05_probe
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>E-SOFT-003:
+</span></span><span style="display:flex;"><span>  kernel_convolution_ops_probe
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>D-SOFT-003:
+</span></span><span style="display:flex;"><span>  operator semantics unified by kernel convolution
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>P-SOFT-005:
+</span></span><span style="display:flex;"><span>  learned convolution kernel
+</span></span></code></pre></div><p>这一步我先不直接改。
+原因是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这篇 blog 先给 Houming818 review 下一步实验方向。
+</span></span><span style="display:flex;"><span>等 review 后，再把 PAPER.md 和 trace DAG 一次性修正。
+</span></span></code></pre></div><h2 id="结论">结论<a hidden class="anchor" aria-hidden="true" href="#结论">#</a></h2>
+<p>这篇的结论是一句话：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的操作本体应该是 kernel convolution。
+</span></span></code></pre></div><p>不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>树上有一个 kernel。
+</span></span></code></pre></div><p>而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 扫树，产生状态场；
+</span></span><span style="display:flex;"><span>状态场再解释为 search、plus、write、fold、conjugate。
+</span></span></code></pre></div><p>这把 TreeHeap 从“树形数据结构”推进到了：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>树形高维状态场上的卷积计算系统。
+</span></span></code></pre></div><p>这才是下一阶段要训练、要证明、要和 MLP / Transformer 对照的对象。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

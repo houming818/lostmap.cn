@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, S1, Fold Kernel, Ordered Structure">
+<meta name="description" content="SPR-035 把一维有序数组折叠成 TreeHeap 的问题拆开：第一步必须保留叶子地址、路径和子树局部性；bag/root collapse 和过早 modulo fold 都会丢掉自然 internal readout。取模不是被否定，而是应该作为后续独立 folding kernel 研究。">
+<meta name="author" content="nio (Houming818) &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/035-ordered-fold-kernel.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/035-ordered-fold-kernel.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/035-ordered-fold-kernel.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模">
+  <meta property="og:description" content="SPR-035 把一维有序数组折叠成 TreeHeap 的问题拆开：第一步必须保留叶子地址、路径和子树局部性；bag/root collapse 和过早 modulo fold 都会丢掉自然 internal readout。取模不是被否定，而是应该作为后续独立 folding kernel 研究。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-06-29T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-06-29T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模">
+  <meta name="twitter:description" content="SPR-035 把一维有序数组折叠成 TreeHeap 的问题拆开：第一步必须保留叶子地址、路径和子树局部性；bag/root collapse 和过早 modulo fold 都会丢掉自然 internal readout。取模不是被否定，而是应该作为后续独立 folding kernel 研究。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模",
+      "item": "https://www.lostmap.cn/spr/035-ordered-fold-kernel.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模",
+  "name": "[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模",
+  "description": "SPR-035 把一维有序数组折叠成 TreeHeap 的问题拆开：第一步必须保留叶子地址、路径和子树局部性；bag/root collapse 和过早 modulo fold 都会丢掉自然 internal readout。取模不是被否定，而是应该作为后续独立 folding kernel 研究。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "S1", "Fold Kernel", "Ordered Structure"
+  ],
+  "articleBody": "一维数组如何折叠成 TreeHeap：先保序，再谈取模 SPR-034 修正了一个问题：\ninternal node 不应该先预测任意 checksum。 它应该先读取 length / first / last / prefix 这种自然属性。 你随后指出一个更关键的点：\nresidue 的引入有点生硬。 这个判断是对的。\n你引入 residue，并不是为了让 SPR-034 证明模运算。 你真正想讨论的是：\n一维有序数组折叠成树结构时， 是否可能有模计算、周期、循环地址参与？ 这是另一个问题。\n所以 SPR-035 做一件更基础的事：\n把“一维数组 -\u003e TreeHeap”的第一步说清楚。 我的结论先放前面：\n第一步必须保序。 也就是必须保留 leaf address、path、subheap locality。 取模可以研究， 但它应该是后续 folding kernel， 不能替代第一步的保序 TreeHeap fold。 为什么要先保序 假设有一个一维 token 数组：\n[a, b, c, d, e, f, g, h] TreeHeap 把它写到叶子：\nroot / \\ [a b c d] [e f g h] / \\ / \\ [a b] [c d] [e f] [g h] 这个结构的关键不是“看起来像树”。\n关键是每个 internal node 对应一个连续子区间：\nnode 2 -\u003e [a b c d] node 3 -\u003e [e f g h] node 4 -\u003e [a b] node 5 -\u003e [c d] 所以当我们问：\nnode 5 的 first 是什么？ 答案应该是：\nc 这依赖的不是语义，而是结构：\n一维顺序 + 叶子地址 + 树路径 + 子树覆盖范围 如果第一步就把这些丢了，后面再做 read kernel、semantic decoder、probability collapse 都会很难。\n三种折叠方式 这次 toy proof 比较三种 encoder。\n1. ordered_tree_fold 这是正常 TreeHeap fold。\ntoken 按原始顺序写入 leaf internal node 保存自己覆盖的子树摘要 它保留：\n地址 路径 左右结构 子树局部性 2. bag_root_fold 这是把整句话压成一个全局 bag/root summary。\n[a,b,c,d,e,f,g,h] -\u003e 一个 root summary 它可能知道全局有哪些 token。 但它不知道：\nnode 5 覆盖的是 [c,d] 所以它无法稳定回答局部子树问题。\n3. modulo_fold 这是对你 residue 思路的一个诊断版本。\n例如：\nposition % 4 那么位置会被折叠成周期地址：\n0,4,8,... -\u003e bucket 0 1,5,9,... -\u003e bucket 1 2,6,10,... -\u003e bucket 2 3,7,11,... -\u003e bucket 3 这个操作不是错的。 它可能对周期任务、循环结构、某些 folding kernel 有意义。\n但如果太早使用，它会把远处位置混在一起。 这会破坏自然子树 readout。\n换句话说：\nmodulo 是一个可能的后续算子， 不是第一步保序 fold 的替代品。 实验问题 我们用纯 toy 数据。 没有训练，没有 GPU，没有语义。\nsamples = 5000 sequence length = 8..16 max_len = 16 vocab = 257 mod_base = 4 对每个序列，随机生成 token。 然后对 TreeHeap 的 internal node 提问：\nlength first last prefix0 prefix1 例子：\nseq = [172, 68, 175, 79, 147, 222, 130, 32, 141, 188, 50, 187, 5, 6, 50, 254] query_node = 6 span = [8, 12] target = [141, 188, 50, 187] 正确答案：\nlength = 4 first = 141 last = 187 prefix0 = 141 prefix1 = 188 实验结果 结果如下：\nModel Length First Last Prefix0 Prefix1 Mean natural Exact all ordered_tree_fold 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 1.0000 bag_root_fold 0.0888 0.3236 0.3236 0.3236 0.3235 0.2766 0.0888 modulo_fold_base4 0.0888 0.4032 0.4034 0.4032 0.4036 0.3405 0.0888 差距：\nordered_tree_fold - bag_root_fold = +0.7234 ordered_tree_fold - modulo_fold_base4 = +0.6595 这说明：\n保序 TreeHeap fold 可以精确读回自然子树属性。 bag/root collapse 不行。 过早 modulo fold 也不行。 这个实验证明了什么 这次 claim 是：\nS1-FOLD-C01: Natural internal readout requires an order-preserving TreeHeap fold. Leaf address/path structure must be preserved before any bag or modulo/cyclic folding is used. 状态：\nsupported pilot 它证明的是一个演绎层面的结构事实：\n如果目标是自然子树 readout， 那么第一步 fold 必须保留一维顺序和树路径。 这不是深度学习结论。 它更像数学地基。\n类似：\n如果你要从 321 里读百位、十位、个位， 你必须先保留位权结构。 TreeHeap 也是一样：\n如果你要读子树 first/last/prefix， 你必须先保留 leaf address/path/subheap。 这没有证明什么 它没有证明翻译。\n它没有证明语义。\n它没有证明 learned routing。\n它没有证明 TreeHeap 胜过 Transformer。\n它也没有证明 modulo 没用。\n尤其最后一点很重要：\nmodulo 没有被否定。 这次只说明：\nmodulo 不应该替代第一步保序 fold。 如果后续任务本身具有周期结构，比如：\n循环地址 周期 pattern ring buffer 某种 tree convolution 的 cyclic scan 那 modulo kernel 仍然可能有价值。\n但那应该是另一个实验。\n对 TreeHeap 路线的影响 现在 S1 的顺序更清楚了。\n应该是：\nStep 1: ordered write 一维 token 顺序写入 TreeHeap leaf Step 2: ordered fold kernel internal node 保留自然子树属性 Step 3: probabilistic read kernel stop / left / right 走到目标节点 Step 4: natural readout length / first / last / prefix Step 5: semantic decoder 在自然结构 readout 上学习语义 Step 6: optional folding operators modulo / cyclic / mirror / conjugate / compression 这比之前更干净。\n之前我们把 residue 混在 SPR-034 里，会让 claim 变得不好理解。\n现在拆开后，逻辑是：\n保序 fold 是地基。 modulo fold 是候选算子。 下一步 我建议 SPR-036 做两条中的一条。\n第一条，更贴近 S1：\n把 SPR-032 的 probabilistic route 接到 SPR-034/035 的 natural readout。 也就是端到端：\narr[1] -\u003e stop/left/right collapse -\u003e target internal node -\u003e length/first/last/prefix 第二条，更贴近你的数学问题：\n专门设计 modulo/cyclic folding 任务。 但这个任务的目标不能再是普通子树 first/last。 它应该是一个真正周期性的目标。\n比如：\n给定一个周期 kernel， 在 TreeHeap 地址空间里寻找同余类 pattern。 这样 residue 才是自然的。\n总结 SPR-035 的一句话结论是：\n一维数组折叠成 TreeHeap 时，第一步必须保序。 保序意味着：\nleaf address path left/right subheap locality 实验支持这个判断。\nordered_tree_fold mean = 1.0000 bag_root_fold mean = 0.2766 modulo_fold mean = 0.3405 所以我们不再把 residue 强塞进 SPR-034。 它应该进入另一条更专业的线：\ncyclic / modulo folding kernel 今晚的推进是把地基重新摆正：\n先保序，再折叠； 先自然 readout，再语义 decoder； 先结构清楚，再研究 modulo。 ARA: claims / experiments / evidence\n",
+  "wordCount" : "621",
+  "inLanguage": "en",
+  "datePublished": "2026-06-29T00:00:00Z",
+  "dateModified": "2026-06-29T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/035-ordered-fold-kernel.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item active">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模
+    </h1>
+    <div class="post-description">
+      SPR-035 把一维有序数组折叠成 TreeHeap 的问题拆开：第一步必须保留叶子地址、路径和子树局部性；bag/root collapse 和过早 modulo fold 都会丢掉自然 internal readout。取模不是被否定，而是应该作为后续独立 folding kernel 研究。
+    </div>
+    <div class="post-meta"><span title='2026-06-29 00:00:00 +0000 UTC'>June 29, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="一维数组如何折叠成-treeheap先保序再谈取模">一维数组如何折叠成 TreeHeap：先保序，再谈取模<a hidden class="anchor" aria-hidden="true" href="#一维数组如何折叠成-treeheap先保序再谈取模">#</a></h1>
+<p>SPR-034 修正了一个问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>internal node 不应该先预测任意 checksum。
+</span></span><span style="display:flex;"><span>它应该先读取 length / first / last / prefix 这种自然属性。
+</span></span></code></pre></div><p>你随后指出一个更关键的点：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>residue 的引入有点生硬。
+</span></span></code></pre></div><p>这个判断是对的。</p>
+<p>你引入 residue，并不是为了让 SPR-034 证明模运算。
+你真正想讨论的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一维有序数组折叠成树结构时，
+</span></span><span style="display:flex;"><span>是否可能有模计算、周期、循环地址参与？
+</span></span></code></pre></div><p>这是另一个问题。</p>
+<p>所以 SPR-035 做一件更基础的事：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>把“一维数组 -&gt; TreeHeap”的第一步说清楚。
+</span></span></code></pre></div><p>我的结论先放前面：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>第一步必须保序。
+</span></span><span style="display:flex;"><span>也就是必须保留 leaf address、path、subheap locality。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>取模可以研究，
+</span></span><span style="display:flex;"><span>但它应该是后续 folding kernel，
+</span></span><span style="display:flex;"><span>不能替代第一步的保序 TreeHeap fold。
+</span></span></code></pre></div><h2 id="为什么要先保序">为什么要先保序<a hidden class="anchor" aria-hidden="true" href="#为什么要先保序">#</a></h2>
+<p>假设有一个一维 token 数组：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[a, b, c, d, e, f, g, h]
+</span></span></code></pre></div><p>TreeHeap 把它写到叶子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>              root
+</span></span><span style="display:flex;"><span>          /          \
+</span></span><span style="display:flex;"><span>      [a b c d]    [e f g h]
+</span></span><span style="display:flex;"><span>      /     \       /     \
+</span></span><span style="display:flex;"><span>   [a b]  [c d]  [e f]  [g h]
+</span></span></code></pre></div><p>这个结构的关键不是“看起来像树”。</p>
+<p>关键是每个 internal node 对应一个连续子区间：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>node 2 -&gt; [a b c d]
+</span></span><span style="display:flex;"><span>node 3 -&gt; [e f g h]
+</span></span><span style="display:flex;"><span>node 4 -&gt; [a b]
+</span></span><span style="display:flex;"><span>node 5 -&gt; [c d]
+</span></span></code></pre></div><p>所以当我们问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>node 5 的 first 是什么？
+</span></span></code></pre></div><p>答案应该是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>c
+</span></span></code></pre></div><p>这依赖的不是语义，而是结构：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一维顺序
+</span></span><span style="display:flex;"><span>+ 叶子地址
+</span></span><span style="display:flex;"><span>+ 树路径
+</span></span><span style="display:flex;"><span>+ 子树覆盖范围
+</span></span></code></pre></div><p>如果第一步就把这些丢了，后面再做 read kernel、semantic decoder、probability collapse 都会很难。</p>
+<h2 id="三种折叠方式">三种折叠方式<a hidden class="anchor" aria-hidden="true" href="#三种折叠方式">#</a></h2>
+<p>这次 toy proof 比较三种 encoder。</p>
+<h3 id="1-ordered_tree_fold">1. ordered_tree_fold<a hidden class="anchor" aria-hidden="true" href="#1-ordered_tree_fold">#</a></h3>
+<p>这是正常 TreeHeap fold。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token 按原始顺序写入 leaf
+</span></span><span style="display:flex;"><span>internal node 保存自己覆盖的子树摘要
+</span></span></code></pre></div><p>它保留：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>地址
+</span></span><span style="display:flex;"><span>路径
+</span></span><span style="display:flex;"><span>左右结构
+</span></span><span style="display:flex;"><span>子树局部性
+</span></span></code></pre></div><h3 id="2-bag_root_fold">2. bag_root_fold<a hidden class="anchor" aria-hidden="true" href="#2-bag_root_fold">#</a></h3>
+<p>这是把整句话压成一个全局 bag/root summary。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[a,b,c,d,e,f,g,h] -&gt; 一个 root summary
+</span></span></code></pre></div><p>它可能知道全局有哪些 token。
+但它不知道：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>node 5 覆盖的是 [c,d]
+</span></span></code></pre></div><p>所以它无法稳定回答局部子树问题。</p>
+<h3 id="3-modulo_fold">3. modulo_fold<a hidden class="anchor" aria-hidden="true" href="#3-modulo_fold">#</a></h3>
+<p>这是对你 residue 思路的一个诊断版本。</p>
+<p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>position % 4
+</span></span></code></pre></div><p>那么位置会被折叠成周期地址：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>0,4,8,... -&gt; bucket 0
+</span></span><span style="display:flex;"><span>1,5,9,... -&gt; bucket 1
+</span></span><span style="display:flex;"><span>2,6,10,... -&gt; bucket 2
+</span></span><span style="display:flex;"><span>3,7,11,... -&gt; bucket 3
+</span></span></code></pre></div><p>这个操作不是错的。
+它可能对周期任务、循环结构、某些 folding kernel 有意义。</p>
+<p>但如果太早使用，它会把远处位置混在一起。
+这会破坏自然子树 readout。</p>
+<p>换句话说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>modulo 是一个可能的后续算子，
+</span></span><span style="display:flex;"><span>不是第一步保序 fold 的替代品。
+</span></span></code></pre></div><h2 id="实验问题">实验问题<a hidden class="anchor" aria-hidden="true" href="#实验问题">#</a></h2>
+<p>我们用纯 toy 数据。
+没有训练，没有 GPU，没有语义。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>samples = 5000
+</span></span><span style="display:flex;"><span>sequence length = 8..16
+</span></span><span style="display:flex;"><span>max_len = 16
+</span></span><span style="display:flex;"><span>vocab = 257
+</span></span><span style="display:flex;"><span>mod_base = 4
+</span></span></code></pre></div><p>对每个序列，随机生成 token。
+然后对 TreeHeap 的 internal node 提问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>length
+</span></span><span style="display:flex;"><span>first
+</span></span><span style="display:flex;"><span>last
+</span></span><span style="display:flex;"><span>prefix0
+</span></span><span style="display:flex;"><span>prefix1
+</span></span></code></pre></div><p>例子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>seq = [172, 68, 175, 79, 147, 222, 130, 32,
+</span></span><span style="display:flex;"><span>       141, 188, 50, 187, 5, 6, 50, 254]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>query_node = 6
+</span></span><span style="display:flex;"><span>span = [8, 12]
+</span></span><span style="display:flex;"><span>target = [141, 188, 50, 187]
+</span></span></code></pre></div><p>正确答案：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>length  = 4
+</span></span><span style="display:flex;"><span>first   = 141
+</span></span><span style="display:flex;"><span>last    = 187
+</span></span><span style="display:flex;"><span>prefix0 = 141
+</span></span><span style="display:flex;"><span>prefix1 = 188
+</span></span></code></pre></div><h2 id="实验结果">实验结果<a hidden class="anchor" aria-hidden="true" href="#实验结果">#</a></h2>
+<p>结果如下：</p>
+<table>
+  <thead>
+      <tr>
+          <th>Model</th>
+          <th style="text-align: right">Length</th>
+          <th style="text-align: right">First</th>
+          <th style="text-align: right">Last</th>
+          <th style="text-align: right">Prefix0</th>
+          <th style="text-align: right">Prefix1</th>
+          <th style="text-align: right">Mean natural</th>
+          <th style="text-align: right">Exact all</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>ordered_tree_fold</code></td>
+          <td style="text-align: right">1.0000</td>
+          <td style="text-align: right">1.0000</td>
+          <td style="text-align: right">1.0000</td>
+          <td style="text-align: right">1.0000</td>
+          <td style="text-align: right">1.0000</td>
+          <td style="text-align: right">1.0000</td>
+          <td style="text-align: right">1.0000</td>
+      </tr>
+      <tr>
+          <td><code>bag_root_fold</code></td>
+          <td style="text-align: right">0.0888</td>
+          <td style="text-align: right">0.3236</td>
+          <td style="text-align: right">0.3236</td>
+          <td style="text-align: right">0.3236</td>
+          <td style="text-align: right">0.3235</td>
+          <td style="text-align: right">0.2766</td>
+          <td style="text-align: right">0.0888</td>
+      </tr>
+      <tr>
+          <td><code>modulo_fold_base4</code></td>
+          <td style="text-align: right">0.0888</td>
+          <td style="text-align: right">0.4032</td>
+          <td style="text-align: right">0.4034</td>
+          <td style="text-align: right">0.4032</td>
+          <td style="text-align: right">0.4036</td>
+          <td style="text-align: right">0.3405</td>
+          <td style="text-align: right">0.0888</td>
+      </tr>
+  </tbody>
+</table>
+<p>差距：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ordered_tree_fold - bag_root_fold    = +0.7234
+</span></span><span style="display:flex;"><span>ordered_tree_fold - modulo_fold_base4 = +0.6595
+</span></span></code></pre></div><p>这说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>保序 TreeHeap fold 可以精确读回自然子树属性。
+</span></span><span style="display:flex;"><span>bag/root collapse 不行。
+</span></span><span style="display:flex;"><span>过早 modulo fold 也不行。
+</span></span></code></pre></div><h2 id="这个实验证明了什么">这个实验证明了什么<a hidden class="anchor" aria-hidden="true" href="#这个实验证明了什么">#</a></h2>
+<p>这次 claim 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>S1-FOLD-C01:
+</span></span><span style="display:flex;"><span>Natural internal readout requires an order-preserving TreeHeap fold.
+</span></span><span style="display:flex;"><span>Leaf address/path structure must be preserved before any bag or modulo/cyclic folding is used.
+</span></span></code></pre></div><p>状态：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>supported pilot
+</span></span></code></pre></div><p>它证明的是一个演绎层面的结构事实：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果目标是自然子树 readout，
+</span></span><span style="display:flex;"><span>那么第一步 fold 必须保留一维顺序和树路径。
+</span></span></code></pre></div><p>这不是深度学习结论。
+它更像数学地基。</p>
+<p>类似：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果你要从 321 里读百位、十位、个位，
+</span></span><span style="display:flex;"><span>你必须先保留位权结构。
+</span></span></code></pre></div><p>TreeHeap 也是一样：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果你要读子树 first/last/prefix，
+</span></span><span style="display:flex;"><span>你必须先保留 leaf address/path/subheap。
+</span></span></code></pre></div><h2 id="这没有证明什么">这没有证明什么<a hidden class="anchor" aria-hidden="true" href="#这没有证明什么">#</a></h2>
+<p>它没有证明翻译。</p>
+<p>它没有证明语义。</p>
+<p>它没有证明 learned routing。</p>
+<p>它没有证明 TreeHeap 胜过 Transformer。</p>
+<p>它也没有证明 modulo 没用。</p>
+<p>尤其最后一点很重要：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>modulo 没有被否定。
+</span></span></code></pre></div><p>这次只说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>modulo 不应该替代第一步保序 fold。
+</span></span></code></pre></div><p>如果后续任务本身具有周期结构，比如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>循环地址
+</span></span><span style="display:flex;"><span>周期 pattern
+</span></span><span style="display:flex;"><span>ring buffer
+</span></span><span style="display:flex;"><span>某种 tree convolution 的 cyclic scan
+</span></span></code></pre></div><p>那 modulo kernel 仍然可能有价值。</p>
+<p>但那应该是另一个实验。</p>
+<h2 id="对-treeheap-路线的影响">对 TreeHeap 路线的影响<a hidden class="anchor" aria-hidden="true" href="#对-treeheap-路线的影响">#</a></h2>
+<p>现在 S1 的顺序更清楚了。</p>
+<p>应该是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Step 1: ordered write
+</span></span><span style="display:flex;"><span>        一维 token 顺序写入 TreeHeap leaf
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Step 2: ordered fold kernel
+</span></span><span style="display:flex;"><span>        internal node 保留自然子树属性
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Step 3: probabilistic read kernel
+</span></span><span style="display:flex;"><span>        stop / left / right 走到目标节点
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Step 4: natural readout
+</span></span><span style="display:flex;"><span>        length / first / last / prefix
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Step 5: semantic decoder
+</span></span><span style="display:flex;"><span>        在自然结构 readout 上学习语义
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Step 6: optional folding operators
+</span></span><span style="display:flex;"><span>        modulo / cyclic / mirror / conjugate / compression
+</span></span></code></pre></div><p>这比之前更干净。</p>
+<p>之前我们把 residue 混在 SPR-034 里，会让 claim 变得不好理解。</p>
+<p>现在拆开后，逻辑是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>保序 fold 是地基。
+</span></span><span style="display:flex;"><span>modulo fold 是候选算子。
+</span></span></code></pre></div><h2 id="下一步">下一步<a hidden class="anchor" aria-hidden="true" href="#下一步">#</a></h2>
+<p>我建议 SPR-036 做两条中的一条。</p>
+<p>第一条，更贴近 S1：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>把 SPR-032 的 probabilistic route
+</span></span><span style="display:flex;"><span>接到 SPR-034/035 的 natural readout。
+</span></span></code></pre></div><p>也就是端到端：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>arr[1]
+</span></span><span style="display:flex;"><span>-&gt; stop/left/right collapse
+</span></span><span style="display:flex;"><span>-&gt; target internal node
+</span></span><span style="display:flex;"><span>-&gt; length/first/last/prefix
+</span></span></code></pre></div><p>第二条，更贴近你的数学问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>专门设计 modulo/cyclic folding 任务。
+</span></span></code></pre></div><p>但这个任务的目标不能再是普通子树 first/last。
+它应该是一个真正周期性的目标。</p>
+<p>比如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>给定一个周期 kernel，
+</span></span><span style="display:flex;"><span>在 TreeHeap 地址空间里寻找同余类 pattern。
+</span></span></code></pre></div><p>这样 residue 才是自然的。</p>
+<h2 id="总结">总结<a hidden class="anchor" aria-hidden="true" href="#总结">#</a></h2>
+<p>SPR-035 的一句话结论是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一维数组折叠成 TreeHeap 时，第一步必须保序。
+</span></span></code></pre></div><p>保序意味着：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>leaf address
+</span></span><span style="display:flex;"><span>path
+</span></span><span style="display:flex;"><span>left/right
+</span></span><span style="display:flex;"><span>subheap locality
+</span></span></code></pre></div><p>实验支持这个判断。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ordered_tree_fold mean = 1.0000
+</span></span><span style="display:flex;"><span>bag_root_fold mean     = 0.2766
+</span></span><span style="display:flex;"><span>modulo_fold mean       = 0.3405
+</span></span></code></pre></div><p>所以我们不再把 residue 强塞进 SPR-034。
+它应该进入另一条更专业的线：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cyclic / modulo folding kernel
+</span></span></code></pre></div><p>今晚的推进是把地基重新摆正：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>先保序，再折叠；
+</span></span><span style="display:flex;"><span>先自然 readout，再语义 decoder；
+</span></span><span style="display:flex;"><span>先结构清楚，再研究 modulo。
+</span></span></code></pre></div><blockquote>
+<p><strong>ARA</strong>: <a href="https://github.com/houming818/sametime/blob/main/ara/s1-echo/logic/claims.md">claims</a> / <a href="https://github.com/houming818/sametime/blob/main/ara/s1-echo/logic/experiments.md">experiments</a> / <a href="https://github.com/houming818/sametime/tree/main/ara/s1-echo/evidence/">evidence</a></p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

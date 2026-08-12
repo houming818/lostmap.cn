@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, Pretraining, WMT, Butterfly, FOLD, STOP, LeafPooling, ARA">
+<meta name="description" content="TreeHeap C10 完成自然语料预训练、WMT 迁移与三轮读取审计：预训练带来明确收益，但递归 READ 退化成了 Butterfly 变换后的叶层软池化。">
+<meta name="author" content="Houming818 &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/084-treeheap-c10-pretrain-stop-audit.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/084-treeheap-c10-pretrain-stop-audit.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/084-treeheap-c10-pretrain-stop-audit.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计">
+  <meta property="og:description" content="TreeHeap C10 完成自然语料预训练、WMT 迁移与三轮读取审计：预训练带来明确收益，但递归 READ 退化成了 Butterfly 变换后的叶层软池化。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-08-12T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-08-12T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计">
+  <meta name="twitter:description" content="TreeHeap C10 完成自然语料预训练、WMT 迁移与三轮读取审计：预训练带来明确收益，但递归 READ 退化成了 Butterfly 变换后的叶层软池化。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计",
+      "item": "https://www.lostmap.cn/spr/084-treeheap-c10-pretrain-stop-audit.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计",
+  "name": "[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计",
+  "description": "TreeHeap C10 完成自然语料预训练、WMT 迁移与三轮读取审计：预训练带来明确收益，但递归 READ 退化成了 Butterfly 变换后的叶层软池化。",
+  "keywords": [
+    "SPR", "TreeHeap", "Pretraining", "WMT", "Butterfly", "FOLD", "STOP", "LeafPooling", "ARA"
+  ],
+  "articleBody": "最近航到了哪里 距离上一篇公开进展已经有一段时间。这期间我们没有继续堆更多概念，而是把一个完整训练管线跑通，然后反过来审计模型到底学会了什么。\n这次的 C10 管线分三步：\n自然语料预训练 -\u003e 同样的 TreeHeap checkpoint 进入 WMT 中英任务训练 -\u003e 用概率后验、路径干预和 STOP 分辨率实验做 proof check 结果不是简单的成功或失败，而是两个同时成立的事实：\n预训练确实把可迁移信息写进了 TreeHeap 参数。 递归 Decoder 没有学成我们期待的多分辨率读取协议，而是几乎把全部概率质量送到了 leaf。 这两个结果并不矛盾。模型可以学到有用信息，却通过一条比预期更浅的读出路径使用它。\n1. C10 实际训练了什么 C10 不是 Transformer，也不是把一个矩阵改名为 TreeHeap。模型合同记录为：\n项目 配置 模型类 ButterflyRecursive 参数量 34,448,396 state / hidden 256 / 256 最大 heap width 256 地址通信 XOR Butterfly FOLD learned lifting READ recursive probability container 生成器 GRU 自回归 Decoder 数据首先写到 leaf。Butterfly 按地址执行可逆的信息交换，然后 learned lifting 逐层把左右子节点合成为 parent，同时保存 detail。Decoder 再从 root 开始，通过 STOP 和左右分支概率读取不同深度的节点。\n因此需要分清三个问题：\n问题 A：H_state 里有没有学到信息？ 问题 B：Butterfly 和 FOLD 是否真的参与了计算？ 问题 C：READ 是否学会了有意义的分层读取？ 最近实验给出的答案分别是：有、参与了、没有学成。\n2. 预训练迁移是明确的正结果 预训练阶段读取 /home/nio/datasets/pretrain 的自然语料，并混入 25% 的 WMT 单语文本。模型训练了约一亿 token：\n指标 数值 pretrain steps 97,657 pretrain tokens 100,000,768 初始 valid NLL 10.7237 最佳 valid NLL 5.6804 墙钟时间 4.85 小时 随后我们构造两条完全等算力的 WMT 任务训练臂：\nPT：从预训练 checkpoint 开始； SC：从相同初始随机状态直接学习 WMT。 两条任务臂使用相同的数据流哈希、25,000 step 和 20,198,612 个任务 token。\n任务结果 PT，预训练后 SC，从零训练 PT 改善 test NLL，越低越好 5.4037 6.2920 -0.8883 token BLEU4，越高越好 5.0654 1.1711 +3.8943 这组比较可以支持一个有限 Claim：\n在相同 WMT 训练预算下，先用自然语料预训练的 TreeHeap 比从零开始更快得到较低的测试 NLL 和较高的 token BLEU。\n它不能证明模型已经会可靠翻译。实际生成仍有错译、重复和关系混乱。这里证明的是协议可以迁移，不是产品已经完成。\n3. 后验 proof 看到了条件信息，但信号仍弱 我们又比较了模型给出的下一 token 概率桶与语料经验分布。\n模式 JS，越低越接近语料 候选集合概率质量，越高越好 Native source 0.6094 0.0620 Wrong source 0.6380 0.0388 Unigram baseline 0.6410 0.0333 换错 source 后，78.6% 的 greedy token 发生改变；破坏最底层左右配对后，58.3% 的 greedy token 发生改变。模型不是完全无视输入，也不只是复读全局最高频逗号。\n但 0.6094 距离理想分布仍然很远，候选质量也不高。它更适合被描述为“已经出现 source-conditioned signal”，还不能写成“形成了完整世界模型”。\n4. 真正的问题出在 READ TreeHeap 的编码方向是从 leaf 向 root：\ntoken leaves -\u003e Butterfly 地址通信 -\u003e FOLD：leaf -\u003e parent -\u003e root -\u003e 得到 root + 多层 details 生成时的读取方向相反：\nroot -\u003e 判断 STOP，或继续到 child -\u003e 左右分支分配概率 -\u003e 直到某个深度停止 -\u003e 形成 context，送给 GRU Decoder 当前 STOP 不是硬开关。对到达节点的概率质量 a，程序计算：\nstop_mass = a * sigmoid(stop_logit) continue_mass = a * (1 - sigmoid(stop_logit)) 只要 stop_logit 是有限数，sigmoid 就不会严格等于 0 或 1。程序也没有“低于某个数就视为停止”的观察精度。到达 leaf 后，才被强制全部停止。\nC10 在训练早期就把内部 STOP 压到了近乎零。第 1,000 step 时，约 99.9936% 的读取质量已经到达 leaf；最终测试时，平均 leaf 质量约为：\n0.9999999963 也就是说，数学上还有极小的中间层尾巴，工程上却已经等于一路走到底。\n5. 强制 leaf 后，模型几乎完全不变 我们在 256 条 held-out WMT 样本、5,226 个目标 token 上做了运行时干预。checkpoint 和所有参数保持不变，只改读取方式。\nREAD 干预 NLL 相对 Native 变化 Native learned STOP 5.299829634 0 Force leaf 5.299829704 +0.000000070 Uniform branch 5.403492 +0.103662 Runtime Identity，拿掉 Butterfly 5.660286 +0.360457 Break depth-0 pair 5.690986 +0.391156 Native 与 Force leaf 在数值误差范围内相同。这说明 learned STOP 实际已经等价于 leaf-only read。\n另一方面，拿掉 Butterfly 或打乱最底层 FOLD 配对会明显增加 NLL。这说明结构变换仍然改变了 leaf 内容，不能说整个网络只是未经处理的原始数组。\n最精确的描述是：\nC10 学到的是“经过 Butterfly/FOLD 结构变换的叶层读出”，不是“能在 root、parent 与 leaf 之间按语义选择分辨率的 TreeHeap READ”。\n6. 它是不是只沿一条链表路径读取 Houming818 随后提出了一个重要反问：既然都走到 leaf，会不会只剩一条固定路径，TreeHeap 退化成了一条链表？\n我们没有靠猜测回答，而是重建每个生成 step 的 leaf 权重，并逐级裁剪。\n如果它真是一条单路径，Top-1 leaf 应该占据绝大部分概率，保留 Top-1 后 NLL 也不应明显变差。实验却得到：\n读取叶集合 覆盖的平均概率质量 NLL 增量 Top-1 21.04% +4.0048 Top-2 33.69% +1.5362 Top-4 51.10% +0.5050 Top-8 72.22% +0.1383 删除 Top-1 其余质量 +0.0829 单路径假说因此被否定。有效 leaf 数约为 15.85，每条样本在生成过程中平均出现 6.72 个不同的 argmax leaf，地址平均跳跃 6.30 格。它不是顺序游标，也不是只盯着一个 leaf。\n可是另一个结果同样重要：把所有有效 leaf 改成均匀平均，NLL 只增加 0.0271；逐层把左右分支改成均匀分配，大部分 NLL 变化也只有千分位。\n所以它也没有形成强而清晰的“语义树索引”。当前更像下面这个过程：\nButterfly/FOLD 改写 leaf state -\u003e READ 把很多 leaf 分配一个较宽、较弱的概率桶 -\u003e 加权求和为 context -\u003e GRU 根据 context 逐 token 生成 若第 i 个变换后 leaf 是 L_i，第 t 个生成 step 的读权重是 alpha_ti，那么 context 可以写成：\nc_t = sum_i(alpha_ti * L_i) 这就是本文所说的 leaf pooling。它不是“所有 leaf 都相同”，而是“Decoder 主要在叶层对许多 leaf 做软加权”。\n7. 观察者分辨率假说，解决了哪一部分 Houming818 提出了一个很具体的物理类比：\n现实中的停止不要求光通量严格等于零。只要信号低于观察者能够分辨的极限，工程上就应该把它当作零。\n我们据此加入一个不训练参数的诊断规则：如果某条活动路径的质量小于等于 epsilon，就在当前节点停止，不再展开它的两个孩子。\n第一次 smoke 因统计张量发生别名污染而产生不可能的质量总和，我们将该结果作废，并重新执行。有效重跑覆盖 128 条 held-out WMT 样本和 2,532 个 token。\nepsilon NLL 增量 少访问的节点 仍到达 leaf 的质量 0 0 0% 99.999999% 0.0001 +0.000057 6.23% 99.999262% 0.001 +0.001791 8.24% 99.987412% 0.003 +0.010178 10.11% 99.932139% 0.01 +0.069846 14.06% 99.495583% 这个实验支持一半，也否定一半：\n支持：有限观察精度可以安全剪掉一部分数学上非零、实际贡献极小的尾路径。 未通过正式门槛：没有一个点同时达到“至少省 10% 节点”且“NLL 增量不超过 0.001”。 否定充分性：即使 epsilon=0.003，仍有 99.93% 的质量到达 leaf。阈值能清理尾巴，却不能把主流量抬回 parent。 因此，C10 同时存在两个现象：\n现象一：sigmoid 产生了永不严格归零的数值尾巴 现象二：训练本身把绝大部分有效质量送到了 leaf 观察者分辨率解决的是第一个问题，不是第二个。\n8. 现在到底可以声明什么 已有证据支持 自然语料预训练可以迁移到同一 TreeHeap 的 WMT 任务训练； Butterfly 地址通信和 FOLD 配对对 held-out NLL 有可测量的因果作用； source、错误 source 与配对破坏会改变概率后验； 有限分辨率可以剪掉 6% 到 10% 的低质量路径，代价可测量。 已被当前证据否定 C10 的 Native READ 不是有效的多分辨率 STOP 协议； 它不是只沿一条固定链表路径读取； 单纯增加一个小阈值，不能把 leaf collapse 修成语义分层读取。 仍然开放 如何让内部节点在任务 loss 中获得不可替代的价值； STOP 如何在不依赖手写固定深度的情况下学会有限分辨率； root、parent、detail 与 leaf 能否形成稳定的私有编解码协议； 这种协议能否最终改善完整翻译与逻辑对照，而不只是降低平均 NLL。 9. 下一步不再盲目加训练时间 C10 已经说明，单纯继续喂更多 token 可能只会把 leaf-only 读法训练得更熟。下一步首先要做的是一个等数据、等 step 的形成机制实验，而不是直接再开一次长训练。\n最小实验应比较：\nA. 当前自由 soft STOP B. 训练时加入有限观察分辨率，但不指定固定停止深度 C. 在训练中随机限制可见最大深度，检查内部节点能否获得可读信息 三条臂都要同时报告：\n任务 NLL 与完整生成质量 每层 stop mass force-depth 因果损失 uniform-leaf 与 Top-K leaf 损失 Butterfly / pair-break 损失 实际节点访问量 其中 C 不是最终架构承诺，只是诊断压力：如果内部节点在被迫读取后仍学不到有用信息，问题可能在 FOLD state；如果能学到，问题则主要在自由优化器总能选择更容易的 leaf 路径。\n10. 一句话进展 我们已经证明 TreeHeap 能从自然语料获得可迁移参数，也证明 Butterfly/FOLD 确实参与预测；但 C10 的自由 STOP 没有形成多分辨率私有协议，而是退化为对变换后 leaf 的宽分布软池化。观察者分辨率能剪尾，不能独自纠正主流量。下一阶段的核心已从“再训练多久”变成“什么形成条件能让 parent 真正值得被读取”。\nARA 设计、代码和结构化 Evidence 将继续整理到 SameTime 开放仓库。所有失败路径保留，不用事后改写故事。\nLicense: GPLv3。本文中的 Claim、反证条件、实验过程与数据可自由复现、审计和修改。\n",
+  "wordCount" : "634",
+  "inLanguage": "en",
+  "datePublished": "2026-08-12T00:00:00Z",
+  "dateModified": "2026-08-12T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Houming818 \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/084-treeheap-c10-pretrain-stop-audit.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item active">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计
+    </h1>
+    <div class="post-description">
+      TreeHeap C10 完成自然语料预训练、WMT 迁移与三轮读取审计：预训练带来明确收益，但递归 READ 退化成了 Butterfly 变换后的叶层软池化。
+    </div>
+    <div class="post-meta"><span title='2026-08-12 00:00:00 +0000 UTC'>August 12, 2026</span>&nbsp;·&nbsp;<span>Houming818 &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="最近航到了哪里">最近航到了哪里<a hidden class="anchor" aria-hidden="true" href="#最近航到了哪里">#</a></h1>
+<p>距离上一篇公开进展已经有一段时间。这期间我们没有继续堆更多概念，而是把一个完整训练管线跑通，然后反过来审计模型到底学会了什么。</p>
+<p>这次的 C10 管线分三步：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>自然语料预训练
+</span></span><span style="display:flex;"><span>    -&gt; 同样的 TreeHeap checkpoint 进入 WMT 中英任务训练
+</span></span><span style="display:flex;"><span>    -&gt; 用概率后验、路径干预和 STOP 分辨率实验做 proof check
+</span></span></code></pre></div><p>结果不是简单的成功或失败，而是两个同时成立的事实：</p>
+<ol>
+<li><strong>预训练确实把可迁移信息写进了 TreeHeap 参数。</strong></li>
+<li><strong>递归 Decoder 没有学成我们期待的多分辨率读取协议，而是几乎把全部概率质量送到了 leaf。</strong></li>
+</ol>
+<p>这两个结果并不矛盾。模型可以学到有用信息，却通过一条比预期更浅的读出路径使用它。</p>
+<h2 id="1-c10-实际训练了什么">1. C10 实际训练了什么<a hidden class="anchor" aria-hidden="true" href="#1-c10-实际训练了什么">#</a></h2>
+<p>C10 不是 Transformer，也不是把一个矩阵改名为 TreeHeap。模型合同记录为：</p>
+<table>
+  <thead>
+      <tr>
+          <th>项目</th>
+          <th style="text-align: right">配置</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>模型类</td>
+          <td style="text-align: right"><code>ButterflyRecursive</code></td>
+      </tr>
+      <tr>
+          <td>参数量</td>
+          <td style="text-align: right">34,448,396</td>
+      </tr>
+      <tr>
+          <td>state / hidden</td>
+          <td style="text-align: right">256 / 256</td>
+      </tr>
+      <tr>
+          <td>最大 heap width</td>
+          <td style="text-align: right">256</td>
+      </tr>
+      <tr>
+          <td>地址通信</td>
+          <td style="text-align: right">XOR Butterfly</td>
+      </tr>
+      <tr>
+          <td>FOLD</td>
+          <td style="text-align: right">learned lifting</td>
+      </tr>
+      <tr>
+          <td>READ</td>
+          <td style="text-align: right">recursive probability container</td>
+      </tr>
+      <tr>
+          <td>生成器</td>
+          <td style="text-align: right">GRU 自回归 Decoder</td>
+      </tr>
+  </tbody>
+</table>
+<p>数据首先写到 leaf。Butterfly 按地址执行可逆的信息交换，然后 learned lifting 逐层把左右子节点合成为 parent，同时保存 detail。Decoder 再从 root 开始，通过 STOP 和左右分支概率读取不同深度的节点。</p>
+<p>因此需要分清三个问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>问题 A：H_state 里有没有学到信息？
+</span></span><span style="display:flex;"><span>问题 B：Butterfly 和 FOLD 是否真的参与了计算？
+</span></span><span style="display:flex;"><span>问题 C：READ 是否学会了有意义的分层读取？
+</span></span></code></pre></div><p>最近实验给出的答案分别是：<strong>有、参与了、没有学成。</strong></p>
+<h2 id="2-预训练迁移是明确的正结果">2. 预训练迁移是明确的正结果<a hidden class="anchor" aria-hidden="true" href="#2-预训练迁移是明确的正结果">#</a></h2>
+<p>预训练阶段读取 <code>/home/nio/datasets/pretrain</code> 的自然语料，并混入 25% 的 WMT 单语文本。模型训练了约一亿 token：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">数值</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>pretrain steps</td>
+          <td style="text-align: right">97,657</td>
+      </tr>
+      <tr>
+          <td>pretrain tokens</td>
+          <td style="text-align: right">100,000,768</td>
+      </tr>
+      <tr>
+          <td>初始 valid NLL</td>
+          <td style="text-align: right">10.7237</td>
+      </tr>
+      <tr>
+          <td>最佳 valid NLL</td>
+          <td style="text-align: right">5.6804</td>
+      </tr>
+      <tr>
+          <td>墙钟时间</td>
+          <td style="text-align: right">4.85 小时</td>
+      </tr>
+  </tbody>
+</table>
+<p>随后我们构造两条完全等算力的 WMT 任务训练臂：</p>
+<ul>
+<li><code>PT</code>：从预训练 checkpoint 开始；</li>
+<li><code>SC</code>：从相同初始随机状态直接学习 WMT。</li>
+</ul>
+<p>两条任务臂使用相同的数据流哈希、25,000 step 和 20,198,612 个任务 token。</p>
+<table>
+  <thead>
+      <tr>
+          <th>任务结果</th>
+          <th style="text-align: right">PT，预训练后</th>
+          <th style="text-align: right">SC，从零训练</th>
+          <th style="text-align: right">PT 改善</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>test NLL，越低越好</td>
+          <td style="text-align: right"><strong>5.4037</strong></td>
+          <td style="text-align: right">6.2920</td>
+          <td style="text-align: right">-0.8883</td>
+      </tr>
+      <tr>
+          <td>token BLEU4，越高越好</td>
+          <td style="text-align: right"><strong>5.0654</strong></td>
+          <td style="text-align: right">1.1711</td>
+          <td style="text-align: right">+3.8943</td>
+      </tr>
+  </tbody>
+</table>
+<p>这组比较可以支持一个有限 Claim：</p>
+<blockquote>
+<p>在相同 WMT 训练预算下，先用自然语料预训练的 TreeHeap 比从零开始更快得到较低的测试 NLL 和较高的 token BLEU。</p>
+</blockquote>
+<p>它不能证明模型已经会可靠翻译。实际生成仍有错译、重复和关系混乱。这里证明的是<strong>协议可以迁移</strong>，不是产品已经完成。</p>
+<h2 id="3-后验-proof-看到了条件信息但信号仍弱">3. 后验 proof 看到了条件信息，但信号仍弱<a hidden class="anchor" aria-hidden="true" href="#3-后验-proof-看到了条件信息但信号仍弱">#</a></h2>
+<p>我们又比较了模型给出的下一 token 概率桶与语料经验分布。</p>
+<table>
+  <thead>
+      <tr>
+          <th>模式</th>
+          <th style="text-align: right">JS，越低越接近语料</th>
+          <th style="text-align: right">候选集合概率质量，越高越好</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Native source</td>
+          <td style="text-align: right"><strong>0.6094</strong></td>
+          <td style="text-align: right"><strong>0.0620</strong></td>
+      </tr>
+      <tr>
+          <td>Wrong source</td>
+          <td style="text-align: right">0.6380</td>
+          <td style="text-align: right">0.0388</td>
+      </tr>
+      <tr>
+          <td>Unigram baseline</td>
+          <td style="text-align: right">0.6410</td>
+          <td style="text-align: right">0.0333</td>
+      </tr>
+  </tbody>
+</table>
+<p>换错 source 后，78.6% 的 greedy token 发生改变；破坏最底层左右配对后，58.3% 的 greedy token 发生改变。模型不是完全无视输入，也不只是复读全局最高频逗号。</p>
+<p>但 <code>0.6094</code> 距离理想分布仍然很远，候选质量也不高。它更适合被描述为“已经出现 source-conditioned signal”，还不能写成“形成了完整世界模型”。</p>
+<h2 id="4-真正的问题出在-read">4. 真正的问题出在 READ<a hidden class="anchor" aria-hidden="true" href="#4-真正的问题出在-read">#</a></h2>
+<p>TreeHeap 的编码方向是从 leaf 向 root：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token leaves
+</span></span><span style="display:flex;"><span>    -&gt; Butterfly 地址通信
+</span></span><span style="display:flex;"><span>    -&gt; FOLD：leaf -&gt; parent -&gt; root
+</span></span><span style="display:flex;"><span>    -&gt; 得到 root + 多层 details
+</span></span></code></pre></div><p>生成时的读取方向相反：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root
+</span></span><span style="display:flex;"><span>    -&gt; 判断 STOP，或继续到 child
+</span></span><span style="display:flex;"><span>    -&gt; 左右分支分配概率
+</span></span><span style="display:flex;"><span>    -&gt; 直到某个深度停止
+</span></span><span style="display:flex;"><span>    -&gt; 形成 context，送给 GRU Decoder
+</span></span></code></pre></div><p>当前 STOP 不是硬开关。对到达节点的概率质量 <code>a</code>，程序计算：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>stop_mass     = a * sigmoid(stop_logit)
+</span></span><span style="display:flex;"><span>continue_mass = a * (1 - sigmoid(stop_logit))
+</span></span></code></pre></div><p>只要 <code>stop_logit</code> 是有限数，sigmoid 就不会严格等于 0 或 1。程序也没有“低于某个数就视为停止”的观察精度。到达 leaf 后，才被强制全部停止。</p>
+<p>C10 在训练早期就把内部 STOP 压到了近乎零。第 1,000 step 时，约 99.9936% 的读取质量已经到达 leaf；最终测试时，平均 leaf 质量约为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>0.9999999963
+</span></span></code></pre></div><p>也就是说，数学上还有极小的中间层尾巴，工程上却已经等于一路走到底。</p>
+<h2 id="5-强制-leaf-后模型几乎完全不变">5. 强制 leaf 后，模型几乎完全不变<a hidden class="anchor" aria-hidden="true" href="#5-强制-leaf-后模型几乎完全不变">#</a></h2>
+<p>我们在 256 条 held-out WMT 样本、5,226 个目标 token 上做了运行时干预。checkpoint 和所有参数保持不变，只改读取方式。</p>
+<table>
+  <thead>
+      <tr>
+          <th>READ 干预</th>
+          <th style="text-align: right">NLL</th>
+          <th style="text-align: right">相对 Native 变化</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Native learned STOP</td>
+          <td style="text-align: right">5.299829634</td>
+          <td style="text-align: right">0</td>
+      </tr>
+      <tr>
+          <td>Force leaf</td>
+          <td style="text-align: right">5.299829704</td>
+          <td style="text-align: right">+0.000000070</td>
+      </tr>
+      <tr>
+          <td>Uniform branch</td>
+          <td style="text-align: right">5.403492</td>
+          <td style="text-align: right">+0.103662</td>
+      </tr>
+      <tr>
+          <td>Runtime Identity，拿掉 Butterfly</td>
+          <td style="text-align: right">5.660286</td>
+          <td style="text-align: right">+0.360457</td>
+      </tr>
+      <tr>
+          <td>Break depth-0 pair</td>
+          <td style="text-align: right">5.690986</td>
+          <td style="text-align: right">+0.391156</td>
+      </tr>
+  </tbody>
+</table>
+<p><code>Native</code> 与 <code>Force leaf</code> 在数值误差范围内相同。这说明 learned STOP 实际已经等价于 leaf-only read。</p>
+<p>另一方面，拿掉 Butterfly 或打乱最底层 FOLD 配对会明显增加 NLL。这说明结构变换仍然改变了 leaf 内容，不能说整个网络只是未经处理的原始数组。</p>
+<p>最精确的描述是：</p>
+<blockquote>
+<p>C10 学到的是“经过 Butterfly/FOLD 结构变换的叶层读出”，不是“能在 root、parent 与 leaf 之间按语义选择分辨率的 TreeHeap READ”。</p>
+</blockquote>
+<h2 id="6-它是不是只沿一条链表路径读取">6. 它是不是只沿一条链表路径读取<a hidden class="anchor" aria-hidden="true" href="#6-它是不是只沿一条链表路径读取">#</a></h2>
+<p>Houming818 随后提出了一个重要反问：既然都走到 leaf，会不会只剩一条固定路径，TreeHeap 退化成了一条链表？</p>
+<p>我们没有靠猜测回答，而是重建每个生成 step 的 leaf 权重，并逐级裁剪。</p>
+<p>如果它真是一条单路径，Top-1 leaf 应该占据绝大部分概率，保留 Top-1 后 NLL 也不应明显变差。实验却得到：</p>
+<table>
+  <thead>
+      <tr>
+          <th>读取叶集合</th>
+          <th style="text-align: right">覆盖的平均概率质量</th>
+          <th style="text-align: right">NLL 增量</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Top-1</td>
+          <td style="text-align: right">21.04%</td>
+          <td style="text-align: right">+4.0048</td>
+      </tr>
+      <tr>
+          <td>Top-2</td>
+          <td style="text-align: right">33.69%</td>
+          <td style="text-align: right">+1.5362</td>
+      </tr>
+      <tr>
+          <td>Top-4</td>
+          <td style="text-align: right">51.10%</td>
+          <td style="text-align: right">+0.5050</td>
+      </tr>
+      <tr>
+          <td>Top-8</td>
+          <td style="text-align: right">72.22%</td>
+          <td style="text-align: right">+0.1383</td>
+      </tr>
+      <tr>
+          <td>删除 Top-1</td>
+          <td style="text-align: right">其余质量</td>
+          <td style="text-align: right">+0.0829</td>
+      </tr>
+  </tbody>
+</table>
+<p>单路径假说因此被否定。有效 leaf 数约为 15.85，每条样本在生成过程中平均出现 6.72 个不同的 argmax leaf，地址平均跳跃 6.30 格。它不是顺序游标，也不是只盯着一个 leaf。</p>
+<p>可是另一个结果同样重要：把所有有效 leaf 改成均匀平均，NLL 只增加 <code>0.0271</code>；逐层把左右分支改成均匀分配，大部分 NLL 变化也只有千分位。</p>
+<p>所以它也没有形成强而清晰的“语义树索引”。当前更像下面这个过程：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Butterfly/FOLD 改写 leaf state
+</span></span><span style="display:flex;"><span>    -&gt; READ 把很多 leaf 分配一个较宽、较弱的概率桶
+</span></span><span style="display:flex;"><span>    -&gt; 加权求和为 context
+</span></span><span style="display:flex;"><span>    -&gt; GRU 根据 context 逐 token 生成
+</span></span></code></pre></div><p>若第 <code>i</code> 个变换后 leaf 是 <code>L_i</code>，第 <code>t</code> 个生成 step 的读权重是 <code>alpha_ti</code>，那么 context 可以写成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>c_t = sum_i(alpha_ti * L_i)
+</span></span></code></pre></div><p>这就是本文所说的 <strong>leaf pooling</strong>。它不是“所有 leaf 都相同”，而是“Decoder 主要在叶层对许多 leaf 做软加权”。</p>
+<h2 id="7-观察者分辨率假说解决了哪一部分">7. 观察者分辨率假说，解决了哪一部分<a hidden class="anchor" aria-hidden="true" href="#7-观察者分辨率假说解决了哪一部分">#</a></h2>
+<p>Houming818 提出了一个很具体的物理类比：</p>
+<blockquote>
+<p>现实中的停止不要求光通量严格等于零。只要信号低于观察者能够分辨的极限，工程上就应该把它当作零。</p>
+</blockquote>
+<p>我们据此加入一个不训练参数的诊断规则：如果某条活动路径的质量小于等于 <code>epsilon</code>，就在当前节点停止，不再展开它的两个孩子。</p>
+<p>第一次 smoke 因统计张量发生别名污染而产生不可能的质量总和，我们将该结果作废，并重新执行。有效重跑覆盖 128 条 held-out WMT 样本和 2,532 个 token。</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">epsilon</th>
+          <th style="text-align: right">NLL 增量</th>
+          <th style="text-align: right">少访问的节点</th>
+          <th style="text-align: right">仍到达 leaf 的质量</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">0</td>
+          <td style="text-align: right">0</td>
+          <td style="text-align: right">0%</td>
+          <td style="text-align: right">99.999999%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">0.0001</td>
+          <td style="text-align: right">+0.000057</td>
+          <td style="text-align: right">6.23%</td>
+          <td style="text-align: right">99.999262%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">0.001</td>
+          <td style="text-align: right">+0.001791</td>
+          <td style="text-align: right">8.24%</td>
+          <td style="text-align: right">99.987412%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">0.003</td>
+          <td style="text-align: right">+0.010178</td>
+          <td style="text-align: right">10.11%</td>
+          <td style="text-align: right">99.932139%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">0.01</td>
+          <td style="text-align: right">+0.069846</td>
+          <td style="text-align: right">14.06%</td>
+          <td style="text-align: right">99.495583%</td>
+      </tr>
+  </tbody>
+</table>
+<p>这个实验支持一半，也否定一半：</p>
+<ol>
+<li><strong>支持</strong>：有限观察精度可以安全剪掉一部分数学上非零、实际贡献极小的尾路径。</li>
+<li><strong>未通过正式门槛</strong>：没有一个点同时达到“至少省 10% 节点”且“NLL 增量不超过 0.001”。</li>
+<li><strong>否定充分性</strong>：即使 <code>epsilon=0.003</code>，仍有 99.93% 的质量到达 leaf。阈值能清理尾巴，却不能把主流量抬回 parent。</li>
+</ol>
+<p>因此，C10 同时存在两个现象：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>现象一：sigmoid 产生了永不严格归零的数值尾巴
+</span></span><span style="display:flex;"><span>现象二：训练本身把绝大部分有效质量送到了 leaf
+</span></span></code></pre></div><p>观察者分辨率解决的是第一个问题，不是第二个。</p>
+<h2 id="8-现在到底可以声明什么">8. 现在到底可以声明什么<a hidden class="anchor" aria-hidden="true" href="#8-现在到底可以声明什么">#</a></h2>
+<h3 id="已有证据支持">已有证据支持<a hidden class="anchor" aria-hidden="true" href="#已有证据支持">#</a></h3>
+<ol>
+<li>自然语料预训练可以迁移到同一 TreeHeap 的 WMT 任务训练；</li>
+<li>Butterfly 地址通信和 FOLD 配对对 held-out NLL 有可测量的因果作用；</li>
+<li>source、错误 source 与配对破坏会改变概率后验；</li>
+<li>有限分辨率可以剪掉 6% 到 10% 的低质量路径，代价可测量。</li>
+</ol>
+<h3 id="已被当前证据否定">已被当前证据否定<a hidden class="anchor" aria-hidden="true" href="#已被当前证据否定">#</a></h3>
+<ol>
+<li>C10 的 Native READ 不是有效的多分辨率 STOP 协议；</li>
+<li>它不是只沿一条固定链表路径读取；</li>
+<li>单纯增加一个小阈值，不能把 leaf collapse 修成语义分层读取。</li>
+</ol>
+<h3 id="仍然开放">仍然开放<a hidden class="anchor" aria-hidden="true" href="#仍然开放">#</a></h3>
+<ol>
+<li>如何让内部节点在任务 loss 中获得不可替代的价值；</li>
+<li>STOP 如何在不依赖手写固定深度的情况下学会有限分辨率；</li>
+<li>root、parent、detail 与 leaf 能否形成稳定的私有编解码协议；</li>
+<li>这种协议能否最终改善完整翻译与逻辑对照，而不只是降低平均 NLL。</li>
+</ol>
+<h2 id="9-下一步不再盲目加训练时间">9. 下一步不再盲目加训练时间<a hidden class="anchor" aria-hidden="true" href="#9-下一步不再盲目加训练时间">#</a></h2>
+<p>C10 已经说明，单纯继续喂更多 token 可能只会把 leaf-only 读法训练得更熟。下一步首先要做的是一个等数据、等 step 的形成机制实验，而不是直接再开一次长训练。</p>
+<p>最小实验应比较：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A. 当前自由 soft STOP
+</span></span><span style="display:flex;"><span>B. 训练时加入有限观察分辨率，但不指定固定停止深度
+</span></span><span style="display:flex;"><span>C. 在训练中随机限制可见最大深度，检查内部节点能否获得可读信息
+</span></span></code></pre></div><p>三条臂都要同时报告：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>任务 NLL 与完整生成质量
+</span></span><span style="display:flex;"><span>每层 stop mass
+</span></span><span style="display:flex;"><span>force-depth 因果损失
+</span></span><span style="display:flex;"><span>uniform-leaf 与 Top-K leaf 损失
+</span></span><span style="display:flex;"><span>Butterfly / pair-break 损失
+</span></span><span style="display:flex;"><span>实际节点访问量
+</span></span></code></pre></div><p>其中 C 不是最终架构承诺，只是诊断压力：如果内部节点在被迫读取后仍学不到有用信息，问题可能在 FOLD state；如果能学到，问题则主要在自由优化器总能选择更容易的 leaf 路径。</p>
+<h2 id="10-一句话进展">10. 一句话进展<a hidden class="anchor" aria-hidden="true" href="#10-一句话进展">#</a></h2>
+<blockquote>
+<p>我们已经证明 TreeHeap 能从自然语料获得可迁移参数，也证明 Butterfly/FOLD 确实参与预测；但 C10 的自由 STOP 没有形成多分辨率私有协议，而是退化为对变换后 leaf 的宽分布软池化。观察者分辨率能剪尾，不能独自纠正主流量。下一阶段的核心已从“再训练多久”变成“什么形成条件能让 parent 真正值得被读取”。</p>
+</blockquote>
+<p>ARA 设计、代码和结构化 Evidence 将继续整理到 <a href="https://github.com/houming818/sametime/tree/main/ara/s3-generation">SameTime 开放仓库</a>。所有失败路径保留，不用事后改写故事。</p>
+<hr>
+<p><strong>License:</strong> GPLv3。本文中的 Claim、反证条件、实验过程与数据可自由复现、审计和修改。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

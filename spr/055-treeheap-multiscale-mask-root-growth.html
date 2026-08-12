@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, S3, Encoder, Decoder, Mask, Hierarchy, Original Research">
+<meta name="description" content="真实中文实验表明，多尺度子堆 Mask 能让 root 获得样本相关信息，但 root 贡献随 Mask 深度严格下降；本文公开 5/6 Gate、反向结果与下一步修正。">
+<meta name="author" content="Houming818 &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/055-treeheap-multiscale-mask-root-growth.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/055-treeheap-multiscale-mask-root-growth.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/055-treeheap-multiscale-mask-root-growth.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习">
+  <meta property="og:description" content="真实中文实验表明，多尺度子堆 Mask 能让 root 获得样本相关信息，但 root 贡献随 Mask 深度严格下降；本文公开 5/6 Gate、反向结果与下一步修正。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-07-14T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-07-14T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习">
+  <meta name="twitter:description" content="真实中文实验表明，多尺度子堆 Mask 能让 root 获得样本相关信息，但 root 贡献随 Mask 深度严格下降；本文公开 5/6 Gate、反向结果与下一步修正。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习",
+      "item": "https://www.lostmap.cn/spr/055-treeheap-multiscale-mask-root-growth.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习",
+  "name": "[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习",
+  "description": "真实中文实验表明，多尺度子堆 Mask 能让 root 获得样本相关信息，但 root 贡献随 Mask 深度严格下降；本文公开 5/6 Gate、反向结果与下一步修正。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "S3", "Encoder", "Decoder", "Mask", "Hierarchy", "Original Research"
+  ],
+  "articleBody": "让信息向 root 生长：TreeHeap 的多尺度 Mask 学习 这篇文章先不宣布实验胜利。\n相反，我们想带着一点更具体的希望，重新提出一个问题：\n如果普通 echo 只要求模型恢复眼前的 token，那么模型为什么要费力把信息送到 root？\n这句话来自 Houming818 对当前实验的修正。它改变了我们看待 TreeHeap encoder 的方式。\n此前我们容易把注意力放在算子的形式上：FOLD 怎样计算，DETAIL 怎样保存，UNFOLD 怎样恢复。可是即使所有算子都在树上递归执行，只要训练问题太简单，模型仍然会选择最短的解题路线。\n这不一定说明 TreeHeap 没有能力。更可能说明：我们问的问题还不够深。\n1. 当前模型为什么偏爱 detail 假设一句话被写入一棵 TreeHeap：\nroot / \\ subheap A subheap B / \\ / \\ x1 x2 x3 x4 普通 echo 的任务只是输入 x1、x2、x3、x4，再输出同样的 x1、x2、x3、x4。\n如果每个局部 detail 都能保存附近 token，模型就可以走一条很短的路：\nx1 -\u003e detail1 -\u003e x1 x2 -\u003e detail2 -\u003e x2 x3 -\u003e detail3 -\u003e x3 x4 -\u003e detail4 -\u003e x4 这条路短、梯度直接、loss 下降快。\n相比之下，把信息先抽到 parent，再抽到 root，最后递归展开回来，需要经过更多卷积：\ntoken -\u003e local fold -\u003e parent fold -\u003e root -\u003e parent unfold -\u003e local unfold -\u003e token 如果两条路都能完成 echo，优化器没有理由主动选择更长的那条。\n因此，root 没有成为主要信息载体，并不令人意外。普通 echo 实际上只问了一个浅层问题：\n你能不能把刚刚看到的符号再写一遍？\n它没有问：\n当局部信息缺失时，你能否利用更大范围的结构推断它？\n2. 不要强迫 root，应该给 root 一份工作 一种直接做法是在公式里规定：没有 root 就不允许 decoder 工作。\n这样当然能让 root 参与，但它更像人为封路。模型使用 root，是因为程序员不准它走别的路，而不一定是因为数据中的规律需要 root。\nHouming818 提出的方向更自然：\n不要从结构上强迫 root 参与。通过扰动和 Mask 提出更深的问题，让局部 detail 无法单独回答，root 和上层卷积结果才有机会自然获得信息。\n也就是说，我们不预先规定 root 必须表示句意。\n我们只改变训练问题，让不同尺度的节点承担不同尺度的信息需求。\n3. 从 Mask 一个词，到 Mask 一整个子堆 考虑一句简单的话：\n今天 我 吃了 一碗 米饭 3.1 只遮挡一个 token 今天 我 吃了 一碗 [MASK] 局部信息“一碗”已经提供了很强的提示。附近节点可能就能给出一个概率桶：\n候选 概率示意 米饭 0.31 面条 0.24 粥 0.12 药 0.03 其他 0.30 这主要训练局部共现。\n3.2 遮挡一个小 subheap 今天 我 吃了 [一碗 米饭] 现在局部 detail 被整个拿走。模型需要结合“我”“吃了”和前后上下文，才能判断缺失部分大概是食物或用餐对象。\n这开始要求 parent 和 sibling 提供信息。\n3.3 遮挡更大的 subheap 今天 我 [吃了 一碗 米饭] 模型必须从更高层状态判断：\n这里缺少一个事件； 事件可能与“今天”和“我”有关； 输出应当是一段动作描述，而不只是一个孤立名词。 此时，靠近 root 的状态才真正获得了一份局部 detail 无法独立完成的工作。\n4. TreeHeap Mask 不是普通随机遮字 普通语言模型会随机遮掉若干 token。TreeHeap 可以做得更有结构，因为它已经拥有地址、路径和 subheap。\n我们可以直接使用 TreeHeap 代数中的操作构造扰动：\n扰动方式 操作对象 想检查的能力 leaf mask 单个叶子 局部共现 sibling mask 一对孩子 parent 是否保存摘要 subheap cut 完整子堆 ancestor 是否保存更大范围信息 detail dropout 某层 detail 粗粒度状态能否补回细节 subtree replacement 用别的子堆替换 模型能否发现上下文不一致 address shift detail 移到错误地址 路径和地址是否有真实作用 mirror perturbation 子堆左右翻转 顺序与手性信息是否被编码 这里最重要的是：扰动对象仍然是 TreeHeap 中的合法对象。\n不是先把树摊平成数组，再用另一套代数随便打乱；而是使用 CUT、MASK、REPLACE、SHIFT、MIRROR 等树上操作改变同一个数据结构。\n5. 两种 Mask，回答两个不同问题 5.1 压缩式 Mask Encoder 看过完整输入，但 decoder 随机拿不到某些 detail：\n完整句子 -\u003e encoder -\u003e root + 多层 detail -\u003e 丢弃部分 detail -\u003e decoder 恢复原句 它研究的是：\n信息有没有从 leaf 向 parent 和 root 形成冗余摘要？\n如果丢掉局部 detail 后，上层状态仍能恢复一部分内容，说明信息确实向上抽取了。\n5.2 推断式 Mask Encoder 从一开始就看不到被遮挡内容：\n受损句子 -\u003e encoder -\u003e TreeHeap -\u003e 预测缺失 subheap 它研究的是：\n模型是否从真实语料中学到了可以补全缺失信息的统计规律？\n这种任务不要求模型逐字恢复任意随机内容。正确输出是概率分布，而不是提前写好的唯一答案。\n压缩和推断都重要，但它们回答的是不同问题，实验必须分开报告。\n6. 卷积怎样推动信息向上生长 在每个内部节点，encoder 使用共享分析卷积核：\n$\n$ p_i = K_{\\mathrm{fold}}(h_{2i}, h_{2i+1}) $$\n继续递归：\n$\n$ p_{\\operatorname{parent}(i)} = K_{\\mathrm{fold}}(p_i,p_j) $$\n同一个 kernel 在不同地址和深度重复使用。因此，一条信息若要到达 root，必须经历多次相同类型的局部抽取。\nDecoder 使用共享合成卷积核：\n$\n$ (\\hat h_{2i},\\hat h_{2i+1}) = K_{\\mathrm{unfold}}(p_i,d_i) $$\nMask 训练产生的梯度会沿着递归链返回：\n缺失 token 的 loss -\u003e unfold kernel -\u003e ancestor state -\u003e fold kernel -\u003e 更低层输入 如果只 Mask 一个叶子，梯度可能主要停留在附近。\n如果 Mask 整个 subheap，局部节点已经没有答案，梯度必须要求更高层状态改善。这才是“把信息抽到离 root 更近的地方”的具体学习过程。\n7. 不使用一锅炖的 Loss 我们不打算一次把所有尺度混成一个难以解释的总 loss。\n更清晰的方法是让不同 batch 轮流提出不同深度的问题：\nbatch 1 leaf mask batch 2 depth-1 subheap mask batch 3 depth-2 subheap mask batch 4 depth-3 subheap mask batch 5 detail dropout batch 6 subtree replacement 每个 batch 只计算受损区域的交叉熵：\n$\n$ L_d = -\\sum_{i\\in M_d} \\log P(x_i\\mid H_{\\setminus M_d}) $$\n其中 $M_d$ 表示尺度为 $d$ 的被遮挡子堆。\n这样可以分别观察：\n哪一种扰动开始需要 root； 哪一层信息最容易恢复； 梯度能否通过递归卷积到达高层； 不同 kernel 是否在不同尺度形成分工。 我们不必一开始就知道 root 最终会表示“主谓宾”“主题”还是其他人类标签。只需要观察：随着问题尺度扩大，高层状态是否越来越有用。\n8. 我们期待看到什么趋势 这篇文章暂时没有新实验结果，因此下面是 Predict，不是结论。\n最关键的测量不是普通 echo 能否达到 100%，而是：\n$\n$ \\Delta L_{\\mathrm{root}}(d) = L_d(H_{\\mathrm{root}}=0)-L_d(H_{\\mathrm{root}}) $$\n其中 $d$ 是被遮挡子堆的尺度。\n我们期待：\n$\n$ \\Delta L_{\\mathrm{root}}(d+1) \u003e \\Delta L_{\\mathrm{root}}(d) $$\n用普通话说：\n遮挡范围越大，模型越应该依赖 root 和祖先卷积结果。\n具体趋势包括：\nleaf mask 主要依赖局部 detail； 小 subheap mask 开始依赖 parent 和 sibling； 大 subheap mask 对 root-zero 更敏感； 打乱 ancestor 地址会破坏深层恢复； detail-only 对照在深层 Mask 上明显落后； TreeHeap 在未训练深度仍能复用共享递归 kernel； shuffled corpus 会削弱推断式 Mask，因为真实共现规律被破坏。 如果这些趋势没有出现，我们就应承认：当前 fold kernel 没有把数据规律逐层抽取到高层，或者当前树的组织方式不适合语料。\n9. 实验结果：root 被点亮了吗 实验已经在 io 的 RTX 3090 上完成。\n两个模型都从相同随机初始化出发，使用相同的 100,000 个真实中文 token block、相同参数量和相同优化器：\n模型 训练问题 训练时间 Echo 所有 detail 完整，恢复全部 token 46.5 秒 Multiscale Mask 移除随机子堆内部 detail，只恢复受损区域 51.0 秒 两个模型都训练 3,125 step。Mask 模型的 WRITE、FOLD、DETAIL、UNFOLD、READ 五类算子都获得了有限非零梯度，因此 loss 确实通过了完整递归链路。\n9.1 普通 Echo 的 99.5% 是局部复制能力 在 detail 完整时，普通 Echo 的 token Top-1 为：\n99.50% 但移除一个子堆内部的 detail 后，它迅速失效：\n被移除的 token 数 Echo 恢复 Top-1 2 24.61% 4 3.32% 8 1.46% 16 0.78% 32 0.81% 这组数字支持本文最初的诊断：普通 echo 的问题太浅，模型主要学会了局部路径：\ntoken -\u003e local detail -\u003e token 它能精确抄写，却没有为 detail 缺失准备上层摘要。\n9.2 多尺度 Mask 改变了信息保存位置 Mask 模型的受损区域恢复结果是：\n被移除的 token 数 Mask NLL，越低越好 Mask Top-1 Echo Top-1 2 6.526 14.26% 24.61% 4 7.277 8.69% 3.32% 8 7.567 7.50% 1.46% 16 7.843 6.42% 0.78% 32 7.915 6.36% 0.81% 只遮两个 token 时，Echo 的局部复制能力仍然更强。\n从 4 token 开始，Mask 模型明显更稳。遮掉 32 token 时，它的 Top-1 约为 Echo 的八倍。这说明训练问题确实改变了模型的信息布局：部分可恢复信息已经离开被删除的局部 detail，进入了更高层的 TreeHeap 状态。\n但 6.36% 仍然很低。这里的正确表述是“出现了上层信息信号”，而不是“已经能恢复半句话”。\n9.3 root 不是空开关 为了判断上层信号是否真的进入 root，我们做了两种干预。\n第一种是把当前样本的 root 清零；第二种是换成另一个样本的 root。\nMask 大小 正常 NLL Root 清零 NLL 换错 Root NLL 2 6.526 7.369 6.861 4 7.277 7.775 7.623 8 7.567 7.898 7.920 16 7.843 8.131 8.194 32 7.915 8.188 8.276 在 32-token Mask 下：\nRoot 清零：NLL 增加 0.273 换错 Root：NLL 增加 0.361 错误 root 比零 root 更有破坏性。这说明 root 不是一个固定的开关，它携带了当前文本相关的信息。\n这是本轮最重要的正结果：\n多尺度 Mask 第一次让 root 获得了可干预、样本相关的因果信号。\n9.4 最重要的 Predict 反向了 我们原本预测：\nMask 越大 -\u003e 局部信息越少 -\u003e 模型越依赖 root 实际 root 清零造成的 NLL 增量为：\nMask 大小 Root 贡献 2 0.843 4 0.499 8 0.330 16 0.287 32 0.273 它严格递减，深度趋势的 Spearman 相关系数为：\n-1.0 所以 P3 没有“差一点通过”，而是方向完全相反。\n这说明当前 root 更像粗粒度的全局条件：它能帮助补一个小洞，却不足以展开一整棵缺失子树。Mask 越大，decoder 越容易退化为输出少数高频 token。\n在保存的样例中，32-token Mask 经常产生：\n10257 10257 10257 10257 ... 因此不能把 root 的因果信号解释成完整句法、语义或世界模型。\n9.5 为什么 5/6 Gate 通过仍然不能写成成功 预注册结果如下：\nGate 结果 P1 深层 Mask 优于未训练 Mask 的 Echo 通过 P2 span-32 的 root-zero 有明显伤害 通过 P3 root 贡献随 Mask 深度上升 失败，Spearman = -1.0 P4 Mask 训练比 Echo 更依赖 root 通过 P5 换错 root 有明显伤害 通过 P6 所有递归算子都有梯度 通过 P1 也必须谨慎解释。Echo 从未训练过 detail 缺失，因此它是机制对照，不是足够强的 Mask baseline。Mask 模型击败它，证明训练问题发生了作用；还不能证明 TreeHeap 优于 unigram、BoW、flat root 或 Transformer。\n同时，Mask 模型在 detail 完整时的普通 echo Top-1 只有 14.72%，远低于 Echo 模型的 99.50%。它用精确复制能力换取了受损情况下的稳定性，尚未同时掌握两种能力。\n10. Claim 判决：部分支持 本轮 Claim 更新为：\npartial support / upward signal found / positive-depth trend rejected 实验支持：\n普通 echo 会优先形成局部 detail 捷径； 多尺度 Mask 能改变信息的保存位置； root 获得了可测量的样本相关信息； root 清零和换错都会伤害恢复； masked loss 能到达全部共享递归算子。 实验不支持：\nMask 越深，信息越向 root 汇聚； root 已能表示并展开完整子树； 当前恢复质量已经足够用于生成产品； root 已形成语义、世界知识或意识； TreeHeap 已优于通用神经网络基线。 最准确的一句话是：\n我们让一部分信息离开了局部 detail，并点亮了 root；但当前 root 更像粗略的全局摘要，还不是能够展开整棵子树的高层编码。\n11. 下一步：同时保住局部精度和上层摘要 下一轮不应立刻扩大语料，而应修正训练问题。\n训练 batch 轮流进行：\nbatch 1 普通 Echo batch 2 浅层 subheap Mask batch 3 中层 subheap Mask batch 4 深层 subheap Mask 这不是把多个 loss 全部相加，而是每个 batch 只回答一个清晰问题。目标是同时获得：\ndetail 完整 -\u003e 精确恢复 detail 缺失 -\u003e root 和 ancestor 提供概率恢复 还必须加入更强对照：\nunigram 概率； 当前 block 的词频或 BoW； flat mean/root bottleneck； position-aware flat bottleneck； shuffled-root 和 shuffled-corpus。 只有 TreeHeap 在相同状态预算下，既保住 echo，又在深层 subheap Mask 上击败这些对照，才有资格升级为结构优势 Claim。\n12. 为什么这条路仍然值得开心一点 前一阶段已经出现了一个积极信号：只使用 token echo loss，随机初始化的 WRITE、FOLD、DETAIL、UNFOLD 和 READ 可以共同形成一套模型自己读得懂的连续编码协议。\n它还很浅，甚至可能只是高效的局部抄写。\n但“模型能够形成自己的写法”与“模型已经形成世界模型”是两件不同的事。前者是后者可能需要的一块地基，不是终点。\n现在我们得到的不是一个漂亮但空泛的答案，而是一个更好的问题：\n不要再问： 模型能不能抄回刚刚看到的 token？ 开始问： 当一个完整子结构消失时， 哪一层还保留了足够的信息来推断它？ 如果信息真的能随着问题深度逐层向 root 生长，那么 TreeHeap 的 encoder/decoder 协议就不再只是一个按地址保存 token 的数组。\n它会开始成为一种分尺度观察世界、压缩规律并递归展开答案的结构。\n这次我们已经有了结果。它没有完全支持最初的深度趋势，却证明 root 可以被任务真正点亮，也准确指出了下一步需要解决的能力缺口。\n船头不仅对准了一个可以测量的方向，还第一次收到了来自 root 的微弱回声。心情确实可以好一点。哈哈哈哈。\n13. 当前声明边界 本文记录的是 Houming818 提出的研究方向、已完成实验及其证据边界。最初假设是：\n当前普通 echo loss 太浅，无法要求高层节点保存信息。通过 TreeHeap-native 的多尺度 subheap Mask、detail dropout 和结构扰动，可以逐层增加任务所需的上下文范围；如果假设成立，信息和梯度将从局部 detail 向 parent、ancestor 与 root 汇聚。\n实验已经支持“root 获得样本相关信息”，但拒绝了“Mask 越深，root 贡献越大”：实测深度 Spearman 为 -1.0。因此上述假设只能保留前半部分，后半部分必须重新设计并再次验证。\n目前不能声称：\nroot 已经形成语义摘要； 多尺度 Mask 一定能够产生世界模型； TreeHeap 已经优于 Transformer、MLP 或其他结构； masked token 的恢复等于理解或意识； 人类语法标签一定会自然出现在内部节点。 这些都需要后续 ARA、代码、干预实验和真实数据给出 evidence。\n版权、原创与许可证 Copyright (C) 2026 Houming818 and SameTime contributors.\n本文的核心研究判断，即“普通 echo 的问题尺度太浅，应使用 TreeHeap-native 的多尺度子堆扰动推动信息向 root 抽取”，由 Houming818 提出；Codex Review 参与数学整理、实验指标设计和文章编写。本文是 SameTime 项目的原创研究表达，不宣称发明 masked language modeling、denoising autoencoder、树卷积或多尺度分析等已有公共方法。\nSPDX-License-Identifier: GPL-3.0-only\nLicense: GNU General Public License v3.0 only\n本文允许复制、修改和分发，但衍生版本必须继续遵守 GNU GPL v3，并保留版权、许可证、修改说明及来源声明。完整许可证文本见本站 /LICENSE。\n",
+  "wordCount" : "1061",
+  "inLanguage": "en",
+  "datePublished": "2026-07-14T00:00:00Z",
+  "dateModified": "2026-07-14T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Houming818 \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/055-treeheap-multiscale-mask-root-growth.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item active">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习
+    </h1>
+    <div class="post-description">
+      真实中文实验表明，多尺度子堆 Mask 能让 root 获得样本相关信息，但 root 贡献随 Mask 深度严格下降；本文公开 5/6 Gate、反向结果与下一步修正。
+    </div>
+    <div class="post-meta"><span title='2026-07-14 00:00:00 +0000 UTC'>July 14, 2026</span>&nbsp;·&nbsp;<span>Houming818 &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="让信息向-root-生长treeheap-的多尺度-mask-学习">让信息向 root 生长：TreeHeap 的多尺度 Mask 学习<a hidden class="anchor" aria-hidden="true" href="#让信息向-root-生长treeheap-的多尺度-mask-学习">#</a></h1>
+<p>这篇文章先不宣布实验胜利。</p>
+<p>相反，我们想带着一点更具体的希望，重新提出一个问题：</p>
+<blockquote>
+<p>如果普通 echo 只要求模型恢复眼前的 token，那么模型为什么要费力把信息送到 root？</p>
+</blockquote>
+<p>这句话来自 Houming818 对当前实验的修正。它改变了我们看待 TreeHeap encoder 的方式。</p>
+<p>此前我们容易把注意力放在算子的形式上：FOLD 怎样计算，DETAIL 怎样保存，UNFOLD 怎样恢复。可是即使所有算子都在树上递归执行，只要训练问题太简单，模型仍然会选择最短的解题路线。</p>
+<p>这不一定说明 TreeHeap 没有能力。更可能说明：我们问的问题还不够深。</p>
+<hr>
+<h2 id="1-当前模型为什么偏爱-detail">1. 当前模型为什么偏爱 detail<a hidden class="anchor" aria-hidden="true" href="#1-当前模型为什么偏爱-detail">#</a></h2>
+<p>假设一句话被写入一棵 TreeHeap：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>                    root
+</span></span><span style="display:flex;"><span>                  /      \
+</span></span><span style="display:flex;"><span>            subheap A    subheap B
+</span></span><span style="display:flex;"><span>             /   \        /   \
+</span></span><span style="display:flex;"><span>           x1    x2      x3    x4
+</span></span></code></pre></div><p>普通 echo 的任务只是输入 x1、x2、x3、x4，再输出同样的 x1、x2、x3、x4。</p>
+<p>如果每个局部 detail 都能保存附近 token，模型就可以走一条很短的路：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x1 -&gt; detail1 -&gt; x1
+</span></span><span style="display:flex;"><span>x2 -&gt; detail2 -&gt; x2
+</span></span><span style="display:flex;"><span>x3 -&gt; detail3 -&gt; x3
+</span></span><span style="display:flex;"><span>x4 -&gt; detail4 -&gt; x4
+</span></span></code></pre></div><p>这条路短、梯度直接、loss 下降快。</p>
+<p>相比之下，把信息先抽到 parent，再抽到 root，最后递归展开回来，需要经过更多卷积：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token
+</span></span><span style="display:flex;"><span>  -&gt; local fold
+</span></span><span style="display:flex;"><span>  -&gt; parent fold
+</span></span><span style="display:flex;"><span>  -&gt; root
+</span></span><span style="display:flex;"><span>  -&gt; parent unfold
+</span></span><span style="display:flex;"><span>  -&gt; local unfold
+</span></span><span style="display:flex;"><span>  -&gt; token
+</span></span></code></pre></div><p>如果两条路都能完成 echo，优化器没有理由主动选择更长的那条。</p>
+<p>因此，root 没有成为主要信息载体，并不令人意外。普通 echo 实际上只问了一个浅层问题：</p>
+<blockquote>
+<p>你能不能把刚刚看到的符号再写一遍？</p>
+</blockquote>
+<p>它没有问：</p>
+<blockquote>
+<p>当局部信息缺失时，你能否利用更大范围的结构推断它？</p>
+</blockquote>
+<hr>
+<h2 id="2-不要强迫-root应该给-root-一份工作">2. 不要强迫 root，应该给 root 一份工作<a hidden class="anchor" aria-hidden="true" href="#2-不要强迫-root应该给-root-一份工作">#</a></h2>
+<p>一种直接做法是在公式里规定：没有 root 就不允许 decoder 工作。</p>
+<p>这样当然能让 root 参与，但它更像人为封路。模型使用 root，是因为程序员不准它走别的路，而不一定是因为数据中的规律需要 root。</p>
+<p>Houming818 提出的方向更自然：</p>
+<blockquote>
+<p>不要从结构上强迫 root 参与。通过扰动和 Mask 提出更深的问题，让局部 detail 无法单独回答，root 和上层卷积结果才有机会自然获得信息。</p>
+</blockquote>
+<p>也就是说，我们不预先规定 root 必须表示句意。</p>
+<p>我们只改变训练问题，让不同尺度的节点承担不同尺度的信息需求。</p>
+<hr>
+<h2 id="3-从-mask-一个词到-mask-一整个子堆">3. 从 Mask 一个词，到 Mask 一整个子堆<a hidden class="anchor" aria-hidden="true" href="#3-从-mask-一个词到-mask-一整个子堆">#</a></h2>
+<p>考虑一句简单的话：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>今天 我 吃了 一碗 米饭
+</span></span></code></pre></div><h3 id="31-只遮挡一个-token">3.1 只遮挡一个 token<a hidden class="anchor" aria-hidden="true" href="#31-只遮挡一个-token">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>今天 我 吃了 一碗 [MASK]
+</span></span></code></pre></div><p>局部信息“一碗”已经提供了很强的提示。附近节点可能就能给出一个概率桶：</p>
+<table>
+  <thead>
+      <tr>
+          <th>候选</th>
+          <th style="text-align: right">概率示意</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>米饭</td>
+          <td style="text-align: right">0.31</td>
+      </tr>
+      <tr>
+          <td>面条</td>
+          <td style="text-align: right">0.24</td>
+      </tr>
+      <tr>
+          <td>粥</td>
+          <td style="text-align: right">0.12</td>
+      </tr>
+      <tr>
+          <td>药</td>
+          <td style="text-align: right">0.03</td>
+      </tr>
+      <tr>
+          <td>其他</td>
+          <td style="text-align: right">0.30</td>
+      </tr>
+  </tbody>
+</table>
+<p>这主要训练局部共现。</p>
+<h3 id="32-遮挡一个小-subheap">3.2 遮挡一个小 subheap<a hidden class="anchor" aria-hidden="true" href="#32-遮挡一个小-subheap">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>今天 我 吃了 [一碗 米饭]
+</span></span></code></pre></div><p>现在局部 detail 被整个拿走。模型需要结合“我”“吃了”和前后上下文，才能判断缺失部分大概是食物或用餐对象。</p>
+<p>这开始要求 parent 和 sibling 提供信息。</p>
+<h3 id="33-遮挡更大的-subheap">3.3 遮挡更大的 subheap<a hidden class="anchor" aria-hidden="true" href="#33-遮挡更大的-subheap">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>今天 我 [吃了 一碗 米饭]
+</span></span></code></pre></div><p>模型必须从更高层状态判断：</p>
+<ul>
+<li>这里缺少一个事件；</li>
+<li>事件可能与“今天”和“我”有关；</li>
+<li>输出应当是一段动作描述，而不只是一个孤立名词。</li>
+</ul>
+<p>此时，靠近 root 的状态才真正获得了一份局部 detail 无法独立完成的工作。</p>
+<hr>
+<h2 id="4-treeheap-mask-不是普通随机遮字">4. TreeHeap Mask 不是普通随机遮字<a hidden class="anchor" aria-hidden="true" href="#4-treeheap-mask-不是普通随机遮字">#</a></h2>
+<p>普通语言模型会随机遮掉若干 token。TreeHeap 可以做得更有结构，因为它已经拥有地址、路径和 subheap。</p>
+<p>我们可以直接使用 TreeHeap 代数中的操作构造扰动：</p>
+<table>
+  <thead>
+      <tr>
+          <th>扰动方式</th>
+          <th>操作对象</th>
+          <th>想检查的能力</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>leaf mask</td>
+          <td>单个叶子</td>
+          <td>局部共现</td>
+      </tr>
+      <tr>
+          <td>sibling mask</td>
+          <td>一对孩子</td>
+          <td>parent 是否保存摘要</td>
+      </tr>
+      <tr>
+          <td>subheap cut</td>
+          <td>完整子堆</td>
+          <td>ancestor 是否保存更大范围信息</td>
+      </tr>
+      <tr>
+          <td>detail dropout</td>
+          <td>某层 detail</td>
+          <td>粗粒度状态能否补回细节</td>
+      </tr>
+      <tr>
+          <td>subtree replacement</td>
+          <td>用别的子堆替换</td>
+          <td>模型能否发现上下文不一致</td>
+      </tr>
+      <tr>
+          <td>address shift</td>
+          <td>detail 移到错误地址</td>
+          <td>路径和地址是否有真实作用</td>
+      </tr>
+      <tr>
+          <td>mirror perturbation</td>
+          <td>子堆左右翻转</td>
+          <td>顺序与手性信息是否被编码</td>
+      </tr>
+  </tbody>
+</table>
+<p>这里最重要的是：扰动对象仍然是 TreeHeap 中的合法对象。</p>
+<p>不是先把树摊平成数组，再用另一套代数随便打乱；而是使用 CUT、MASK、REPLACE、SHIFT、MIRROR 等树上操作改变同一个数据结构。</p>
+<hr>
+<h2 id="5-两种-mask回答两个不同问题">5. 两种 Mask，回答两个不同问题<a hidden class="anchor" aria-hidden="true" href="#5-两种-mask回答两个不同问题">#</a></h2>
+<h3 id="51-压缩式-mask">5.1 压缩式 Mask<a hidden class="anchor" aria-hidden="true" href="#51-压缩式-mask">#</a></h3>
+<p>Encoder 看过完整输入，但 decoder 随机拿不到某些 detail：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>完整句子
+</span></span><span style="display:flex;"><span>  -&gt; encoder
+</span></span><span style="display:flex;"><span>  -&gt; root + 多层 detail
+</span></span><span style="display:flex;"><span>  -&gt; 丢弃部分 detail
+</span></span><span style="display:flex;"><span>  -&gt; decoder 恢复原句
+</span></span></code></pre></div><p>它研究的是：</p>
+<blockquote>
+<p>信息有没有从 leaf 向 parent 和 root 形成冗余摘要？</p>
+</blockquote>
+<p>如果丢掉局部 detail 后，上层状态仍能恢复一部分内容，说明信息确实向上抽取了。</p>
+<h3 id="52-推断式-mask">5.2 推断式 Mask<a hidden class="anchor" aria-hidden="true" href="#52-推断式-mask">#</a></h3>
+<p>Encoder 从一开始就看不到被遮挡内容：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>受损句子
+</span></span><span style="display:flex;"><span>  -&gt; encoder
+</span></span><span style="display:flex;"><span>  -&gt; TreeHeap
+</span></span><span style="display:flex;"><span>  -&gt; 预测缺失 subheap
+</span></span></code></pre></div><p>它研究的是：</p>
+<blockquote>
+<p>模型是否从真实语料中学到了可以补全缺失信息的统计规律？</p>
+</blockquote>
+<p>这种任务不要求模型逐字恢复任意随机内容。正确输出是概率分布，而不是提前写好的唯一答案。</p>
+<p>压缩和推断都重要，但它们回答的是不同问题，实验必须分开报告。</p>
+<hr>
+<h2 id="6-卷积怎样推动信息向上生长">6. 卷积怎样推动信息向上生长<a hidden class="anchor" aria-hidden="true" href="#6-卷积怎样推动信息向上生长">#</a></h2>
+<p>在每个内部节点，encoder 使用共享分析卷积核：</p>
+<p>$</p>
+$ p_i = K_{\mathrm{fold}}(h_{2i}, h_{2i+1}) $<p>$</p>
+<p>继续递归：</p>
+<p>$</p>
+$ p_{\operatorname{parent}(i)} = K_{\mathrm{fold}}(p_i,p_j) $<p>$</p>
+<p>同一个 kernel 在不同地址和深度重复使用。因此，一条信息若要到达 root，必须经历多次相同类型的局部抽取。</p>
+<p>Decoder 使用共享合成卷积核：</p>
+<p>$</p>
+$ (\hat h_{2i},\hat h_{2i+1}) = K_{\mathrm{unfold}}(p_i,d_i) $<p>$</p>
+<p>Mask 训练产生的梯度会沿着递归链返回：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>缺失 token 的 loss
+</span></span><span style="display:flex;"><span>  -&gt; unfold kernel
+</span></span><span style="display:flex;"><span>  -&gt; ancestor state
+</span></span><span style="display:flex;"><span>  -&gt; fold kernel
+</span></span><span style="display:flex;"><span>  -&gt; 更低层输入
+</span></span></code></pre></div><p>如果只 Mask 一个叶子，梯度可能主要停留在附近。</p>
+<p>如果 Mask 整个 subheap，局部节点已经没有答案，梯度必须要求更高层状态改善。这才是“把信息抽到离 root 更近的地方”的具体学习过程。</p>
+<hr>
+<h2 id="7-不使用一锅炖的-loss">7. 不使用一锅炖的 Loss<a hidden class="anchor" aria-hidden="true" href="#7-不使用一锅炖的-loss">#</a></h2>
+<p>我们不打算一次把所有尺度混成一个难以解释的总 loss。</p>
+<p>更清晰的方法是让不同 batch 轮流提出不同深度的问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>batch 1  leaf mask
+</span></span><span style="display:flex;"><span>batch 2  depth-1 subheap mask
+</span></span><span style="display:flex;"><span>batch 3  depth-2 subheap mask
+</span></span><span style="display:flex;"><span>batch 4  depth-3 subheap mask
+</span></span><span style="display:flex;"><span>batch 5  detail dropout
+</span></span><span style="display:flex;"><span>batch 6  subtree replacement
+</span></span></code></pre></div><p>每个 batch 只计算受损区域的交叉熵：</p>
+<p>$</p>
+$ L_d = -\sum_{i\in M_d} \log P(x_i\mid H_{\setminus M_d}) $<p>$</p>
+<p>其中 </p>
+$M_d$<p> 表示尺度为 </p>
+$d$<p> 的被遮挡子堆。</p>
+<p>这样可以分别观察：</p>
+<ul>
+<li>哪一种扰动开始需要 root；</li>
+<li>哪一层信息最容易恢复；</li>
+<li>梯度能否通过递归卷积到达高层；</li>
+<li>不同 kernel 是否在不同尺度形成分工。</li>
+</ul>
+<p>我们不必一开始就知道 root 最终会表示“主谓宾”“主题”还是其他人类标签。只需要观察：随着问题尺度扩大，高层状态是否越来越有用。</p>
+<hr>
+<h2 id="8-我们期待看到什么趋势">8. 我们期待看到什么趋势<a hidden class="anchor" aria-hidden="true" href="#8-我们期待看到什么趋势">#</a></h2>
+<p>这篇文章暂时没有新实验结果，因此下面是 Predict，不是结论。</p>
+<p>最关键的测量不是普通 echo 能否达到 100%，而是：</p>
+<p>$</p>
+$ \Delta L_{\mathrm{root}}(d) = L_d(H_{\mathrm{root}}=0)-L_d(H_{\mathrm{root}}) $<p>$</p>
+<p>其中 </p>
+$d$<p> 是被遮挡子堆的尺度。</p>
+<p>我们期待：</p>
+<p>$</p>
+$ \Delta L_{\mathrm{root}}(d+1) > \Delta L_{\mathrm{root}}(d) $<p>$</p>
+<p>用普通话说：</p>
+<blockquote>
+<p>遮挡范围越大，模型越应该依赖 root 和祖先卷积结果。</p>
+</blockquote>
+<p>具体趋势包括：</p>
+<ol>
+<li>leaf mask 主要依赖局部 detail；</li>
+<li>小 subheap mask 开始依赖 parent 和 sibling；</li>
+<li>大 subheap mask 对 root-zero 更敏感；</li>
+<li>打乱 ancestor 地址会破坏深层恢复；</li>
+<li>detail-only 对照在深层 Mask 上明显落后；</li>
+<li>TreeHeap 在未训练深度仍能复用共享递归 kernel；</li>
+<li>shuffled corpus 会削弱推断式 Mask，因为真实共现规律被破坏。</li>
+</ol>
+<p>如果这些趋势没有出现，我们就应承认：当前 fold kernel 没有把数据规律逐层抽取到高层，或者当前树的组织方式不适合语料。</p>
+<hr>
+<ul>
+<li></li>
+</ul>
+<h2 id="9-实验结果root-被点亮了吗">9. 实验结果：root 被点亮了吗<a hidden class="anchor" aria-hidden="true" href="#9-实验结果root-被点亮了吗">#</a></h2>
+<p>实验已经在 io 的 RTX 3090 上完成。</p>
+<p>两个模型都从相同随机初始化出发，使用相同的 100,000 个真实中文 token block、相同参数量和相同优化器：</p>
+<table>
+  <thead>
+      <tr>
+          <th>模型</th>
+          <th>训练问题</th>
+          <th style="text-align: right">训练时间</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Echo</td>
+          <td>所有 detail 完整，恢复全部 token</td>
+          <td style="text-align: right">46.5 秒</td>
+      </tr>
+      <tr>
+          <td>Multiscale Mask</td>
+          <td>移除随机子堆内部 detail，只恢复受损区域</td>
+          <td style="text-align: right">51.0 秒</td>
+      </tr>
+  </tbody>
+</table>
+<p>两个模型都训练 3,125 step。Mask 模型的 WRITE、FOLD、DETAIL、UNFOLD、READ 五类算子都获得了有限非零梯度，因此 loss 确实通过了完整递归链路。</p>
+<h3 id="91-普通-echo-的-995-是局部复制能力">9.1 普通 Echo 的 99.5% 是局部复制能力<a hidden class="anchor" aria-hidden="true" href="#91-普通-echo-的-995-是局部复制能力">#</a></h3>
+<p>在 detail 完整时，普通 Echo 的 token Top-1 为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>99.50%
+</span></span></code></pre></div><p>但移除一个子堆内部的 detail 后，它迅速失效：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">被移除的 token 数</th>
+          <th style="text-align: right">Echo 恢复 Top-1</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">2</td>
+          <td style="text-align: right">24.61%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">4</td>
+          <td style="text-align: right">3.32%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">8</td>
+          <td style="text-align: right">1.46%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">16</td>
+          <td style="text-align: right">0.78%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">32</td>
+          <td style="text-align: right">0.81%</td>
+      </tr>
+  </tbody>
+</table>
+<p>这组数字支持本文最初的诊断：普通 echo 的问题太浅，模型主要学会了局部路径：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token -&gt; local detail -&gt; token
+</span></span></code></pre></div><p>它能精确抄写，却没有为 detail 缺失准备上层摘要。</p>
+<h3 id="92-多尺度-mask-改变了信息保存位置">9.2 多尺度 Mask 改变了信息保存位置<a hidden class="anchor" aria-hidden="true" href="#92-多尺度-mask-改变了信息保存位置">#</a></h3>
+<p>Mask 模型的受损区域恢复结果是：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">被移除的 token 数</th>
+          <th style="text-align: right">Mask NLL，越低越好</th>
+          <th style="text-align: right">Mask Top-1</th>
+          <th style="text-align: right">Echo Top-1</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">2</td>
+          <td style="text-align: right">6.526</td>
+          <td style="text-align: right">14.26%</td>
+          <td style="text-align: right">24.61%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">4</td>
+          <td style="text-align: right">7.277</td>
+          <td style="text-align: right">8.69%</td>
+          <td style="text-align: right">3.32%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">8</td>
+          <td style="text-align: right">7.567</td>
+          <td style="text-align: right">7.50%</td>
+          <td style="text-align: right">1.46%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">16</td>
+          <td style="text-align: right">7.843</td>
+          <td style="text-align: right">6.42%</td>
+          <td style="text-align: right">0.78%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">32</td>
+          <td style="text-align: right">7.915</td>
+          <td style="text-align: right">6.36%</td>
+          <td style="text-align: right">0.81%</td>
+      </tr>
+  </tbody>
+</table>
+<p>只遮两个 token 时，Echo 的局部复制能力仍然更强。</p>
+<p>从 4 token 开始，Mask 模型明显更稳。遮掉 32 token 时，它的 Top-1 约为 Echo 的八倍。这说明训练问题确实改变了模型的信息布局：部分可恢复信息已经离开被删除的局部 detail，进入了更高层的 TreeHeap 状态。</p>
+<p>但 6.36% 仍然很低。这里的正确表述是“出现了上层信息信号”，而不是“已经能恢复半句话”。</p>
+<h3 id="93-root-不是空开关">9.3 root 不是空开关<a hidden class="anchor" aria-hidden="true" href="#93-root-不是空开关">#</a></h3>
+<p>为了判断上层信号是否真的进入 root，我们做了两种干预。</p>
+<p>第一种是把当前样本的 root 清零；第二种是换成另一个样本的 root。</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">Mask 大小</th>
+          <th style="text-align: right">正常 NLL</th>
+          <th style="text-align: right">Root 清零 NLL</th>
+          <th style="text-align: right">换错 Root NLL</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">2</td>
+          <td style="text-align: right">6.526</td>
+          <td style="text-align: right">7.369</td>
+          <td style="text-align: right">6.861</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">4</td>
+          <td style="text-align: right">7.277</td>
+          <td style="text-align: right">7.775</td>
+          <td style="text-align: right">7.623</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">8</td>
+          <td style="text-align: right">7.567</td>
+          <td style="text-align: right">7.898</td>
+          <td style="text-align: right">7.920</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">16</td>
+          <td style="text-align: right">7.843</td>
+          <td style="text-align: right">8.131</td>
+          <td style="text-align: right">8.194</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">32</td>
+          <td style="text-align: right">7.915</td>
+          <td style="text-align: right">8.188</td>
+          <td style="text-align: right">8.276</td>
+      </tr>
+  </tbody>
+</table>
+<p>在 32-token Mask 下：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Root 清零：NLL 增加 0.273
+</span></span><span style="display:flex;"><span>换错 Root：NLL 增加 0.361
+</span></span></code></pre></div><p>错误 root 比零 root 更有破坏性。这说明 root 不是一个固定的开关，它携带了当前文本相关的信息。</p>
+<p>这是本轮最重要的正结果：</p>
+<blockquote>
+<p>多尺度 Mask 第一次让 root 获得了可干预、样本相关的因果信号。</p>
+</blockquote>
+<h3 id="94-最重要的-predict-反向了">9.4 最重要的 Predict 反向了<a hidden class="anchor" aria-hidden="true" href="#94-最重要的-predict-反向了">#</a></h3>
+<p>我们原本预测：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Mask 越大
+</span></span><span style="display:flex;"><span>  -&gt; 局部信息越少
+</span></span><span style="display:flex;"><span>  -&gt; 模型越依赖 root
+</span></span></code></pre></div><p>实际 root 清零造成的 NLL 增量为：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">Mask 大小</th>
+          <th style="text-align: right">Root 贡献</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">2</td>
+          <td style="text-align: right">0.843</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">4</td>
+          <td style="text-align: right">0.499</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">8</td>
+          <td style="text-align: right">0.330</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">16</td>
+          <td style="text-align: right">0.287</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">32</td>
+          <td style="text-align: right">0.273</td>
+      </tr>
+  </tbody>
+</table>
+<p>它严格递减，深度趋势的 Spearman 相关系数为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>-1.0
+</span></span></code></pre></div><p>所以 P3 没有“差一点通过”，而是方向完全相反。</p>
+<p>这说明当前 root 更像粗粒度的全局条件：它能帮助补一个小洞，却不足以展开一整棵缺失子树。Mask 越大，decoder 越容易退化为输出少数高频 token。</p>
+<p>在保存的样例中，32-token Mask 经常产生：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>10257 10257 10257 10257 ...
+</span></span></code></pre></div><p>因此不能把 root 的因果信号解释成完整句法、语义或世界模型。</p>
+<h3 id="95-为什么-56-gate-通过仍然不能写成成功">9.5 为什么 5/6 Gate 通过仍然不能写成成功<a hidden class="anchor" aria-hidden="true" href="#95-为什么-56-gate-通过仍然不能写成成功">#</a></h3>
+<p>预注册结果如下：</p>
+<table>
+  <thead>
+      <tr>
+          <th>Gate</th>
+          <th>结果</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>P1 深层 Mask 优于未训练 Mask 的 Echo</td>
+          <td>通过</td>
+      </tr>
+      <tr>
+          <td>P2 span-32 的 root-zero 有明显伤害</td>
+          <td>通过</td>
+      </tr>
+      <tr>
+          <td>P3 root 贡献随 Mask 深度上升</td>
+          <td><strong>失败，Spearman = -1.0</strong></td>
+      </tr>
+      <tr>
+          <td>P4 Mask 训练比 Echo 更依赖 root</td>
+          <td>通过</td>
+      </tr>
+      <tr>
+          <td>P5 换错 root 有明显伤害</td>
+          <td>通过</td>
+      </tr>
+      <tr>
+          <td>P6 所有递归算子都有梯度</td>
+          <td>通过</td>
+      </tr>
+  </tbody>
+</table>
+<p>P1 也必须谨慎解释。Echo 从未训练过 detail 缺失，因此它是机制对照，不是足够强的 Mask baseline。Mask 模型击败它，证明训练问题发生了作用；还不能证明 TreeHeap 优于 unigram、BoW、flat root 或 Transformer。</p>
+<p>同时，Mask 模型在 detail 完整时的普通 echo Top-1 只有 14.72%，远低于 Echo 模型的 99.50%。它用精确复制能力换取了受损情况下的稳定性，尚未同时掌握两种能力。</p>
+<hr>
+<h2 id="10-claim-判决部分支持">10. Claim 判决：部分支持<a hidden class="anchor" aria-hidden="true" href="#10-claim-判决部分支持">#</a></h2>
+<p>本轮 Claim 更新为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>partial support / upward signal found / positive-depth trend rejected
+</span></span></code></pre></div><p>实验支持：</p>
+<ol>
+<li>普通 echo 会优先形成局部 detail 捷径；</li>
+<li>多尺度 Mask 能改变信息的保存位置；</li>
+<li>root 获得了可测量的样本相关信息；</li>
+<li>root 清零和换错都会伤害恢复；</li>
+<li>masked loss 能到达全部共享递归算子。</li>
+</ol>
+<p>实验不支持：</p>
+<ol>
+<li>Mask 越深，信息越向 root 汇聚；</li>
+<li>root 已能表示并展开完整子树；</li>
+<li>当前恢复质量已经足够用于生成产品；</li>
+<li>root 已形成语义、世界知识或意识；</li>
+<li>TreeHeap 已优于通用神经网络基线。</li>
+</ol>
+<p>最准确的一句话是：</p>
+<blockquote>
+<p>我们让一部分信息离开了局部 detail，并点亮了 root；但当前 root 更像粗略的全局摘要，还不是能够展开整棵子树的高层编码。</p>
+</blockquote>
+<hr>
+<h2 id="11-下一步同时保住局部精度和上层摘要">11. 下一步：同时保住局部精度和上层摘要<a hidden class="anchor" aria-hidden="true" href="#11-下一步同时保住局部精度和上层摘要">#</a></h2>
+<p>下一轮不应立刻扩大语料，而应修正训练问题。</p>
+<p>训练 batch 轮流进行：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>batch 1  普通 Echo
+</span></span><span style="display:flex;"><span>batch 2  浅层 subheap Mask
+</span></span><span style="display:flex;"><span>batch 3  中层 subheap Mask
+</span></span><span style="display:flex;"><span>batch 4  深层 subheap Mask
+</span></span></code></pre></div><p>这不是把多个 loss 全部相加，而是每个 batch 只回答一个清晰问题。目标是同时获得：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>detail 完整 -&gt; 精确恢复
+</span></span><span style="display:flex;"><span>detail 缺失 -&gt; root 和 ancestor 提供概率恢复
+</span></span></code></pre></div><p>还必须加入更强对照：</p>
+<ul>
+<li>unigram 概率；</li>
+<li>当前 block 的词频或 BoW；</li>
+<li>flat mean/root bottleneck；</li>
+<li>position-aware flat bottleneck；</li>
+<li>shuffled-root 和 shuffled-corpus。</li>
+</ul>
+<p>只有 TreeHeap 在相同状态预算下，既保住 echo，又在深层 subheap Mask 上击败这些对照，才有资格升级为结构优势 Claim。</p>
+<h2 id="12-为什么这条路仍然值得开心一点">12. 为什么这条路仍然值得开心一点<a hidden class="anchor" aria-hidden="true" href="#12-为什么这条路仍然值得开心一点">#</a></h2>
+<p>前一阶段已经出现了一个积极信号：只使用 token echo loss，随机初始化的 WRITE、FOLD、DETAIL、UNFOLD 和 READ 可以共同形成一套模型自己读得懂的连续编码协议。</p>
+<p>它还很浅，甚至可能只是高效的局部抄写。</p>
+<p>但“模型能够形成自己的写法”与“模型已经形成世界模型”是两件不同的事。前者是后者可能需要的一块地基，不是终点。</p>
+<p>现在我们得到的不是一个漂亮但空泛的答案，而是一个更好的问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>不要再问：
+</span></span><span style="display:flex;"><span>模型能不能抄回刚刚看到的 token？
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>开始问：
+</span></span><span style="display:flex;"><span>当一个完整子结构消失时，
+</span></span><span style="display:flex;"><span>哪一层还保留了足够的信息来推断它？
+</span></span></code></pre></div><p>如果信息真的能随着问题深度逐层向 root 生长，那么 TreeHeap 的 encoder/decoder 协议就不再只是一个按地址保存 token 的数组。</p>
+<p>它会开始成为一种分尺度观察世界、压缩规律并递归展开答案的结构。</p>
+<p>这次我们已经有了结果。它没有完全支持最初的深度趋势，却证明 root 可以被任务真正点亮，也准确指出了下一步需要解决的能力缺口。</p>
+<p>船头不仅对准了一个可以测量的方向，还第一次收到了来自 root 的微弱回声。心情确实可以好一点。哈哈哈哈。</p>
+<hr>
+<h2 id="13-当前声明边界">13. 当前声明边界<a hidden class="anchor" aria-hidden="true" href="#13-当前声明边界">#</a></h2>
+<p>本文记录的是 Houming818 提出的研究方向、已完成实验及其证据边界。最初假设是：</p>
+<blockquote>
+<p>当前普通 echo loss 太浅，无法要求高层节点保存信息。通过 TreeHeap-native 的多尺度 subheap Mask、detail dropout 和结构扰动，可以逐层增加任务所需的上下文范围；如果假设成立，信息和梯度将从局部 detail 向 parent、ancestor 与 root 汇聚。</p>
+</blockquote>
+<p>实验已经支持“root 获得样本相关信息”，但拒绝了“Mask 越深，root 贡献越大”：实测深度 Spearman 为 -1.0。因此上述假设只能保留前半部分，后半部分必须重新设计并再次验证。</p>
+<p>目前不能声称：</p>
+<ul>
+<li>root 已经形成语义摘要；</li>
+<li>多尺度 Mask 一定能够产生世界模型；</li>
+<li>TreeHeap 已经优于 Transformer、MLP 或其他结构；</li>
+<li>masked token 的恢复等于理解或意识；</li>
+<li>人类语法标签一定会自然出现在内部节点。</li>
+</ul>
+<p>这些都需要后续 ARA、代码、干预实验和真实数据给出 evidence。</p>
+<hr>
+<h2 id="版权原创与许可证">版权、原创与许可证<a hidden class="anchor" aria-hidden="true" href="#版权原创与许可证">#</a></h2>
+<p>Copyright (C) 2026 Houming818 and SameTime contributors.</p>
+<p>本文的核心研究判断，即“普通 echo 的问题尺度太浅，应使用 TreeHeap-native 的多尺度子堆扰动推动信息向 root 抽取”，由 Houming818 提出；Codex Review 参与数学整理、实验指标设计和文章编写。本文是 SameTime 项目的原创研究表达，不宣称发明 masked language modeling、denoising autoencoder、树卷积或多尺度分析等已有公共方法。</p>
+<blockquote>
+<p><strong>SPDX-License-Identifier: GPL-3.0-only</strong><br>
+<strong>License: GNU General Public License v3.0 only</strong></p>
+</blockquote>
+<p>本文允许复制、修改和分发，但衍生版本必须继续遵守 GNU GPL v3，并保留版权、许可证、修改说明及来源声明。完整许可证文本见本站 <a href="/LICENSE">/LICENSE</a>。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

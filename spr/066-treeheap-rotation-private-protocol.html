@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, Rotation, Private Protocol, Encoder, Decoder, Fixed Memory, Subheap">
+<meta name="description" content="从指数旋转的内存风险，到固定容量 subheap 自旋，再到 8 个随机种子的结构选择实验：TreeHeap 如何把旋转变成可学习、可逆、可证伪的私有协议。">
+<meta name="author" content="Houming818 &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/066-treeheap-rotation-private-protocol.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/066-treeheap-rotation-private-protocol.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/066-treeheap-rotation-private-protocol.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果">
+  <meta property="og:description" content="从指数旋转的内存风险，到固定容量 subheap 自旋，再到 8 个随机种子的结构选择实验：TreeHeap 如何把旋转变成可学习、可逆、可证伪的私有协议。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-07-21T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-07-21T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果">
+  <meta name="twitter:description" content="从指数旋转的内存风险，到固定容量 subheap 自旋，再到 8 个随机种子的结构选择实验：TreeHeap 如何把旋转变成可学习、可逆、可证伪的私有协议。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果",
+      "item": "https://www.lostmap.cn/spr/066-treeheap-rotation-private-protocol.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果",
+  "name": "[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果",
+  "description": "从指数旋转的内存风险，到固定容量 subheap 自旋，再到 8 个随机种子的结构选择实验：TreeHeap 如何把旋转变成可学习、可逆、可证伪的私有协议。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "Rotation", "Private Protocol", "Encoder", "Decoder", "Fixed Memory", "Subheap"
+  ],
+  "articleBody": "TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果 本文记录一次从危险直觉到受控实验的完整转向。最初的想法是：一棵有序树经过旋转，能否用很少的递归步骤观察很大的候选空间？实验确认这种结构可以高效复用，但也暴露出严重风险：如果把每次旋转都复制成新树，逻辑空间会指数膨胀。于是我们把架构收紧为固定容量，只允许 subheap 在原地址池内旋转。随后两个实验回答了更重要的问题：旋转能否承载 encoder-decoder 私有协议，以及有用的秩序能否在没有秩序标签时由任务自己筛选出来。\n1. 从两个有序切片说起 先看两个很小的有序片段：\n[0, 1, 2] [3, 4, 5] 它们不只是六个数字。每个片段还携带一个关系：后面的元素大于前面的元素。如果把它们分别写成有根树，再通过一个合法的组合算子连接起来，新的结构可能继续支持搜索、比较和分解。\n这里最有价值的不是数字本身，而是秩序缩小了求解空间。如果查询目标是 4，我们不必逐个检查所有节点；只要每一步都能根据局部状态选择 stop / left / right，就可能沿一条路径坍缩到答案。\n这给出了一个几何推理的直觉：\n局部有序结构 -\u003e 合法旋转或组合 -\u003e 更大范围仍然保留可用关系 -\u003e 一个局部 kernel 可以递归复用 但直觉里藏着两个完全不同的问题：\n旋转能否扩大可观察范围？ 旋转是否必须扩大物理内存？ 第一件事可能有价值，第二件事必须被严格限制。\n2. 第一条路为什么危险 最初的递归构造可以写成：\n$\n$ H_{n+1}=\\operatorname{CAT}\\left(H_n,R_n(H_n)\\right) $$\n其中，\n$R_n$ 是第 $n$ 轮旋转，CAT 把原树和旋转后的树连接起来。若每一轮都保留两个副本，逻辑候选数近似翻倍：\n$\n$ N_n \\approx 2^n N_0 $$\n这很诱人。递归 16 次，就能描述两百多万个逻辑候选。但如果把每个候选都实体化，内存同样会迅速耗尽。一个“搜索很快”的算法，如果靠无限复制内存换取速度，并不是真正的低成本推理。\n我们做了一个边界实验。它在规则、保序、可懒展开的旋转轨道上得到：\n指标 结果 最深层逻辑候选数 2,031,616 测试查询数 52,898 确定性查询准确率 1.0000 学习 kernel 的 OOD 最低准确率 1.0000 逆变换准确率 1.0000 最深层 TreeHeap 平均比较次数 20.1682 无序扫描平均比较次数 1,014,613.8684 显式存储 / 懒存储比 32,247.873 倍 破坏秩序后的单路径准确率 0.0360 这个结果证明了一个窄结论：规则的保序轨道可以被紧凑表示，查询工作量随递归深度线性增长。\n它没有证明“TreeHeap 免费搜索指数空间”。显式排序数组也能用对数次比较完成同类查询，只是需要保存全部数据。实验还专门设置了预算上限，超过上限时返回 BUDGET_EXHAUSTED，不允许继续扩容。\n因此，指数 CAT 生长被归档为边界证据，不再作为运行时架构。我们保留旋转，删除无界复制。\n3. 固定容量：旋转只能改变观察方向 新的架构只有一条硬规则：系统启动时获得容量为 $C$ 的节点池，此后任何旋转都必须留在同一空间内。\n$\n$ R_{S,\\phi}:\\mathcal{H}_C\\rightarrow\\mathcal{H}_C $$\n$S$ 是已有 subheap，\n$\\phi$ 是一个有限、合法、可逆的地址置换。旋转前后必须满足：\n节点数不变 容量不变 subheap 外部状态不变 R_inverse(R(H)) = H 不申请新的 TreeHeap 节点 以最小三节点树为例：\nA / \\ B C 正常地址顺序是 [A, B, C]，mirror 后是 [A, C, B]。设局部卷积 kernel 为：\n$\n$ u=w_0 A+w_L B+w_R C $$\n镜像后，同一个 kernel 看到的是：\n$\n$ u'=w_0 A+w_L C+w_R B $$\n数据没有被复制，变化的是“哪个状态位于 left，哪个状态位于 right”。随后用逆置换把结果写回原坐标。这样，旋转就不再是扩容器，而是一个固定内存中的观察坐标变换。\n整棵树上的传播写成：\n$\n$ H_{t+1}=\\operatorname{ApplyAllSubheaps} \\left(H_t,K_\\theta,R,g\\right) $$\n其中 $K_\\theta$ 是共享局部 kernel，\n$g$ 是是否启用某个旋转的 gate。经过 $t$ 轮，信息大约传播 $t$ 个结构跳数。增长的是感受野，不是节点池：\n$\n$ \\text{space}=O(C),\\qquad \\text{time}=O(T_{\\max}C\\cdot \\operatorname{cost}(K)) $$\n$C$ 和 $T_{\\max}$ 都是硬上限。达到上限仍然没有答案，就返回 UNRESOLVED。拿不到的解不是系统故障，而是接受有限算力的客观边界。\n4. 旋转如何成为私有协议 TreeHeap 的参数和运行状态需要分开说清楚：\nH_state：当前样本写入后的 TreeHeap 状态 theta：kernel、gate、读写器中的可学习参数 R：合法的结构旋转算子 encoder 可以执行一段旋转程序，再通过 FOLD 把输入写进 $H_{state}$：\n$\n$ H_{state}=E_{\\theta_E}(X;R_1,\\ldots,R_m) $$\ndecoder 不需要让人类看懂中间状态，只要能学习对应的逆程序，再用 UNFOLD 读回目标：\n$\n$ \\hat X=D_{\\theta_D}(H_{state};R_1^{-1},\\ldots,R_m^{-1}) $$\n训练损失可以只看最终 echo：\n$\n$ L_{echo}=\\lVert \\hat X-X\\rVert_2^2 $$\n这像每个人不同的笔迹。纸上的轨迹可以不同，但只要写和读形成了稳定配对，协议就能工作。私有协议不是“无法验证”，因为我们仍能检查：原配是否成功、交叉配对是否失败、破坏一个旋转是否增大损失、地址和内存是否保持合法。\n固定协议实验 实验使用容量 127、每节点 4 维状态的 TreeHeap，并注册 6 个相互重叠的 subheap mirror 算子。两个 encoder 使用不同的 6-bit 旋转程序：\n程序 A = [1, 1, 0, 1, 0, 1] 程序 B = [0, 1, 1, 0, 1, 1] decoder 只有 6 个可训练 gate logit。它不知道正确程序，只能通过 echo MSE 学习逆变换。\n检查 程序 A 程序 B 学到的 bit 是否完全匹配 是 是 原配 echo MSE 0 0 交叉协议 MSE 2.012999 2.012999 单 bit 错误 MSE 2.012695 0.471290 逆序执行 MSE 0.440443 0 状态形状始终是 [2048, 127, 4]，没有增加一个节点。gate 也明显硬化：启用项约为 0.995 到 0.997，关闭项约为 0.003。\n这里出现了一个重要修正。程序 A 的有效算子不交换，因此执行顺序是协议的一部分；程序 B 的有效组合恰好顺序等价，因此正序和逆序都能解码。结论不是“递归一定依赖顺序”，而是：\n只有当被选中的结构算子彼此非交换时，顺序才携带额外协议信息。\n这个实验支持“固定容量旋转可以承载私有协议”，但 encoder 程序是人工固定的。它还没有解释有用的秩序从哪里来。\n5. Echo 不会自动产生秩序 这是本轮最关键的理论分界。\n如果 encoder 使用任意可逆置换 $R$，decoder 使用精确逆变换 $R^{-1}$，那么：\n$\n$ R^{-1}(R(H))=H $$\n不论 $R$ 是否保留父子关系，echo 都可以是零误差。因此：\n可逆性 != 秩序 能 echo != 学会有用结构 私有协议存在 != 私有协议具有推理价值 只训练 echo 时，一套漂亮的保序编码和一套完全混乱的加密式编码可能同样优秀。要让秩序出现，数据和任务必须给它提供选择压力。\n这也修正了“旋转后天然保序”的说法。旋转只是候选操作。保序不是预设奖励，而应当是非保序候选在具体环境中表现更差以后留下的结果。\n6. 不告诉模型秩序，让环境选择 我们构造了一个固定种群，共 24 个容量相同的候选旋转：\n候选组 数量 特征 exact 6 精确保留父子边的树自同构 mild 6 轻微破坏父子关系 random 12 在同一深度内随机置换 训练 loss 中没有“保序”“边正确”或“路径前缀”标签。模型只需要用共享局部 decoder，根据 parent、sibling 和 children 恢复被遮住的节点。gate 根据这个预测误差选择候选旋转。\n为了区分真正的结构选择与优化器偶然偏好，实验使用两个世界。\n结构世界 子节点与父节点相关：\n$\n$ x_{child}=\\rho x_{parent}+\\sqrt{1-\\rho^2}\\,\\epsilon, \\qquad \\rho=0.92 $$\n父子边保存了可用于预测的信息。破坏边会让局部 decoder 更难工作。\nIID 世界 取 $\\rho=0$，所有节点互相独立。此时父子关系没有预测价值，exact、mild 和 random 理论上应该近似打平。\n单个 seed 的结果一度令人困惑：结构世界几乎全选 exact，但 IID 世界也把 90.59% 的 gate 质量压到了 exact。我们没有把它包装成成功，而是登记为 7/8 gate 通过，并怀疑 gate 与 decoder 的共同训练产生了“先领先者锁死”的中性漂移。\n随后按预注册方案运行 8 个随机种子：\n1, 7, 19, 42, 73, 99, 314, 2026 8-seed 结果 指标 结果 应如何理解 结构世界 exact winner 8 / 8 每个 seed 都选择保边变换 结构世界 exact gate mass 均值 0.999657 质量几乎全部集中到 exact 组 结构世界 exact gate mass 最小值 0.999215 最差 seed 仍超过 99.92% 边保留率与 loss 的 Pearson -0.997404 越保边，loss 越低 IID winner 分布 2 exact / 1 mild / 5 random 没有稳定偏爱 exact IID exact gate mass 均值 0.283272 接近初始占比 6/24 = 0.25 IID exact-random loss 差 0.000992 三组实际上近似打平 IID 边保留率与 loss 的 Pearson -0.018631 无结构关系 exact echo 最大逆变换误差 0 所有可逆协议都能无损 echo 九条预注册 gate 全部通过。\n这个结果支持的不是“宇宙天然喜欢二叉树”，而是一个更具体的命题：\n当数据的可预测关系沿 TreeHeap 父子边传播时，不含秩序标签的任务损失会稳定淘汰破坏这些关系的旋转；当数据没有这种关系时，选择退化为中性漂移。\n这里的“秩序”不是数字升序，而是父子边、路径前缀和局部关系得到保存。秩序成为知识，是因为它减少了预测不确定性。\n7. 这与 encoder、decoder 有什么关系 现在可以把三段证据连起来：\n固定容量旋转 -\u003e 提供有限、可逆的结构编码候选 echo loss -\u003e 让 encoder 与 decoder 学会彼此兼容的私有写法 结构预测 loss -\u003e 从多种可逆写法中筛掉破坏有用关系的写法 剩下的旋转程序 -\u003e 成为既可解码、又保留任务相关结构的私有协议 这比“人工规定左边是主语、右边是宾语”更接近我们一直寻找的涌现路径。研究者规定的只是有限内存、合法算子、可微 gate 和任务；具体协议由 encoder 与 decoder 联合形成，结构价值由数据检验。\n它也解释了为什么只做 token echo 不够。echo 负责可读回，结构预测负责读回之前不要把有用关系打乱。两者缺一不可。\n8. 当前证据没有证明什么 这轮结果很强，但边界同样明确：\n候选旋转来自固定的 24 个算子，模型还没有自己发明新的旋转公式。 数据是 Gaussian tree world，不是真实语言、图像或世界模型。 exact 候选保留的是给定父子边，不代表现实任务一定应该使用这棵树。 实验没有证明 TreeHeap 比 Transformer、MLP、图网络或经典数据结构更快。 两百万逻辑候选实验不适用于密码破解，也不构成对加密算法的威胁证据。 旋转扩大的是固定内存中的观察范围，不允许解释为无限算力或无限答案。 尤其需要避免一个新的循环论证：先人工构造“正确树”，再证明保留这棵树最好。下一阶段必须让树的 placement、compose 与旋转共同面对真实数据，而不是把正确结构偷偷写进输入。\n9. 下一阶段：让语言决定哪种旋转活下来 下一条可证伪路线应保持固定容量，不再申请外部 TreeHeap 内存：\n从真实语料生成 $H_{state}$，禁止 decoder 旁路读取原字符串。 注册一组有限的 subheap 旋转和不同递归深度，仍不提供语法标签。 使用 echo、上下文预测或 seq2seq loss 联合训练 encoder gate 与 decoder。 比较结构候选、随机同深度置换和不旋转 baseline。 在训练后审计父子边、路径前缀、地址复用、OOD 深度与推理成本。 检查不同 seed 是否选择稳定关系，而不是复现一次 winner lock-in。 预期不应写成“语言必然选择 mirror”。更谨慎的 predict 是：\n若 TreeHeap 的局部关系与语料中的可预测关系对齐，则结构保持更好的旋转程序应获得更低验证 loss、更稳定的多 seed 选择，以及更好的未见深度或未见地址外推；若随机置换同样有效，则旋转私有协议没有提供额外结构价值。\n这条 predict 同时允许成功和失败。失败时，我们应该修改 placement、FOLD 或候选算子，而不是继续扩大内存寻找答案。\n10. 航行结论 这轮工作把一个容易失控的想法变成了有限工程对象：\n旧想法：旋转一次，复制一个新空间 新设计：旋转一次，重排固定 subheap 旧假设：合法旋转天然保序 新结论：可逆旋转只是候选，秩序必须被任务选择 旧证据：echo 可以恢复输入 新证据：echo 证明私有协议，结构预测证明协议保留有用关系 TreeHeap 旋转目前已经有三层受控证据：可逆、固定容量、可学习配对；非交换组合可以携带顺序；结构化环境会在多 seed 中稳定选择保留关系的候选。它还不是语言 encoder，也不是完成的智能系统，但已经不再只是一个几何比喻。\n更重要的是，我们接受了一条工程伦理：一个算法越容易让人想无限递归，越需要先写死容量、轮数和失败返回值。有限不是遗憾。有限使实验可以复现，使系统可以停止，也使真正的结构收益不再被无限内存掩盖。\nARA 代码、预注册和原始 evidence 保存在 SameTime 仓库的以下目录：\nara/m0-treeheap-math/evidence/bounded_rotation_search_probe/ ara/m0-treeheap-math/evidence/fixed_capacity_rotation_protocol_probe/ ara/m0-treeheap-math/evidence/rotation_selection_evolution_probe/ ara/m0-treeheap-math/evidence/rotation_selection_multiseed_probe/ 对应提交：8cf183d、f97f136、b2af86a。项目公开仓库为 houming818/sametime。\n本文与相关代码沿用项目现有开源许可证。实验数字是受控 toy evidence，不应脱离边界宣传为真实语言、通用推理或密码学能力。\n",
+  "wordCount" : "642",
+  "inLanguage": "en",
+  "datePublished": "2026-07-21T00:00:00Z",
+  "dateModified": "2026-07-21T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Houming818 \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/066-treeheap-rotation-private-protocol.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item active">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果
+    </h1>
+    <div class="post-description">
+      从指数旋转的内存风险，到固定容量 subheap 自旋，再到 8 个随机种子的结构选择实验：TreeHeap 如何把旋转变成可学习、可逆、可证伪的私有协议。
+    </div>
+    <div class="post-meta"><span title='2026-07-21 00:00:00 +0000 UTC'>July 21, 2026</span>&nbsp;·&nbsp;<span>Houming818 &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="treeheap-旋转私有协议秩序不是假设而是幸存结果">TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果<a hidden class="anchor" aria-hidden="true" href="#treeheap-旋转私有协议秩序不是假设而是幸存结果">#</a></h1>
+<blockquote>
+<p>本文记录一次从危险直觉到受控实验的完整转向。最初的想法是：一棵有序树经过旋转，能否用很少的递归步骤观察很大的候选空间？实验确认这种结构可以高效复用，但也暴露出严重风险：如果把每次旋转都复制成新树，逻辑空间会指数膨胀。于是我们把架构收紧为固定容量，只允许 subheap 在原地址池内旋转。随后两个实验回答了更重要的问题：旋转能否承载 encoder-decoder 私有协议，以及有用的秩序能否在没有秩序标签时由任务自己筛选出来。</p>
+</blockquote>
+<hr>
+<h2 id="1-从两个有序切片说起">1. 从两个有序切片说起<a hidden class="anchor" aria-hidden="true" href="#1-从两个有序切片说起">#</a></h2>
+<p>先看两个很小的有序片段：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[0, 1, 2]
+</span></span><span style="display:flex;"><span>[3, 4, 5]
+</span></span></code></pre></div><p>它们不只是六个数字。每个片段还携带一个关系：后面的元素大于前面的元素。如果把它们分别写成有根树，再通过一个合法的组合算子连接起来，新的结构可能继续支持搜索、比较和分解。</p>
+<p>这里最有价值的不是数字本身，而是<strong>秩序缩小了求解空间</strong>。如果查询目标是 <code>4</code>，我们不必逐个检查所有节点；只要每一步都能根据局部状态选择 <code>stop / left / right</code>，就可能沿一条路径坍缩到答案。</p>
+<p>这给出了一个几何推理的直觉：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>局部有序结构
+</span></span><span style="display:flex;"><span>  -&gt; 合法旋转或组合
+</span></span><span style="display:flex;"><span>  -&gt; 更大范围仍然保留可用关系
+</span></span><span style="display:flex;"><span>  -&gt; 一个局部 kernel 可以递归复用
+</span></span></code></pre></div><p>但直觉里藏着两个完全不同的问题：</p>
+<ol>
+<li>旋转能否扩大<strong>可观察范围</strong>？</li>
+<li>旋转是否必须扩大<strong>物理内存</strong>？</li>
+</ol>
+<p>第一件事可能有价值，第二件事必须被严格限制。</p>
+<hr>
+<h2 id="2-第一条路为什么危险">2. 第一条路为什么危险<a hidden class="anchor" aria-hidden="true" href="#2-第一条路为什么危险">#</a></h2>
+<p>最初的递归构造可以写成：</p>
+<p>$</p>
+$ H_{n+1}=\operatorname{CAT}\left(H_n,R_n(H_n)\right) $<p>$</p>
+<p>其中，</p>
+$R_n$<p> 是第 </p>
+$n$<p> 轮旋转，<code>CAT</code> 把原树和旋转后的树连接起来。若每一轮都保留两个副本，逻辑候选数近似翻倍：</p>
+<p>$</p>
+$ N_n \approx 2^n N_0 $<p>$</p>
+<p>这很诱人。递归 16 次，就能描述两百多万个逻辑候选。但如果把每个候选都实体化，内存同样会迅速耗尽。一个“搜索很快”的算法，如果靠无限复制内存换取速度，并不是真正的低成本推理。</p>
+<p>我们做了一个边界实验。它在规则、保序、可懒展开的旋转轨道上得到：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">结果</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>最深层逻辑候选数</td>
+          <td style="text-align: right">2,031,616</td>
+      </tr>
+      <tr>
+          <td>测试查询数</td>
+          <td style="text-align: right">52,898</td>
+      </tr>
+      <tr>
+          <td>确定性查询准确率</td>
+          <td style="text-align: right">1.0000</td>
+      </tr>
+      <tr>
+          <td>学习 kernel 的 OOD 最低准确率</td>
+          <td style="text-align: right">1.0000</td>
+      </tr>
+      <tr>
+          <td>逆变换准确率</td>
+          <td style="text-align: right">1.0000</td>
+      </tr>
+      <tr>
+          <td>最深层 TreeHeap 平均比较次数</td>
+          <td style="text-align: right">20.1682</td>
+      </tr>
+      <tr>
+          <td>无序扫描平均比较次数</td>
+          <td style="text-align: right">1,014,613.8684</td>
+      </tr>
+      <tr>
+          <td>显式存储 / 懒存储比</td>
+          <td style="text-align: right">32,247.873 倍</td>
+      </tr>
+      <tr>
+          <td>破坏秩序后的单路径准确率</td>
+          <td style="text-align: right">0.0360</td>
+      </tr>
+  </tbody>
+</table>
+<p>这个结果证明了一个窄结论：<strong>规则的保序轨道可以被紧凑表示，查询工作量随递归深度线性增长。</strong></p>
+<p>它没有证明“TreeHeap 免费搜索指数空间”。显式排序数组也能用对数次比较完成同类查询，只是需要保存全部数据。实验还专门设置了预算上限，超过上限时返回 <code>BUDGET_EXHAUSTED</code>，不允许继续扩容。</p>
+<p>因此，指数 CAT 生长被归档为边界证据，不再作为运行时架构。我们保留旋转，删除无界复制。</p>
+<hr>
+<h2 id="3-固定容量旋转只能改变观察方向">3. 固定容量：旋转只能改变观察方向<a hidden class="anchor" aria-hidden="true" href="#3-固定容量旋转只能改变观察方向">#</a></h2>
+<p>新的架构只有一条硬规则：系统启动时获得容量为 </p>
+$C$<p> 的节点池，此后任何旋转都必须留在同一空间内。</p>
+<p>$</p>
+$ R_{S,\phi}:\mathcal{H}_C\rightarrow\mathcal{H}_C $<p>$</p>
+$S$<p> 是已有 subheap，</p>
+$\phi$<p> 是一个有限、合法、可逆的地址置换。旋转前后必须满足：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>节点数不变
+</span></span><span style="display:flex;"><span>容量不变
+</span></span><span style="display:flex;"><span>subheap 外部状态不变
+</span></span><span style="display:flex;"><span>R_inverse(R(H)) = H
+</span></span><span style="display:flex;"><span>不申请新的 TreeHeap 节点
+</span></span></code></pre></div><p>以最小三节点树为例：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>      A
+</span></span><span style="display:flex;"><span>     / \
+</span></span><span style="display:flex;"><span>    B   C
+</span></span></code></pre></div><p>正常地址顺序是 <code>[A, B, C]</code>，mirror 后是 <code>[A, C, B]</code>。设局部卷积 kernel 为：</p>
+<p>$</p>
+$ u=w_0 A+w_L B+w_R C $<p>$</p>
+<p>镜像后，同一个 kernel 看到的是：</p>
+<p>$</p>
+$ u'=w_0 A+w_L C+w_R B $<p>$</p>
+<p>数据没有被复制，变化的是“哪个状态位于 left，哪个状态位于 right”。随后用逆置换把结果写回原坐标。这样，旋转就不再是扩容器，而是一个<strong>固定内存中的观察坐标变换</strong>。</p>
+<p>整棵树上的传播写成：</p>
+<p>$</p>
+$ H_{t+1}=\operatorname{ApplyAllSubheaps} \left(H_t,K_\theta,R,g\right) $<p>$</p>
+<p>其中 </p>
+$K_\theta$<p> 是共享局部 kernel，</p>
+$g$<p> 是是否启用某个旋转的 gate。经过 </p>
+$t$<p> 轮，信息大约传播 </p>
+$t$<p> 个结构跳数。增长的是感受野，不是节点池：</p>
+<p>$</p>
+$ \text{space}=O(C),\qquad \text{time}=O(T_{\max}C\cdot \operatorname{cost}(K)) $<p>$</p>
+$C$<p> 和 </p>
+$T_{\max}$<p> 都是硬上限。达到上限仍然没有答案，就返回 <code>UNRESOLVED</code>。拿不到的解不是系统故障，而是接受有限算力的客观边界。</p>
+<hr>
+<h2 id="4-旋转如何成为私有协议">4. 旋转如何成为私有协议<a hidden class="anchor" aria-hidden="true" href="#4-旋转如何成为私有协议">#</a></h2>
+<p>TreeHeap 的参数和运行状态需要分开说清楚：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H_state：当前样本写入后的 TreeHeap 状态
+</span></span><span style="display:flex;"><span>theta：kernel、gate、读写器中的可学习参数
+</span></span><span style="display:flex;"><span>R：合法的结构旋转算子
+</span></span></code></pre></div><p>encoder 可以执行一段旋转程序，再通过 FOLD 把输入写进 </p>
+$H_{state}$<p>：</p>
+<p>$</p>
+$ H_{state}=E_{\theta_E}(X;R_1,\ldots,R_m) $<p>$</p>
+<p>decoder 不需要让人类看懂中间状态，只要能学习对应的逆程序，再用 UNFOLD 读回目标：</p>
+<p>$</p>
+$ \hat X=D_{\theta_D}(H_{state};R_1^{-1},\ldots,R_m^{-1}) $<p>$</p>
+<p>训练损失可以只看最终 echo：</p>
+<p>$</p>
+$ L_{echo}=\lVert \hat X-X\rVert_2^2 $<p>$</p>
+<p>这像每个人不同的笔迹。纸上的轨迹可以不同，但只要写和读形成了稳定配对，协议就能工作。私有协议不是“无法验证”，因为我们仍能检查：原配是否成功、交叉配对是否失败、破坏一个旋转是否增大损失、地址和内存是否保持合法。</p>
+<h3 id="固定协议实验">固定协议实验<a hidden class="anchor" aria-hidden="true" href="#固定协议实验">#</a></h3>
+<p>实验使用容量 127、每节点 4 维状态的 TreeHeap，并注册 6 个相互重叠的 subheap mirror 算子。两个 encoder 使用不同的 6-bit 旋转程序：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>程序 A = [1, 1, 0, 1, 0, 1]
+</span></span><span style="display:flex;"><span>程序 B = [0, 1, 1, 0, 1, 1]
+</span></span></code></pre></div><p>decoder 只有 6 个可训练 gate logit。它不知道正确程序，只能通过 echo MSE 学习逆变换。</p>
+<table>
+  <thead>
+      <tr>
+          <th>检查</th>
+          <th style="text-align: right">程序 A</th>
+          <th style="text-align: right">程序 B</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>学到的 bit 是否完全匹配</td>
+          <td style="text-align: right">是</td>
+          <td style="text-align: right">是</td>
+      </tr>
+      <tr>
+          <td>原配 echo MSE</td>
+          <td style="text-align: right">0</td>
+          <td style="text-align: right">0</td>
+      </tr>
+      <tr>
+          <td>交叉协议 MSE</td>
+          <td style="text-align: right">2.012999</td>
+          <td style="text-align: right">2.012999</td>
+      </tr>
+      <tr>
+          <td>单 bit 错误 MSE</td>
+          <td style="text-align: right">2.012695</td>
+          <td style="text-align: right">0.471290</td>
+      </tr>
+      <tr>
+          <td>逆序执行 MSE</td>
+          <td style="text-align: right">0.440443</td>
+          <td style="text-align: right">0</td>
+      </tr>
+  </tbody>
+</table>
+<p>状态形状始终是 <code>[2048, 127, 4]</code>，没有增加一个节点。gate 也明显硬化：启用项约为 <code>0.995</code> 到 <code>0.997</code>，关闭项约为 <code>0.003</code>。</p>
+<p>这里出现了一个重要修正。程序 A 的有效算子不交换，因此执行顺序是协议的一部分；程序 B 的有效组合恰好顺序等价，因此正序和逆序都能解码。结论不是“递归一定依赖顺序”，而是：</p>
+<blockquote>
+<p><strong>只有当被选中的结构算子彼此非交换时，顺序才携带额外协议信息。</strong></p>
+</blockquote>
+<p>这个实验支持“固定容量旋转可以承载私有协议”，但 encoder 程序是人工固定的。它还没有解释有用的秩序从哪里来。</p>
+<hr>
+<h2 id="5-echo-不会自动产生秩序">5. Echo 不会自动产生秩序<a hidden class="anchor" aria-hidden="true" href="#5-echo-不会自动产生秩序">#</a></h2>
+<p>这是本轮最关键的理论分界。</p>
+<p>如果 encoder 使用任意可逆置换 </p>
+$R$<p>，decoder 使用精确逆变换 </p>
+$R^{-1}$<p>，那么：</p>
+<p>$</p>
+$ R^{-1}(R(H))=H $<p>$</p>
+<p>不论 </p>
+$R$<p> 是否保留父子关系，echo 都可以是零误差。因此：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>可逆性 != 秩序
+</span></span><span style="display:flex;"><span>能 echo != 学会有用结构
+</span></span><span style="display:flex;"><span>私有协议存在 != 私有协议具有推理价值
+</span></span></code></pre></div><p>只训练 echo 时，一套漂亮的保序编码和一套完全混乱的加密式编码可能同样优秀。要让秩序出现，数据和任务必须给它提供选择压力。</p>
+<p>这也修正了“旋转后天然保序”的说法。旋转只是候选操作。保序不是预设奖励，而应当是非保序候选在具体环境中表现更差以后留下的结果。</p>
+<hr>
+<h2 id="6-不告诉模型秩序让环境选择">6. 不告诉模型秩序，让环境选择<a hidden class="anchor" aria-hidden="true" href="#6-不告诉模型秩序让环境选择">#</a></h2>
+<p>我们构造了一个固定种群，共 24 个容量相同的候选旋转：</p>
+<table>
+  <thead>
+      <tr>
+          <th>候选组</th>
+          <th style="text-align: right">数量</th>
+          <th>特征</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>exact</td>
+          <td style="text-align: right">6</td>
+          <td>精确保留父子边的树自同构</td>
+      </tr>
+      <tr>
+          <td>mild</td>
+          <td style="text-align: right">6</td>
+          <td>轻微破坏父子关系</td>
+      </tr>
+      <tr>
+          <td>random</td>
+          <td style="text-align: right">12</td>
+          <td>在同一深度内随机置换</td>
+      </tr>
+  </tbody>
+</table>
+<p>训练 loss 中没有“保序”“边正确”或“路径前缀”标签。模型只需要用共享局部 decoder，根据 parent、sibling 和 children 恢复被遮住的节点。gate 根据这个预测误差选择候选旋转。</p>
+<p>为了区分真正的结构选择与优化器偶然偏好，实验使用两个世界。</p>
+<h3 id="结构世界">结构世界<a hidden class="anchor" aria-hidden="true" href="#结构世界">#</a></h3>
+<p>子节点与父节点相关：</p>
+<p>$</p>
+$ x_{child}=\rho x_{parent}+\sqrt{1-\rho^2}\,\epsilon, \qquad \rho=0.92 $<p>$</p>
+<p>父子边保存了可用于预测的信息。破坏边会让局部 decoder 更难工作。</p>
+<h3 id="iid-世界">IID 世界<a hidden class="anchor" aria-hidden="true" href="#iid-世界">#</a></h3>
+<p>取 </p>
+$\rho=0$<p>，所有节点互相独立。此时父子关系没有预测价值，exact、mild 和 random 理论上应该近似打平。</p>
+<p>单个 seed 的结果一度令人困惑：结构世界几乎全选 exact，但 IID 世界也把 <code>90.59%</code> 的 gate 质量压到了 exact。我们没有把它包装成成功，而是登记为 7/8 gate 通过，并怀疑 gate 与 decoder 的共同训练产生了“先领先者锁死”的中性漂移。</p>
+<p>随后按预注册方案运行 8 个随机种子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1, 7, 19, 42, 73, 99, 314, 2026
+</span></span></code></pre></div><h3 id="8-seed-结果">8-seed 结果<a hidden class="anchor" aria-hidden="true" href="#8-seed-结果">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">结果</th>
+          <th>应如何理解</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>结构世界 exact winner</td>
+          <td style="text-align: right">8 / 8</td>
+          <td>每个 seed 都选择保边变换</td>
+      </tr>
+      <tr>
+          <td>结构世界 exact gate mass 均值</td>
+          <td style="text-align: right">0.999657</td>
+          <td>质量几乎全部集中到 exact 组</td>
+      </tr>
+      <tr>
+          <td>结构世界 exact gate mass 最小值</td>
+          <td style="text-align: right">0.999215</td>
+          <td>最差 seed 仍超过 99.92%</td>
+      </tr>
+      <tr>
+          <td>边保留率与 loss 的 Pearson</td>
+          <td style="text-align: right">-0.997404</td>
+          <td>越保边，loss 越低</td>
+      </tr>
+      <tr>
+          <td>IID winner 分布</td>
+          <td style="text-align: right">2 exact / 1 mild / 5 random</td>
+          <td>没有稳定偏爱 exact</td>
+      </tr>
+      <tr>
+          <td>IID exact gate mass 均值</td>
+          <td style="text-align: right">0.283272</td>
+          <td>接近初始占比 6/24 = 0.25</td>
+      </tr>
+      <tr>
+          <td>IID exact-random loss 差</td>
+          <td style="text-align: right">0.000992</td>
+          <td>三组实际上近似打平</td>
+      </tr>
+      <tr>
+          <td>IID 边保留率与 loss 的 Pearson</td>
+          <td style="text-align: right">-0.018631</td>
+          <td>无结构关系</td>
+      </tr>
+      <tr>
+          <td>exact echo 最大逆变换误差</td>
+          <td style="text-align: right">0</td>
+          <td>所有可逆协议都能无损 echo</td>
+      </tr>
+  </tbody>
+</table>
+<p>九条预注册 gate 全部通过。</p>
+<p>这个结果支持的不是“宇宙天然喜欢二叉树”，而是一个更具体的命题：</p>
+<blockquote>
+<p><strong>当数据的可预测关系沿 TreeHeap 父子边传播时，不含秩序标签的任务损失会稳定淘汰破坏这些关系的旋转；当数据没有这种关系时，选择退化为中性漂移。</strong></p>
+</blockquote>
+<p>这里的“秩序”不是数字升序，而是父子边、路径前缀和局部关系得到保存。秩序成为知识，是因为它减少了预测不确定性。</p>
+<hr>
+<h2 id="7-这与-encoderdecoder-有什么关系">7. 这与 encoder、decoder 有什么关系<a hidden class="anchor" aria-hidden="true" href="#7-这与-encoderdecoder-有什么关系">#</a></h2>
+<p>现在可以把三段证据连起来：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>固定容量旋转
+</span></span><span style="display:flex;"><span>  -&gt; 提供有限、可逆的结构编码候选
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>echo loss
+</span></span><span style="display:flex;"><span>  -&gt; 让 encoder 与 decoder 学会彼此兼容的私有写法
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>结构预测 loss
+</span></span><span style="display:flex;"><span>  -&gt; 从多种可逆写法中筛掉破坏有用关系的写法
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>剩下的旋转程序
+</span></span><span style="display:flex;"><span>  -&gt; 成为既可解码、又保留任务相关结构的私有协议
+</span></span></code></pre></div><p>这比“人工规定左边是主语、右边是宾语”更接近我们一直寻找的涌现路径。研究者规定的只是有限内存、合法算子、可微 gate 和任务；具体协议由 encoder 与 decoder 联合形成，结构价值由数据检验。</p>
+<p>它也解释了为什么只做 token echo 不够。echo 负责<strong>可读回</strong>，结构预测负责<strong>读回之前不要把有用关系打乱</strong>。两者缺一不可。</p>
+<hr>
+<h2 id="8-当前证据没有证明什么">8. 当前证据没有证明什么<a hidden class="anchor" aria-hidden="true" href="#8-当前证据没有证明什么">#</a></h2>
+<p>这轮结果很强，但边界同样明确：</p>
+<ol>
+<li>候选旋转来自固定的 24 个算子，模型还没有自己发明新的旋转公式。</li>
+<li>数据是 Gaussian tree world，不是真实语言、图像或世界模型。</li>
+<li>exact 候选保留的是给定父子边，不代表现实任务一定应该使用这棵树。</li>
+<li>实验没有证明 TreeHeap 比 Transformer、MLP、图网络或经典数据结构更快。</li>
+<li>两百万逻辑候选实验不适用于密码破解，也不构成对加密算法的威胁证据。</li>
+<li>旋转扩大的是固定内存中的观察范围，不允许解释为无限算力或无限答案。</li>
+</ol>
+<p>尤其需要避免一个新的循环论证：先人工构造“正确树”，再证明保留这棵树最好。下一阶段必须让树的 placement、compose 与旋转共同面对真实数据，而不是把正确结构偷偷写进输入。</p>
+<hr>
+<h2 id="9-下一阶段让语言决定哪种旋转活下来">9. 下一阶段：让语言决定哪种旋转活下来<a hidden class="anchor" aria-hidden="true" href="#9-下一阶段让语言决定哪种旋转活下来">#</a></h2>
+<p>下一条可证伪路线应保持固定容量，不再申请外部 TreeHeap 内存：</p>
+<ol>
+<li>从真实语料生成
+$H_{state}$，禁止 decoder 旁路读取原字符串。</li>
+<li>注册一组有限的 subheap 旋转和不同递归深度，仍不提供语法标签。</li>
+<li>使用 echo、上下文预测或 seq2seq loss 联合训练 encoder gate 与 decoder。</li>
+<li>比较结构候选、随机同深度置换和不旋转 baseline。</li>
+<li>在训练后审计父子边、路径前缀、地址复用、OOD 深度与推理成本。</li>
+<li>检查不同 seed 是否选择稳定关系，而不是复现一次 winner lock-in。</li>
+</ol>
+<p>预期不应写成“语言必然选择 mirror”。更谨慎的 predict 是：</p>
+<blockquote>
+<p>若 TreeHeap 的局部关系与语料中的可预测关系对齐，则结构保持更好的旋转程序应获得更低验证 loss、更稳定的多 seed 选择，以及更好的未见深度或未见地址外推；若随机置换同样有效，则旋转私有协议没有提供额外结构价值。</p>
+</blockquote>
+<p>这条 predict 同时允许成功和失败。失败时，我们应该修改 placement、FOLD 或候选算子，而不是继续扩大内存寻找答案。</p>
+<hr>
+<h2 id="10-航行结论">10. 航行结论<a hidden class="anchor" aria-hidden="true" href="#10-航行结论">#</a></h2>
+<p>这轮工作把一个容易失控的想法变成了有限工程对象：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>旧想法：旋转一次，复制一个新空间
+</span></span><span style="display:flex;"><span>新设计：旋转一次，重排固定 subheap
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>旧假设：合法旋转天然保序
+</span></span><span style="display:flex;"><span>新结论：可逆旋转只是候选，秩序必须被任务选择
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>旧证据：echo 可以恢复输入
+</span></span><span style="display:flex;"><span>新证据：echo 证明私有协议，结构预测证明协议保留有用关系
+</span></span></code></pre></div><p>TreeHeap 旋转目前已经有三层受控证据：可逆、固定容量、可学习配对；非交换组合可以携带顺序；结构化环境会在多 seed 中稳定选择保留关系的候选。它还不是语言 encoder，也不是完成的智能系统，但已经不再只是一个几何比喻。</p>
+<p>更重要的是，我们接受了一条工程伦理：一个算法越容易让人想无限递归，越需要先写死容量、轮数和失败返回值。有限不是遗憾。有限使实验可以复现，使系统可以停止，也使真正的结构收益不再被无限内存掩盖。</p>
+<p>ARA 代码、预注册和原始 evidence 保存在 SameTime 仓库的以下目录：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/m0-treeheap-math/evidence/bounded_rotation_search_probe/
+</span></span><span style="display:flex;"><span>ara/m0-treeheap-math/evidence/fixed_capacity_rotation_protocol_probe/
+</span></span><span style="display:flex;"><span>ara/m0-treeheap-math/evidence/rotation_selection_evolution_probe/
+</span></span><span style="display:flex;"><span>ara/m0-treeheap-math/evidence/rotation_selection_multiseed_probe/
+</span></span></code></pre></div><p>对应提交：<code>8cf183d</code>、<code>f97f136</code>、<code>b2af86a</code>。项目公开仓库为 <a href="https://github.com/houming818/sametime">houming818/sametime</a>。</p>
+<p>本文与相关代码沿用项目现有开源许可证。实验数字是受控 toy evidence，不应脱离边界宣传为真实语言、通用推理或密码学能力。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, Butterfly, XOR, Long-Range, Reversible, Gradient, Experiment">
+<meta name="description" content="审视二叉 TreeHeap 的长距瓶颈，放弃循环移位与全树 flat attention，提出基于二进制地址、局部可逆核和对数通信轮次的 XOR Butterfly 实验。">
+<meta name="author" content="Houming818 &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/076-treeheap-butterfly-long-range.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/076-treeheap-butterfly-long-range.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/076-treeheap-butterfly-long-range.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly">
+  <meta property="og:description" content="审视二叉 TreeHeap 的长距瓶颈，放弃循环移位与全树 flat attention，提出基于二进制地址、局部可逆核和对数通信轮次的 XOR Butterfly 实验。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-07-30T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-07-30T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly">
+  <meta name="twitter:description" content="审视二叉 TreeHeap 的长距瓶颈，放弃循环移位与全树 flat attention，提出基于二进制地址、局部可逆核和对数通信轮次的 XOR Butterfly 实验。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly",
+      "item": "https://www.lostmap.cn/spr/076-treeheap-butterfly-long-range.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly",
+  "name": "[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly",
+  "description": "审视二叉 TreeHeap 的长距瓶颈，放弃循环移位与全树 flat attention，提出基于二进制地址、局部可逆核和对数通信轮次的 XOR Butterfly 实验。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "Butterfly", "XOR", "Long-Range", "Reversible", "Gradient", "Experiment"
+  ],
+  "articleBody": "TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly 证据状态：合成长距地址通信机制得到支持；语言价值尚未验证。\n本文首先公开问题、Claim、预测和反证条件。正式数据出来后再更新结论，不把数学上按定义成立的部分冒充语言能力。\n1. 为什么突然要研究长距离 我们刚刚修正了 decoder 的一个设计：不再让 STOP gate 决定一棵子树有没有资格继续学习，而是强制执行递归。没有贡献的通道，可以让自己的 value 增量自然趋近于零。\n但 Houming818 随即指出了更深的问题。\n长度为 8 的 string 放进相邻二叉树以后：\nroot / \\ [0..3] [4..7] / \\ / \\ [0,1] [2,3] [4,5] [6,7] 位置 0 和位置 1 很快相遇；位置 0 和位置 7 却必须一直上升到 root。\n如果 leaf 0 的输出需要 leaf 7 的信息，计算需要经过多层 FOLD，再经过多层 UNFOLD。中间每一层都在改变分辨率。于是问题不再只是“梯度能不能到达”，而是：\n远距离关系是否被迫穿过一个过于粗糙的 root 瓶颈？\n2. 可逆不等于关系容易计算 当前 lifting TreeHeap 可以保存：\n$\n$ H_{state}=\\left(root,details,addresses\\right) $$\n只要这些状态完整，FOLD/UNFOLD 可以做到数值闭合。\n但是，“可以还原所有输入”不等于“任意两个位置的关系都已经在 root 中显式出现”。\n例如：\n$\n$ relation(x_0,x_7) $$\n可能需要同时观察两个遥远 leaf。即使 root 和 details 没有丢失它们，decoder 仍然需要一条合适的计算路径把它们放到同一个局部 kernel 中。\n所以这里必须区分：\n问题 含义 信息保存 原始 leaf 是否还能由 root + details 恢复 关系计算 两个遥远 leaf 是否能在较短路径内共同参与一个算子 语言理解 模型是否从真实语料中归纳出有用关系 本轮只研究第二项。\n3. 为什么不直接让整棵树参加 Attention 一个直接方案是让 query 对所有 TreeHeap 节点做一次全局 softmax：\n$\n$ C=\\sum_i softmax(QK_i^T)V_i $$\n这样梯度很容易到达所有节点，但 READ 已经变成了 flat attention。树只负责提前制造一批向量，最终查询仍然是全局比较。\n这可以作为诊断基线，却不能成为 TreeHeap 的核心答案。否则最合理的工程选择确实是直接使用 Transformer。\n4. 为什么循环矩阵也不够 另一个想法是把 string 做循环移位：\ncat is running is running cat running cat is 它形成循环矩阵，适合做圆周卷积，也能让句尾与句首靠近。\n问题是语言通常不是圆：\n句尾和句首不天然相邻； 循环移动不会缩短所有位置对的距离； 如果真的把每个完整 rotation 挂在 leaf 上，会产生 $O(N^2)$数据复制； decoder 可能直接从复制的 string 绕过 TreeHeap。 所以循环矩阵提供了一个观察坐标系，但没有一般性解决长距通信。\n5. 稀疏系统的客观下限 假设每个节点一轮只能与固定数量 $k$ 的邻居通信。经过 $t$ 轮，它最多影响大约 $k^t$ 个节点。要覆盖长度为 $N$ 的空间，至少需要：\n$\n$ t=\\Omega(\\log_k N) $$\n因此，在不使用全连接的前提下，不能要求任意两个节点都一跳相遇。真正合理的目标是：\n用 $O(\\log N)$ 轮局部计算建立全局感受野，并避免所有信息同时挤入一个 root。\n6. XOR Butterfly：利用二进制地址 长度 8 时，leaf 地址可以写成：\n0 = 000 1 = 001 2 = 010 3 = 011 4 = 100 5 = 101 6 = 110 7 = 111 第 $s$ 轮，让节点 $i$ 与下面的地址通信：\n$\n$ partner_s(i)=i\\operatorname{XOR}2^s $$\n三轮分别是：\n第 0 轮：(0,1) (2,3) (4,5) (6,7) 第 1 轮：(0,2) (1,3) (4,6) (5,7) 第 2 轮：(0,4) (1,5) (2,6) (3,7) 位置 7 的信息可以沿地址位传播：\n111 -\u003e 110 -\u003e 100 -\u003e 000 三轮后到达位置 0。一般情况下，任意两个 $D$ 位地址最多相差 $D=\\log_2N$ 个 bit。\n这不是循环，也没有制造假的句首句尾关系。它是在逐位打开二进制地址空间。\n7. 每一轮仍然只是二节点 kernel 最小的确定性 kernel 可以写成：\n$\n$ c=\\frac{a+b}{\\sqrt{2}} $$\n$\n$ d=\\frac{a-b}{\\sqrt{2}} $$\n它可以精确逆运算：\n$\n$ a=\\frac{c+d}{\\sqrt{2}},\\qquad b=\\frac{c-d}{\\sqrt{2}} $$\n并保持总能量：\n$\n$ \\lVert a\\rVert^2+\\lVert b\\rVert^2 = \\lVert c\\rVert^2+\\lVert d\\rVert^2 $$\n因此，在纯线性合同中，它不会自然放大或缩小 norm。它也是正交变换，反向梯度拥有相同的范数保持性质。\n学习版本仍然只在一对节点中计算，不建立全局注意力矩阵。\n8. 它与普通二叉 FOLD 有什么不同 普通 FOLD 不断缩小宽度：\n8 -\u003e 4 -\u003e 2 -\u003e 1 所有远程信息最后汇入一个 root。\nButterfly 保持固定宽度：\n8 -\u003e 8 -\u003e 8 -\u003e 8 但每轮扩大每个位置的感受野：\n第 0 轮后：2 个地址 第 1 轮后：4 个地址 第 2 轮后：8 个地址 它不是新的外部内存，也不允许树无限生长。系统给定多少 leaf，就始终只使用多少 leaf。\n推荐组合为：\ntoken leaves ↓ XOR Butterfly 局部通信 ↓ 带长距上下文的 leaves ↓ TreeHeap FOLD ↓ root + details ↓ TreeHeap UNFOLD ↓ 对应的 Butterfly decoder ↓ leaf softmax 9. 这会不会又变成 flat Butterfly 每轮只有 $N/2$ 次二节点操作，总操作数为：\n$\n$ \\frac{N}{2}\\log_2N $$\n它没有构造 $N\\times N$ 的 token 对矩阵。\n结构 关系计算规模 任意节点通信距离 Dense attention $O(N^2)$ 1 单棵相邻二叉树 $O(N)$ 最坏约 $2\\log_2N$，经过 root XOR Butterfly $O(N\\log N)$ 最坏 $\\log_2N$，无单 root 汇聚 它比单树付出更多计算，但仍比 dense attention 稀疏。是否值得，要由实验决定。\n10. 本轮 Claim S3-TREEHEAP-BUTTERFLY-LONGRANGE-C01 固定容量的 XOR Butterfly，如果由局部二节点 kernel 组成，应当能够：\n在 $\\log_2N$轮内建立所有地址之间的感受野； 保持确定性正交合同的可逆性、能量与梯度尺度； 在地址条件长距读取任务中，击败相同深度但始终只看邻接对的 kernel； 击败把所有输入压入一个有限 root 再并行读出的 bottleneck； 不构造 dense $N\\times N$attention。 这个 Claim 不包含语言理解，也不包含 Transformer 性能对比。\n11. 归纳实验是什么 随机生成长度 32 的 token array，并给模型一个地址查询 $q$。输出位置 $i$ 的目标是：\n$\n$ target[i]=source[i\\operatorname{XOR}q] $$\n训练只使用二进制中含一个或两个 1 的查询。测试使用从未见过的三位及以上组合，包括：\nq = 31 = 11111 然后不重新训练，把同一个共享 kernel 放到长度 64：\nq = 63 = 111111 这在测试模型是否学会了“逐个地址 bit 执行局部交换”的组合规则，而不是记住完整地址。\n12. 三个对照组 方案 做什么 Butterfly 每轮切换一个 XOR 地址 bit Adjacent-only 每轮都重复相邻配对 Root bottleneck 递归压到一个有限 root，再预测所有位置 三组使用相同随机 token、交叉熵、训练步数和测试查询。参数量与运行时间也会记录。\n13. 预注册通过线 确定性合同必须全部通过：\ninverse MSE \u003c= 1e-10 energy relative error \u003c= 1e-6 最终地址覆盖率 = 100% gradient norm ratio 位于 [0.999, 1.001] 三颗随机种子中至少两颗还要同时满足：\nwidth-32 未见查询准确率 \u003e= 95% 最大距离查询准确率 \u003e= 90% width-64 未见宽度准确率 \u003e= 90% 比 adjacent-only 高至少 25 个百分点 比 root-bottleneck 高至少 25 个百分点 如果数学合同通过、训练实验失败，只能保留“Butterfly 是合法代数工具”，不能说它是有效学习机制。\n14. 即使成功，也还没有证明什么 通过本轮实验仍然不能说明：\nXOR 地址符合语言依存结构； WMT 翻译会改善； TreeHeap 已形成语义私有协议； Butterfly 比成熟 Transformer 更快； 合成地址搬运等于推理。 下一步只有在本轮结果成立后，才把 Butterfly 插入冻结的 WMT TreeHeap，用 matched ablation 比较：\n原 TreeHeap vs 原 TreeHeap + Butterfly 15. 正式实验结果 预注册完成后，实验在 io 的 CUDA 环境通过 taskd 任务 78 执行。三颗随机种子，每个方案训练 1,200 步，总用时 82.2 秒。\n15.1 数学合同 宽度 深度 逆运算 MSE 能量相对误差 梯度 norm 比 地址覆盖率 局部 pair 次数 8 3 1.57e-14 0 0.99999994 100% 12 16 4 2.61e-14 0 0.99999988 100% 32 32 5 3.88e-14 1.21e-7 0.99999994 100% 80 64 6 5.37e-14 2.35e-7 0.99999988 100% 192 可逆、能量、梯度和覆盖率四组合同全部通过。宽度 64 时，Butterfly 只执行 192 次二节点运算；如果构造完整地址矩阵，则有 4,096 个地址对。\n15.2 学习结果 三颗 seed 的平均 token 准确率：\n方案 32 位未见组合 32 位最大距离 64 位未见宽度 参数量 XOR Butterfly 100.000% 99.998% 99.998% 4,226 Adjacent-only 1.573% 1.557% 1.565% 4,226 Root bottleneck 5.039% 5.058% 2.078% 46,464 词表大小为 64，随机猜测准确率约为 $1/64=1.5625\\%$。所以 adjacent-only 基本停留在随机水平。Root bottleneck 使用约 11 倍参数，在训练宽度上学到少量统计，但没有保存每个随机 token 的地址身份；外推到宽度 64 后下降到 2.078%。\nButterfly 在训练中只见过一位和两位地址变化，却组合出了未见的三位以上变化，并直接扩展到多一层的 64 位空间。三颗 seed 的查询 bit 交换概率差为 0.6282/0.6273/0.6274，说明模型学到的是局部 bit 规则，而不是一张固定置换表。\n但查询的二进制分解是明确的架构先验。实验没有证明模型能从自然语言中自己发现 XOR，也没有证明这种地址布局就是语言结构。\n15.3 当前结论 本轮 Claim 在预注册范围内得到支持：固定容量的 TreeHeap 地址可以通过 XOR Butterfly，在不构造 dense attention 的情况下，以对数轮次完成可逆、梯度稳定的长距通信；这个局部协议可以由交叉熵训练，并组合到未见查询和更大宽度。\n下一步是 matched WMT ablation，而不是继续增加合成 toy。只有真实文本 NLL、source 因果干预和生成质量同时改善，才能说它解决了 TreeHeap 的语言长距问题。\n原创与开放说明： 本文把 XOR/Butterfly 稀疏通信与 SameTime 的固定容量 TreeHeap 地址、FOLD/UNFOLD 和私有协议问题组合为一条可证伪研究路线。相关 Claim、代码和 evidence 以 GPLv3 在 SameTime/ARA 中公开。Butterfly、Walsh-Hadamard 变换及 XOR 网络本身属于已有数学与计算结构，本文不主张发明这些基础对象。\n",
+  "wordCount" : "718",
+  "inLanguage": "en",
+  "datePublished": "2026-07-30T00:00:00Z",
+  "dateModified": "2026-07-30T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Houming818 \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/076-treeheap-butterfly-long-range.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item active">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly
+    </h1>
+    <div class="post-description">
+      审视二叉 TreeHeap 的长距瓶颈，放弃循环移位与全树 flat attention，提出基于二进制地址、局部可逆核和对数通信轮次的 XOR Butterfly 实验。
+    </div>
+    <div class="post-meta"><span title='2026-07-30 00:00:00 +0000 UTC'>July 30, 2026</span>&nbsp;·&nbsp;<span>Houming818 &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="treeheap-长距通信不做全局-attention试试-xor-butterfly">TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly<a hidden class="anchor" aria-hidden="true" href="#treeheap-长距通信不做全局-attention试试-xor-butterfly">#</a></h1>
+<blockquote>
+<p><strong>证据状态：合成长距地址通信机制得到支持；语言价值尚未验证。</strong></p>
+<p>本文首先公开问题、Claim、预测和反证条件。正式数据出来后再更新结论，不把数学上按定义成立的部分冒充语言能力。</p>
+</blockquote>
+<h2 id="1-为什么突然要研究长距离">1. 为什么突然要研究长距离<a hidden class="anchor" aria-hidden="true" href="#1-为什么突然要研究长距离">#</a></h2>
+<p>我们刚刚修正了 decoder 的一个设计：不再让 <code>STOP</code> gate 决定一棵子树有没有资格继续学习，而是强制执行递归。没有贡献的通道，可以让自己的 value 增量自然趋近于零。</p>
+<p>但 Houming818 随即指出了更深的问题。</p>
+<p>长度为 8 的 string 放进相邻二叉树以后：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>                    root
+</span></span><span style="display:flex;"><span>              /              \
+</span></span><span style="display:flex;"><span>          [0..3]             [4..7]
+</span></span><span style="display:flex;"><span>         /     \             /     \
+</span></span><span style="display:flex;"><span>      [0,1]   [2,3]       [4,5]   [6,7]
+</span></span></code></pre></div><p>位置 0 和位置 1 很快相遇；位置 0 和位置 7 却必须一直上升到 root。</p>
+<p>如果 leaf 0 的输出需要 leaf 7 的信息，计算需要经过多层 FOLD，再经过多层 UNFOLD。中间每一层都在改变分辨率。于是问题不再只是“梯度能不能到达”，而是：</p>
+<blockquote>
+<p>远距离关系是否被迫穿过一个过于粗糙的 root 瓶颈？</p>
+</blockquote>
+<h2 id="2-可逆不等于关系容易计算">2. 可逆不等于关系容易计算<a hidden class="anchor" aria-hidden="true" href="#2-可逆不等于关系容易计算">#</a></h2>
+<p>当前 lifting TreeHeap 可以保存：</p>
+<p>$</p>
+$ H_{state}=\left(root,details,addresses\right) $<p>$</p>
+<p>只要这些状态完整，FOLD/UNFOLD 可以做到数值闭合。</p>
+<p>但是，“可以还原所有输入”不等于“任意两个位置的关系都已经在 root 中显式出现”。</p>
+<p>例如：</p>
+<p>$</p>
+$ relation(x_0,x_7) $<p>$</p>
+<p>可能需要同时观察两个遥远 leaf。即使 root 和 details 没有丢失它们，decoder 仍然需要一条合适的计算路径把它们放到同一个局部 kernel 中。</p>
+<p>所以这里必须区分：</p>
+<table>
+  <thead>
+      <tr>
+          <th>问题</th>
+          <th>含义</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>信息保存</td>
+          <td>原始 leaf 是否还能由 root + details 恢复</td>
+      </tr>
+      <tr>
+          <td>关系计算</td>
+          <td>两个遥远 leaf 是否能在较短路径内共同参与一个算子</td>
+      </tr>
+      <tr>
+          <td>语言理解</td>
+          <td>模型是否从真实语料中归纳出有用关系</td>
+      </tr>
+  </tbody>
+</table>
+<p>本轮只研究第二项。</p>
+<h2 id="3-为什么不直接让整棵树参加-attention">3. 为什么不直接让整棵树参加 Attention<a hidden class="anchor" aria-hidden="true" href="#3-为什么不直接让整棵树参加-attention">#</a></h2>
+<p>一个直接方案是让 query 对所有 TreeHeap 节点做一次全局 softmax：</p>
+<p>$</p>
+$ C=\sum_i softmax(QK_i^T)V_i $<p>$</p>
+<p>这样梯度很容易到达所有节点，但 READ 已经变成了 flat attention。树只负责提前制造一批向量，最终查询仍然是全局比较。</p>
+<p>这可以作为诊断基线，却不能成为 TreeHeap 的核心答案。否则最合理的工程选择确实是直接使用 Transformer。</p>
+<h2 id="4-为什么循环矩阵也不够">4. 为什么循环矩阵也不够<a hidden class="anchor" aria-hidden="true" href="#4-为什么循环矩阵也不够">#</a></h2>
+<p>另一个想法是把 string 做循环移位：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cat is running
+</span></span><span style="display:flex;"><span>is running cat
+</span></span><span style="display:flex;"><span>running cat is
+</span></span></code></pre></div><p>它形成循环矩阵，适合做圆周卷积，也能让句尾与句首靠近。</p>
+<p>问题是语言通常不是圆：</p>
+<ul>
+<li>句尾和句首不天然相邻；</li>
+<li>循环移动不会缩短所有位置对的距离；</li>
+<li>如果真的把每个完整 rotation 挂在 leaf 上，会产生
+$O(N^2)$数据复制；</li>
+<li>decoder 可能直接从复制的 string 绕过 TreeHeap。</li>
+</ul>
+<p>所以循环矩阵提供了一个观察坐标系，但没有一般性解决长距通信。</p>
+<h2 id="5-稀疏系统的客观下限">5. 稀疏系统的客观下限<a hidden class="anchor" aria-hidden="true" href="#5-稀疏系统的客观下限">#</a></h2>
+<p>假设每个节点一轮只能与固定数量 </p>
+$k$<p> 的邻居通信。经过 </p>
+$t$<p> 轮，它最多影响大约 </p>
+$k^t$<p> 个节点。要覆盖长度为 </p>
+$N$<p> 的空间，至少需要：</p>
+<p>$</p>
+$ t=\Omega(\log_k N) $<p>$</p>
+<p>因此，在不使用全连接的前提下，不能要求任意两个节点都一跳相遇。真正合理的目标是：</p>
+<blockquote>
+<p>用 </p>
+$O(\log N)$<p> 轮局部计算建立全局感受野，并避免所有信息同时挤入一个 root。</p>
+</blockquote>
+<h2 id="6-xor-butterfly利用二进制地址">6. XOR Butterfly：利用二进制地址<a hidden class="anchor" aria-hidden="true" href="#6-xor-butterfly利用二进制地址">#</a></h2>
+<p>长度 8 时，leaf 地址可以写成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>0 = 000
+</span></span><span style="display:flex;"><span>1 = 001
+</span></span><span style="display:flex;"><span>2 = 010
+</span></span><span style="display:flex;"><span>3 = 011
+</span></span><span style="display:flex;"><span>4 = 100
+</span></span><span style="display:flex;"><span>5 = 101
+</span></span><span style="display:flex;"><span>6 = 110
+</span></span><span style="display:flex;"><span>7 = 111
+</span></span></code></pre></div><p>第 </p>
+$s$<p> 轮，让节点 </p>
+$i$<p> 与下面的地址通信：</p>
+<p>$</p>
+$ partner_s(i)=i\operatorname{XOR}2^s $<p>$</p>
+<p>三轮分别是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>第 0 轮：(0,1) (2,3) (4,5) (6,7)
+</span></span><span style="display:flex;"><span>第 1 轮：(0,2) (1,3) (4,6) (5,7)
+</span></span><span style="display:flex;"><span>第 2 轮：(0,4) (1,5) (2,6) (3,7)
+</span></span></code></pre></div><p>位置 7 的信息可以沿地址位传播：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>111 -&gt; 110 -&gt; 100 -&gt; 000
+</span></span></code></pre></div><p>三轮后到达位置 0。一般情况下，任意两个 </p>
+$D$<p> 位地址最多相差 </p>
+$D=\log_2N$<p> 个 bit。</p>
+<p>这不是循环，也没有制造假的句首句尾关系。它是在逐位打开二进制地址空间。</p>
+<h2 id="7-每一轮仍然只是二节点-kernel">7. 每一轮仍然只是二节点 kernel<a hidden class="anchor" aria-hidden="true" href="#7-每一轮仍然只是二节点-kernel">#</a></h2>
+<p>最小的确定性 kernel 可以写成：</p>
+<p>$</p>
+$ c=\frac{a+b}{\sqrt{2}} $<p>$</p>
+<p>$</p>
+$ d=\frac{a-b}{\sqrt{2}} $<p>$</p>
+<p>它可以精确逆运算：</p>
+<p>$</p>
+$ a=\frac{c+d}{\sqrt{2}},\qquad b=\frac{c-d}{\sqrt{2}} $<p>$</p>
+<p>并保持总能量：</p>
+<p>$</p>
+$ \lVert a\rVert^2+\lVert b\rVert^2 = \lVert c\rVert^2+\lVert d\rVert^2 $<p>$</p>
+<p>因此，在纯线性合同中，它不会自然放大或缩小 norm。它也是正交变换，反向梯度拥有相同的范数保持性质。</p>
+<p>学习版本仍然只在一对节点中计算，不建立全局注意力矩阵。</p>
+<h2 id="8-它与普通二叉-fold-有什么不同">8. 它与普通二叉 FOLD 有什么不同<a hidden class="anchor" aria-hidden="true" href="#8-它与普通二叉-fold-有什么不同">#</a></h2>
+<p>普通 FOLD 不断缩小宽度：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>8 -&gt; 4 -&gt; 2 -&gt; 1
+</span></span></code></pre></div><p>所有远程信息最后汇入一个 root。</p>
+<p>Butterfly 保持固定宽度：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>8 -&gt; 8 -&gt; 8 -&gt; 8
+</span></span></code></pre></div><p>但每轮扩大每个位置的感受野：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>第 0 轮后：2 个地址
+</span></span><span style="display:flex;"><span>第 1 轮后：4 个地址
+</span></span><span style="display:flex;"><span>第 2 轮后：8 个地址
+</span></span></code></pre></div><p>它不是新的外部内存，也不允许树无限生长。系统给定多少 leaf，就始终只使用多少 leaf。</p>
+<p>推荐组合为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token leaves
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>XOR Butterfly 局部通信
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>带长距上下文的 leaves
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>TreeHeap FOLD
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>root + details
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>TreeHeap UNFOLD
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>对应的 Butterfly decoder
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>leaf softmax
+</span></span></code></pre></div><h2 id="9-这会不会又变成-flat">9. 这会不会又变成 flat<a hidden class="anchor" aria-hidden="true" href="#9-这会不会又变成-flat">#</a></h2>
+<p>Butterfly 每轮只有 </p>
+$N/2$<p> 次二节点操作，总操作数为：</p>
+<p>$</p>
+$ \frac{N}{2}\log_2N $<p>$</p>
+<p>它没有构造 </p>
+$N\times N$<p> 的 token 对矩阵。</p>
+<table>
+  <thead>
+      <tr>
+          <th>结构</th>
+          <th style="text-align: right">关系计算规模</th>
+          <th style="text-align: right">任意节点通信距离</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Dense attention</td>
+          <td style="text-align: right">$O(N^2)$</td>
+          <td style="text-align: right">1</td>
+      </tr>
+      <tr>
+          <td>单棵相邻二叉树</td>
+          <td style="text-align: right">$O(N)$</td>
+          <td style="text-align: right">最坏约 $2\log_2N$，经过 root</td>
+      </tr>
+      <tr>
+          <td>XOR Butterfly</td>
+          <td style="text-align: right">$O(N\log N)$</td>
+          <td style="text-align: right">最坏 $\log_2N$，无单 root 汇聚</td>
+      </tr>
+  </tbody>
+</table>
+<p>它比单树付出更多计算，但仍比 dense attention 稀疏。是否值得，要由实验决定。</p>
+<h2 id="10-本轮-claim">10. 本轮 Claim<a hidden class="anchor" aria-hidden="true" href="#10-本轮-claim">#</a></h2>
+<h3 id="s3-treeheap-butterfly-longrange-c01">S3-TREEHEAP-BUTTERFLY-LONGRANGE-C01<a hidden class="anchor" aria-hidden="true" href="#s3-treeheap-butterfly-longrange-c01">#</a></h3>
+<p>固定容量的 XOR Butterfly，如果由局部二节点 kernel 组成，应当能够：</p>
+<ol>
+<li>在
+$\log_2N$轮内建立所有地址之间的感受野；</li>
+<li>保持确定性正交合同的可逆性、能量与梯度尺度；</li>
+<li>在地址条件长距读取任务中，击败相同深度但始终只看邻接对的 kernel；</li>
+<li>击败把所有输入压入一个有限 root 再并行读出的 bottleneck；</li>
+<li>不构造 dense
+$N\times N$attention。</li>
+</ol>
+<p>这个 Claim 不包含语言理解，也不包含 Transformer 性能对比。</p>
+<h2 id="11-归纳实验是什么">11. 归纳实验是什么<a hidden class="anchor" aria-hidden="true" href="#11-归纳实验是什么">#</a></h2>
+<p>随机生成长度 32 的 token array，并给模型一个地址查询 </p>
+$q$<p>。输出位置 </p>
+$i$<p> 的目标是：</p>
+<p>$</p>
+$ target[i]=source[i\operatorname{XOR}q] $<p>$</p>
+<p>训练只使用二进制中含一个或两个 <code>1</code> 的查询。测试使用从未见过的三位及以上组合，包括：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>q = 31 = 11111
+</span></span></code></pre></div><p>然后不重新训练，把同一个共享 kernel 放到长度 64：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>q = 63 = 111111
+</span></span></code></pre></div><p>这在测试模型是否学会了“逐个地址 bit 执行局部交换”的组合规则，而不是记住完整地址。</p>
+<h2 id="12-三个对照组">12. 三个对照组<a hidden class="anchor" aria-hidden="true" href="#12-三个对照组">#</a></h2>
+<table>
+  <thead>
+      <tr>
+          <th>方案</th>
+          <th>做什么</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Butterfly</td>
+          <td>每轮切换一个 XOR 地址 bit</td>
+      </tr>
+      <tr>
+          <td>Adjacent-only</td>
+          <td>每轮都重复相邻配对</td>
+      </tr>
+      <tr>
+          <td>Root bottleneck</td>
+          <td>递归压到一个有限 root，再预测所有位置</td>
+      </tr>
+  </tbody>
+</table>
+<p>三组使用相同随机 token、交叉熵、训练步数和测试查询。参数量与运行时间也会记录。</p>
+<h2 id="13-预注册通过线">13. 预注册通过线<a hidden class="anchor" aria-hidden="true" href="#13-预注册通过线">#</a></h2>
+<p>确定性合同必须全部通过：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>inverse MSE &lt;= 1e-10
+</span></span><span style="display:flex;"><span>energy relative error &lt;= 1e-6
+</span></span><span style="display:flex;"><span>最终地址覆盖率 = 100%
+</span></span><span style="display:flex;"><span>gradient norm ratio 位于 [0.999, 1.001]
+</span></span></code></pre></div><p>三颗随机种子中至少两颗还要同时满足：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>width-32 未见查询准确率 &gt;= 95%
+</span></span><span style="display:flex;"><span>最大距离查询准确率 &gt;= 90%
+</span></span><span style="display:flex;"><span>width-64 未见宽度准确率 &gt;= 90%
+</span></span><span style="display:flex;"><span>比 adjacent-only 高至少 25 个百分点
+</span></span><span style="display:flex;"><span>比 root-bottleneck 高至少 25 个百分点
+</span></span></code></pre></div><p>如果数学合同通过、训练实验失败，只能保留“Butterfly 是合法代数工具”，不能说它是有效学习机制。</p>
+<h2 id="14-即使成功也还没有证明什么">14. 即使成功，也还没有证明什么<a hidden class="anchor" aria-hidden="true" href="#14-即使成功也还没有证明什么">#</a></h2>
+<p>通过本轮实验仍然不能说明：</p>
+<ul>
+<li>XOR 地址符合语言依存结构；</li>
+<li>WMT 翻译会改善；</li>
+<li>TreeHeap 已形成语义私有协议；</li>
+<li>Butterfly 比成熟 Transformer 更快；</li>
+<li>合成地址搬运等于推理。</li>
+</ul>
+<p>下一步只有在本轮结果成立后，才把 Butterfly 插入冻结的 WMT TreeHeap，用 matched ablation 比较：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>原 TreeHeap
+</span></span><span style="display:flex;"><span>vs
+</span></span><span style="display:flex;"><span>原 TreeHeap + Butterfly
+</span></span></code></pre></div><h2 id="15-正式实验结果">15. 正式实验结果<a hidden class="anchor" aria-hidden="true" href="#15-正式实验结果">#</a></h2>
+<p>预注册完成后，实验在 <code>io</code> 的 CUDA 环境通过 taskd 任务 78 执行。三颗随机种子，每个方案训练 1,200 步，总用时 82.2 秒。</p>
+<h3 id="151-数学合同">15.1 数学合同<a hidden class="anchor" aria-hidden="true" href="#151-数学合同">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">宽度</th>
+          <th style="text-align: right">深度</th>
+          <th style="text-align: right">逆运算 MSE</th>
+          <th style="text-align: right">能量相对误差</th>
+          <th style="text-align: right">梯度 norm 比</th>
+          <th style="text-align: right">地址覆盖率</th>
+          <th style="text-align: right">局部 pair 次数</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">8</td>
+          <td style="text-align: right">3</td>
+          <td style="text-align: right"><code>1.57e-14</code></td>
+          <td style="text-align: right"><code>0</code></td>
+          <td style="text-align: right"><code>0.99999994</code></td>
+          <td style="text-align: right"><code>100%</code></td>
+          <td style="text-align: right">12</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">16</td>
+          <td style="text-align: right">4</td>
+          <td style="text-align: right"><code>2.61e-14</code></td>
+          <td style="text-align: right"><code>0</code></td>
+          <td style="text-align: right"><code>0.99999988</code></td>
+          <td style="text-align: right"><code>100%</code></td>
+          <td style="text-align: right">32</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">32</td>
+          <td style="text-align: right">5</td>
+          <td style="text-align: right"><code>3.88e-14</code></td>
+          <td style="text-align: right"><code>1.21e-7</code></td>
+          <td style="text-align: right"><code>0.99999994</code></td>
+          <td style="text-align: right"><code>100%</code></td>
+          <td style="text-align: right">80</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">64</td>
+          <td style="text-align: right">6</td>
+          <td style="text-align: right"><code>5.37e-14</code></td>
+          <td style="text-align: right"><code>2.35e-7</code></td>
+          <td style="text-align: right"><code>0.99999988</code></td>
+          <td style="text-align: right"><code>100%</code></td>
+          <td style="text-align: right">192</td>
+      </tr>
+  </tbody>
+</table>
+<p>可逆、能量、梯度和覆盖率四组合同全部通过。宽度 64 时，Butterfly 只执行 192 次二节点运算；如果构造完整地址矩阵，则有 4,096 个地址对。</p>
+<h3 id="152-学习结果">15.2 学习结果<a hidden class="anchor" aria-hidden="true" href="#152-学习结果">#</a></h3>
+<p>三颗 seed 的平均 token 准确率：</p>
+<table>
+  <thead>
+      <tr>
+          <th>方案</th>
+          <th style="text-align: right">32 位未见组合</th>
+          <th style="text-align: right">32 位最大距离</th>
+          <th style="text-align: right">64 位未见宽度</th>
+          <th style="text-align: right">参数量</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>XOR Butterfly</td>
+          <td style="text-align: right"><code>100.000%</code></td>
+          <td style="text-align: right"><code>99.998%</code></td>
+          <td style="text-align: right"><code>99.998%</code></td>
+          <td style="text-align: right">4,226</td>
+      </tr>
+      <tr>
+          <td>Adjacent-only</td>
+          <td style="text-align: right"><code>1.573%</code></td>
+          <td style="text-align: right"><code>1.557%</code></td>
+          <td style="text-align: right"><code>1.565%</code></td>
+          <td style="text-align: right">4,226</td>
+      </tr>
+      <tr>
+          <td>Root bottleneck</td>
+          <td style="text-align: right"><code>5.039%</code></td>
+          <td style="text-align: right"><code>5.058%</code></td>
+          <td style="text-align: right"><code>2.078%</code></td>
+          <td style="text-align: right">46,464</td>
+      </tr>
+  </tbody>
+</table>
+<p>词表大小为 64，随机猜测准确率约为 </p>
+$1/64=1.5625\%$<p>。所以 adjacent-only 基本停留在随机水平。Root bottleneck 使用约 11 倍参数，在训练宽度上学到少量统计，但没有保存每个随机 token 的地址身份；外推到宽度 64 后下降到 <code>2.078%</code>。</p>
+<p>Butterfly 在训练中只见过一位和两位地址变化，却组合出了未见的三位以上变化，并直接扩展到多一层的 64 位空间。三颗 seed 的查询 bit 交换概率差为 <code>0.6282/0.6273/0.6274</code>，说明模型学到的是局部 bit 规则，而不是一张固定置换表。</p>
+<p>但查询的二进制分解是明确的架构先验。实验没有证明模型能从自然语言中自己发现 XOR，也没有证明这种地址布局就是语言结构。</p>
+<h3 id="153-当前结论">15.3 当前结论<a hidden class="anchor" aria-hidden="true" href="#153-当前结论">#</a></h3>
+<p>本轮 Claim 在预注册范围内得到支持：固定容量的 TreeHeap 地址可以通过 XOR Butterfly，在不构造 dense attention 的情况下，以对数轮次完成可逆、梯度稳定的长距通信；这个局部协议可以由交叉熵训练，并组合到未见查询和更大宽度。</p>
+<p>下一步是 matched WMT ablation，而不是继续增加合成 toy。只有真实文本 NLL、source 因果干预和生成质量同时改善，才能说它解决了 TreeHeap 的语言长距问题。</p>
+<blockquote>
+<p><strong>原创与开放说明：</strong> 本文把 XOR/Butterfly 稀疏通信与 SameTime 的固定容量 TreeHeap 地址、FOLD/UNFOLD 和私有协议问题组合为一条可证伪研究路线。相关 Claim、代码和 evidence 以 GPLv3 在 SameTime/ARA 中公开。Butterfly、Walsh-Hadamard 变换及 XOR 网络本身属于已有数学与计算结构，本文不主张发明这些基础对象。</p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

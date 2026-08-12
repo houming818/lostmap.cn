@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, Interpretability, Differential Analysis, Multilingual, Causal Intervention, Original Research">
+<meta name="description" content="我们打开一个真实 TreeHeap 层，展示节点覆盖文本、64D 私有状态、读出结果和最近邻反例，并提出通过路径差分、子堆替换与跨语言对齐观察私有编码的新方法。">
+<meta name="author" content="Houming818 &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/056-treeheap-layer-differential-observation.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/056-treeheap-layer-differential-observation.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/056-treeheap-layer-differential-observation.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分">
+  <meta property="og:description" content="我们打开一个真实 TreeHeap 层，展示节点覆盖文本、64D 私有状态、读出结果和最近邻反例，并提出通过路径差分、子堆替换与跨语言对齐观察私有编码的新方法。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-07-15T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-07-15T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分">
+  <meta name="twitter:description" content="我们打开一个真实 TreeHeap 层，展示节点覆盖文本、64D 私有状态、读出结果和最近邻反例，并提出通过路径差分、子堆替换与跨语言对齐观察私有编码的新方法。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分",
+      "item": "https://www.lostmap.cn/spr/056-treeheap-layer-differential-observation.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分",
+  "name": "[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分",
+  "description": "我们打开一个真实 TreeHeap 层，展示节点覆盖文本、64D 私有状态、读出结果和最近邻反例，并提出通过路径差分、子堆替换与跨语言对齐观察私有编码的新方法。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "Interpretability", "Differential Analysis", "Multilingual", "Causal Intervention", "Original Research"
+  ],
+  "articleBody": "看见树内的变化：TreeHeap 单层观察与跨语言差分 TreeHeap 的 encoder 和 decoder 可以形成一套私有编码协议。\n这很像一个人自己的笔迹：别人不一定能从某一笔的角度判断它代表什么，但书写者自己可以稳定地写，也可以稳定地读。\n可是，私有编码不能成为拒绝观察的理由。\n即使我们不知道 64D state 的第 17 维是什么意思，仍然可以问：\n把“米饭”换成“土豆”以后，树的哪些节点发生了变化？变化沿哪条路径传播？把变化后的子堆移植过去，decoder 是否只改变对应概念？\n这篇文章先公开一次真实的单层观察，再提出一种新的 TreeHeap 特征设计：差分传播路径。\n1. 我们刚刚训练了什么 实验使用真实中文语料，而不是人工随机树：\n项目 设置 训练数据 200,000 个真实中文 block 每个 block 64 token TreeHeap 深度 6 节点 state 64D 验证数据 512 个未参与训练的 block 设备 io / RTX 3090 树的各层覆盖范围如下：\n深度 单节点覆盖 token 同一 64-token block 的节点数 1 2 32 2 4 16 3 8 8 4 16 4 5 32 2 6 64 1 共享 FOLD kernel 从左右子节点递归计算父节点：\n$\n$ z_i^{(d+1)}=K_\\theta\\left(z_{2i}^{(d)},z_{2i+1}^{(d)},e_d\\right). $$\n其中，\n$e_d$ 是深度坐标。所有地址使用同一个 $K_\\theta$，不是每个位置单独记一张参数表。\n这次没有要求 root 完整恢复 64 个 token，而是观察两个尺度量：\nBag 轮廓：这个节点覆盖的区域里有什么 token，不要求顺序。 Adjacency 轮廓：这个区域内有哪些有向相邻 token 对，要求顺序。 Bag 类似远看一张图时看到的主体颜色；Adjacency 更像物体边缘的方向和连接关系。\n2. 一个节点里到底能看到什么 当前实验中，一个节点有三类可观察数据。\n2.1 地址与感受野 地址告诉我们该节点覆盖哪一段输入。\n例如 depth=4 的 node 2 覆盖 token [32,48)。这是 TreeHeap 数据结构天然提供的坐标，不需要 probe 猜测。\n2.2 私有 64D state 例如某个节点的前 8 维是：\n[0.5808, -0.1203, -0.7574, -0.9964, -1.1835, 0.4895, -1.8861, 1.2427] 这些数字本身没有人类词典。不能说 0.5808 就是“花”，或者 -0.9964 就是“时间”。\n它们只在当前 encoder 与 decoder 共同形成的坐标系中有意义。\n2.3 读出与干预 我们可以训练 READ kernel，从 state 读取 Bag 或 Adjacency；还可以替换 state，观察 decoder 输出是否改变。\n前者是相关性观察，后者才是因果观察。\n3. 把 depth=4 的四个节点全部摊开 下面是一条真实验证文本：\n蔓交错，到四月花期，就是一扇开满花的拱门。清唱咖啡，有一面墙的书架，尚有空余，总有客人愿意将看过的，或者喜欢的书放在书架上给大家分享。这里有个赠书的江湖。鼎韵艺术沙龙。\n在 depth=4，每个节点覆盖 16 token，一共有四个节点：\n节点 实际覆盖文本 Bag 读出 cosine Adjacency 读出 cosine 0 蔓交错，到四月花期，就是一扇开满花的拱…… 0.379 0.129 1 门。清唱咖啡，有一面墙的书架，尚有空…… 0.597 -0.087 2 余，总有客人愿意将看过的，或者喜欢的书放在书架…… 0.216 -0.044 3 上给大家分享。这里有个赠书的江湖。鼎韵艺术沙龙 0.644 -0.142 cosine 越接近 1，表示 READ 输出越接近该片段的精确观察目标。\n这张表说明：\n四个节点都不是空白常量； Bag 内容轮廓有不同程度的可读性； 有向排列信息基本没有形成； 同一层不同节点的质量差异很大。 四个 state 相互之间的 cosine 是：\nnode0 node1 node2 node3 node0 1.000 0.451 0.860 -0.079 node1 0.451 1.000 0.326 0.517 node2 0.860 0.326 1.000 -0.087 node3 -0.079 0.517 -0.087 1.000 这说明该层没有完全坍缩成一个 state。node0 与 node3 接近正交，而 node0 与 node2 非常接近。\n但“向量不同”不等于“已经理解语义”。\n4. 一个必须公开的反例 我们拿 depth=4 的 node0，在另外 511 个验证 block 中寻找 state 最近邻。\n查询片段是：\n蔓交错，到四月花期，就是一扇开满花的拱……\n返回片段是：\n发的日子，要预防季节性的传染病的发生，应多吃清淡食物。\n结果：\n指标 数值 state cosine 0.9848 两段文本的精确 Bag cosine 0.2242 两段文本的精确 Adjacency cosine -0.1449 两个 state 看起来几乎相同，但对应文本既不是明显同义，也没有接近的顺序结构。\n这意味着当前 state 空间可能存在方向聚集或局部坍缩。它携带了一些可读信息，却还不是可靠的语义检索坐标系。\n因此不能只展示 state cosine=0.9848，然后宣布模型理解了两句话。必须用外部观察量和因果替换继续核验。\n5. 从低层看到高层 全部验证集的平均结果是：\n覆盖 token 2 4 8 16 32 64 Bag READ cosine 0.267 0.286 0.306 0.334 0.377 0.436 Bag Query 增益 0.184 0.122 0.095 0.086 0.071 0.077 Adjacency READ cosine 0.010 0.012 0.015 0.017 0.021 0.027 这里出现了一个值得保留的现象：\n覆盖范围越大，Bag 轮廓越容易从节点中读出；但精细检索优势没有随深度一起增加。\n这与 Houming818 提出的多尺度理解相容：高层可能不是低层 token 的模糊错误副本，而是在表达覆盖范围更大的几何轮廓。\n但是本次实验只支持很窄的说法：高层保存了一部分无序内容统计。\n它还没有证明：\n高层形成了人类语义； TreeHeap 已经拥有世界模型； 有向结构已经被编码； TreeHeap 检索优于 Transformer。 完整 Claim 的 6 个 Gate 只通过了 3 个，因此 ARA 状态仍是 not supported。\n6. 私有编码如何被观察 绝对坐标不可读，不代表相对变化不可研究。\n考虑最小句对：\nA：小明爱吃米饭。 B：小明爱吃土豆。 两句话只改变一个概念。对每个深度、每个地址计算：\n$\n$ \\Delta_i^{(d)}=H_i^{(d)}(B)-H_i^{(d)}(A). $$\n如果 TreeHeap encoder 真正利用树结构，那么差分不应该平均污染整棵树。我们预测它主要分布在：\n米饭/土豆叶节点 ↓ 宾语 subheap ↓ “吃 + 宾语”父节点 ↓ root 的较粗变化 与“小明”对应的兄弟 subheap 应当基本稳定。\n这就是新的可观察特征：差分传播路径。\n7. 差分路径的四个测量 7.1 地址局部性 设被替换 token 的祖先路径为 $P$，全树节点集合为 $V$。差分能量集中率定义为：\n$\n$ R_{path}=\\frac{\\sum_{i\\in P}\\left\\|\\Delta_i\\right\\|_2^2} {\\sum_{j\\in V}\\left\\|\\Delta_j\\right\\|_2^2}. $$\n如果 $R_{path}$ 很高，说明变化确实沿结构路径传播，而不是无地址地扩散。\n7.2 深度轮廓 不同深度不必保存相同含义。我们记录每层的相对差分：\n$\n$ D_d=\\frac{1}{|V_d|}\\sum_{i\\in V_d}\\left\\|\\Delta_i^{(d)}\\right\\|_2. $$\n低层可能表现为具体 token 替换；高层可能只表现为“食物类别内部发生变化”。这里不要求高层重新说出“土豆”二字。\n7.3 跨句式迁移 再构造：\n小红爱吃米饭。 -\u003e 小红爱吃土豆。 他今天吃了米饭。 -\u003e 他今天吃了土豆。 如果“米饭到土豆”的差分只在第一句话成立，它可能只是样本记忆。\n如果多个句式中的差分方向显著一致，才说明 encoder 抽取了可迁移关系：\n$\n$ cos(\\Delta_{小明},\\Delta_{小红}) \u003e cos(\\Delta_{小明},\\Delta_{随机替换}). $$\n7.4 子堆因果替换 相关性仍然可能欺骗我们。因此需要把 B 的宾语 subheap 写入 A：\nH(A) - remove: “米饭” subheap + insert: “土豆” subheap -\u003e decoder 如果 decoder 的输出从“小明爱吃米饭”变为“小明爱吃土豆”，而主语和谓语保持不变，才说明这个 subheap 对目标概念具有因果作用。\n这一步比训练一个 probe 更强，因为 probe 可能只是从相关噪声中猜答案。\n8. 多语言差分观察 加入英文最小句对：\nC：Xiaoming likes eating rice. D：Xiaoming likes eating potatoes. 中文与英文可以拥有不同的私有编码坐标。我们不要求两棵树的原始 state 完全相等，而是学习一个受控对齐映射 $M$：\n$\n$ M\\Delta_{zh}\\approx\\Delta_{en}. $$\n其中：\n$\n$ \\Delta_{zh}=H(小明爱吃土豆)-H(小明爱吃米饭), $$\n$\n$ \\Delta_{en}=H(Xiaoming\\ likes\\ potatoes)-H(Xiaoming\\ likes\\ rice). $$\n如果对齐后的真实概念差分明显优于随机替换差分，就说明两套私有编码都捕获了同一种世界变化。\n这里有一个严格边界：任意非线性私有坐标中的裸减法未必天然稳定。因此跨语言结论必须同时接受 subheap 替换和 decoder 输出的因果验证，不能只看 cosine。\n9. 这会比 Transformer 更容易观察吗 这是一个 Predict，不是已有结论。\nTransformer 也可以做 activation patching、attention 分析、linear probe 和 hidden-state diff。我们不能把 Transformer 描述成完全不可观察。\nTreeHeap 的潜在优势来自显式结构坐标：\n观察问题 Transformer TreeHeap 的预期坐标 变化发生在哪里 token、层、head 的分布式激活 明确 heap 地址 变化如何传播 跨层和 attention 边 叶到 root 的祖先路径 观察尺度 依赖层和 receptive pattern TreeHeap 深度 局部因果替换 activation patching 完整 subheap swap 多语言关系 hidden alignment 同地址、同尺度差分对齐 只有当 TreeHeap 的差分确实更局部、迁移更稳定、因果替换更干净时，才能说它在这类问题上比匹配规模的 Transformer 更容易观察。\n树的外形本身不是证据。\n10. 下一条 Claim 与 Predict Claim 对只替换一个概念的最小句对，TreeHeap state 差分应集中在被替换叶节点及其祖先路径；对应 subheap 的因果替换应主要改变 decoder 的目标概念。该差分规律应能跨主语、跨句式，并在对齐后跨语言迁移。\n初步 Predict 被替换路径承载至少 70% 的全树差分能量。 未改变兄弟 subheap 的平均差分显著小于祖先路径。 相同概念替换的跨句式差分 cosine 比随机替换至少高 0.10。 subheap swap 后，目标词变化率显著提高，非目标 token 保持率不下降超过 5%。 中英对齐后的概念差分优于随机语言配对至少 0.10。 与匹配维度 Transformer 做同样干预；如果 TreeHeap 没有更好的局部性或因果选择性，则不支持“更容易观察”的优势主张。 这些阈值需要在 ARA 实验注册时冻结，然后再运行代码，不能看到结果后移动门槛。\n11. 当前结论 这次打开单层以后，我们看到的不是一个已经完成的语义世界模型，而是一个更具体的中间状态：\n每个节点有明确地址、覆盖范围和非恒定 64D state； 高层可以读出部分更大范围的 Bag 内容轮廓； 当前有向顺序信息没有形成； 极高 state cosine 仍可能返回不相关文本，说明几何空间尚未校准； 下一步不能继续只看平均 loss，需要观察改变一个概念时，差分沿树如何传播； subheap swap 将把“看起来相关”升级为“对输出具有因果作用”。 我们真正想建立的不是一个人为解释每个参数的词典，而是一种可重复的观察方法：\n不要求读懂模型的每一笔，但要能追踪它改了哪一笔、变化沿哪里传播，以及这一笔是否真的改变了模型的回答。\n12. 证据与原创边界 本次实验的 ARA、代码、checkpoint、逐层观察数据与失败 Gate 均保存在开放仓库 SameTime 中：\nara/s3-generation/logic/treeheap_multiscale_geometry.md ara/s3-generation/src/s3_treeheap_multiscale_geometry.py ara/s3-generation/src/s3_treeheap_multiscale_geometry_observe.py ara/s3-generation/evidence/s3_treeheap_multiscale_geometry_smoke/ “高层可能表达更大几何范围而非损坏 token 副本”以及“用最小句对观察 TreeHeap 差分传播路径”的研究判断由 Houming818 提出；Codex Review 负责形式化、实验实现、证据审计和本文整理。\n本文是 SameTime 项目的原创研究表达，但不宣称发明表示差分、因果干预、activation patching、多语言表示对齐、随机投影或多尺度分析等已有公共方法。TreeHeap 是否具有更强的结构可观察性，仍需下一组对照实验验证。\n",
+  "wordCount" : "644",
+  "inLanguage": "en",
+  "datePublished": "2026-07-15T00:00:00Z",
+  "dateModified": "2026-07-15T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Houming818 \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/056-treeheap-layer-differential-observation.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item active">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分
+    </h1>
+    <div class="post-description">
+      我们打开一个真实 TreeHeap 层，展示节点覆盖文本、64D 私有状态、读出结果和最近邻反例，并提出通过路径差分、子堆替换与跨语言对齐观察私有编码的新方法。
+    </div>
+    <div class="post-meta"><span title='2026-07-15 00:00:00 +0000 UTC'>July 15, 2026</span>&nbsp;·&nbsp;<span>Houming818 &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="看见树内的变化treeheap-单层观察与跨语言差分">看见树内的变化：TreeHeap 单层观察与跨语言差分<a hidden class="anchor" aria-hidden="true" href="#看见树内的变化treeheap-单层观察与跨语言差分">#</a></h1>
+<p>TreeHeap 的 encoder 和 decoder 可以形成一套私有编码协议。</p>
+<p>这很像一个人自己的笔迹：别人不一定能从某一笔的角度判断它代表什么，但书写者自己可以稳定地写，也可以稳定地读。</p>
+<p>可是，私有编码不能成为拒绝观察的理由。</p>
+<p>即使我们不知道 64D state 的第 17 维是什么意思，仍然可以问：</p>
+<blockquote>
+<p>把“米饭”换成“土豆”以后，树的哪些节点发生了变化？变化沿哪条路径传播？把变化后的子堆移植过去，decoder 是否只改变对应概念？</p>
+</blockquote>
+<p>这篇文章先公开一次真实的单层观察，再提出一种新的 TreeHeap 特征设计：<strong>差分传播路径</strong>。</p>
+<hr>
+<h2 id="1-我们刚刚训练了什么">1. 我们刚刚训练了什么<a hidden class="anchor" aria-hidden="true" href="#1-我们刚刚训练了什么">#</a></h2>
+<p>实验使用真实中文语料，而不是人工随机树：</p>
+<table>
+  <thead>
+      <tr>
+          <th>项目</th>
+          <th style="text-align: right">设置</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>训练数据</td>
+          <td style="text-align: right">200,000 个真实中文 block</td>
+      </tr>
+      <tr>
+          <td>每个 block</td>
+          <td style="text-align: right">64 token</td>
+      </tr>
+      <tr>
+          <td>TreeHeap 深度</td>
+          <td style="text-align: right">6</td>
+      </tr>
+      <tr>
+          <td>节点 state</td>
+          <td style="text-align: right">64D</td>
+      </tr>
+      <tr>
+          <td>验证数据</td>
+          <td style="text-align: right">512 个未参与训练的 block</td>
+      </tr>
+      <tr>
+          <td>设备</td>
+          <td style="text-align: right">io / RTX 3090</td>
+      </tr>
+  </tbody>
+</table>
+<p>树的各层覆盖范围如下：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">深度</th>
+          <th style="text-align: right">单节点覆盖 token</th>
+          <th style="text-align: right">同一 64-token block 的节点数</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">1</td>
+          <td style="text-align: right">2</td>
+          <td style="text-align: right">32</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">2</td>
+          <td style="text-align: right">4</td>
+          <td style="text-align: right">16</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">3</td>
+          <td style="text-align: right">8</td>
+          <td style="text-align: right">8</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">4</td>
+          <td style="text-align: right">16</td>
+          <td style="text-align: right">4</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">5</td>
+          <td style="text-align: right">32</td>
+          <td style="text-align: right">2</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">6</td>
+          <td style="text-align: right">64</td>
+          <td style="text-align: right">1</td>
+      </tr>
+  </tbody>
+</table>
+<p>共享 FOLD kernel 从左右子节点递归计算父节点：</p>
+<p>$</p>
+$ z_i^{(d+1)}=K_\theta\left(z_{2i}^{(d)},z_{2i+1}^{(d)},e_d\right). $<p>$</p>
+<p>其中，</p>
+$e_d$<p> 是深度坐标。所有地址使用同一个 </p>
+$K_\theta$<p>，不是每个位置单独记一张参数表。</p>
+<p>这次没有要求 root 完整恢复 64 个 token，而是观察两个尺度量：</p>
+<ol>
+<li><strong>Bag 轮廓</strong>：这个节点覆盖的区域里有什么 token，不要求顺序。</li>
+<li><strong>Adjacency 轮廓</strong>：这个区域内有哪些有向相邻 token 对，要求顺序。</li>
+</ol>
+<p>Bag 类似远看一张图时看到的主体颜色；Adjacency 更像物体边缘的方向和连接关系。</p>
+<hr>
+<h2 id="2-一个节点里到底能看到什么">2. 一个节点里到底能看到什么<a hidden class="anchor" aria-hidden="true" href="#2-一个节点里到底能看到什么">#</a></h2>
+<p>当前实验中，一个节点有三类可观察数据。</p>
+<h3 id="21-地址与感受野">2.1 地址与感受野<a hidden class="anchor" aria-hidden="true" href="#21-地址与感受野">#</a></h3>
+<p>地址告诉我们该节点覆盖哪一段输入。</p>
+<p>例如 depth=4 的 node 2 覆盖 token <code>[32,48)</code>。这是 TreeHeap 数据结构天然提供的坐标，不需要 probe 猜测。</p>
+<h3 id="22-私有-64d-state">2.2 私有 64D state<a hidden class="anchor" aria-hidden="true" href="#22-私有-64d-state">#</a></h3>
+<p>例如某个节点的前 8 维是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[0.5808, -0.1203, -0.7574, -0.9964,
+</span></span><span style="display:flex;"><span> -1.1835, 0.4895, -1.8861, 1.2427]
+</span></span></code></pre></div><p>这些数字本身没有人类词典。不能说 <code>0.5808</code> 就是“花”，或者 <code>-0.9964</code> 就是“时间”。</p>
+<p>它们只在当前 encoder 与 decoder 共同形成的坐标系中有意义。</p>
+<h3 id="23-读出与干预">2.3 读出与干预<a hidden class="anchor" aria-hidden="true" href="#23-读出与干预">#</a></h3>
+<p>我们可以训练 READ kernel，从 state 读取 Bag 或 Adjacency；还可以替换 state，观察 decoder 输出是否改变。</p>
+<p>前者是相关性观察，后者才是因果观察。</p>
+<hr>
+<h2 id="3-把-depth4-的四个节点全部摊开">3. 把 depth=4 的四个节点全部摊开<a hidden class="anchor" aria-hidden="true" href="#3-把-depth4-的四个节点全部摊开">#</a></h2>
+<p>下面是一条真实验证文本：</p>
+<blockquote>
+<p>蔓交错，到四月花期，就是一扇开满花的拱门。清唱咖啡，有一面墙的书架，尚有空余，总有客人愿意将看过的，或者喜欢的书放在书架上给大家分享。这里有个赠书的江湖。鼎韵艺术沙龙。</p>
+</blockquote>
+<p>在 depth=4，每个节点覆盖 16 token，一共有四个节点：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">节点</th>
+          <th>实际覆盖文本</th>
+          <th style="text-align: right">Bag 读出 cosine</th>
+          <th style="text-align: right">Adjacency 读出 cosine</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">0</td>
+          <td>蔓交错，到四月花期，就是一扇开满花的拱……</td>
+          <td style="text-align: right">0.379</td>
+          <td style="text-align: right">0.129</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">1</td>
+          <td>门。清唱咖啡，有一面墙的书架，尚有空……</td>
+          <td style="text-align: right">0.597</td>
+          <td style="text-align: right">-0.087</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">2</td>
+          <td>余，总有客人愿意将看过的，或者喜欢的书放在书架……</td>
+          <td style="text-align: right">0.216</td>
+          <td style="text-align: right">-0.044</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">3</td>
+          <td>上给大家分享。这里有个赠书的江湖。鼎韵艺术沙龙</td>
+          <td style="text-align: right">0.644</td>
+          <td style="text-align: right">-0.142</td>
+      </tr>
+  </tbody>
+</table>
+<p>cosine 越接近 1，表示 READ 输出越接近该片段的精确观察目标。</p>
+<p>这张表说明：</p>
+<ul>
+<li>四个节点都不是空白常量；</li>
+<li>Bag 内容轮廓有不同程度的可读性；</li>
+<li>有向排列信息基本没有形成；</li>
+<li>同一层不同节点的质量差异很大。</li>
+</ul>
+<p>四个 state 相互之间的 cosine 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>          node0   node1   node2   node3
+</span></span><span style="display:flex;"><span>node0     1.000   0.451   0.860  -0.079
+</span></span><span style="display:flex;"><span>node1     0.451   1.000   0.326   0.517
+</span></span><span style="display:flex;"><span>node2     0.860   0.326   1.000  -0.087
+</span></span><span style="display:flex;"><span>node3    -0.079   0.517  -0.087   1.000
+</span></span></code></pre></div><p>这说明该层没有完全坍缩成一个 state。node0 与 node3 接近正交，而 node0 与 node2 非常接近。</p>
+<p>但“向量不同”不等于“已经理解语义”。</p>
+<hr>
+<h2 id="4-一个必须公开的反例">4. 一个必须公开的反例<a hidden class="anchor" aria-hidden="true" href="#4-一个必须公开的反例">#</a></h2>
+<p>我们拿 depth=4 的 node0，在另外 511 个验证 block 中寻找 state 最近邻。</p>
+<p>查询片段是：</p>
+<blockquote>
+<p>蔓交错，到四月花期，就是一扇开满花的拱……</p>
+</blockquote>
+<p>返回片段是：</p>
+<blockquote>
+<p>发的日子，要预防季节性的传染病的发生，应多吃清淡食物。</p>
+</blockquote>
+<p>结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">数值</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>state cosine</td>
+          <td style="text-align: right">0.9848</td>
+      </tr>
+      <tr>
+          <td>两段文本的精确 Bag cosine</td>
+          <td style="text-align: right">0.2242</td>
+      </tr>
+      <tr>
+          <td>两段文本的精确 Adjacency cosine</td>
+          <td style="text-align: right">-0.1449</td>
+      </tr>
+  </tbody>
+</table>
+<p>两个 state 看起来几乎相同，但对应文本既不是明显同义，也没有接近的顺序结构。</p>
+<p>这意味着当前 state 空间可能存在方向聚集或局部坍缩。它携带了一些可读信息，却还不是可靠的语义检索坐标系。</p>
+<p>因此不能只展示 <code>state cosine=0.9848</code>，然后宣布模型理解了两句话。必须用外部观察量和因果替换继续核验。</p>
+<hr>
+<h2 id="5-从低层看到高层">5. 从低层看到高层<a hidden class="anchor" aria-hidden="true" href="#5-从低层看到高层">#</a></h2>
+<p>全部验证集的平均结果是：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">覆盖 token</th>
+          <th style="text-align: right">2</th>
+          <th style="text-align: right">4</th>
+          <th style="text-align: right">8</th>
+          <th style="text-align: right">16</th>
+          <th style="text-align: right">32</th>
+          <th style="text-align: right">64</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">Bag READ cosine</td>
+          <td style="text-align: right">0.267</td>
+          <td style="text-align: right">0.286</td>
+          <td style="text-align: right">0.306</td>
+          <td style="text-align: right">0.334</td>
+          <td style="text-align: right">0.377</td>
+          <td style="text-align: right">0.436</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">Bag Query 增益</td>
+          <td style="text-align: right">0.184</td>
+          <td style="text-align: right">0.122</td>
+          <td style="text-align: right">0.095</td>
+          <td style="text-align: right">0.086</td>
+          <td style="text-align: right">0.071</td>
+          <td style="text-align: right">0.077</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">Adjacency READ cosine</td>
+          <td style="text-align: right">0.010</td>
+          <td style="text-align: right">0.012</td>
+          <td style="text-align: right">0.015</td>
+          <td style="text-align: right">0.017</td>
+          <td style="text-align: right">0.021</td>
+          <td style="text-align: right">0.027</td>
+      </tr>
+  </tbody>
+</table>
+<p>这里出现了一个值得保留的现象：</p>
+<blockquote>
+<p>覆盖范围越大，Bag 轮廓越容易从节点中读出；但精细检索优势没有随深度一起增加。</p>
+</blockquote>
+<p>这与 Houming818 提出的多尺度理解相容：高层可能不是低层 token 的模糊错误副本，而是在表达覆盖范围更大的几何轮廓。</p>
+<p>但是本次实验只支持很窄的说法：<strong>高层保存了一部分无序内容统计。</strong></p>
+<p>它还没有证明：</p>
+<ul>
+<li>高层形成了人类语义；</li>
+<li>TreeHeap 已经拥有世界模型；</li>
+<li>有向结构已经被编码；</li>
+<li>TreeHeap 检索优于 Transformer。</li>
+</ul>
+<p>完整 Claim 的 6 个 Gate 只通过了 3 个，因此 ARA 状态仍是 <code>not supported</code>。</p>
+<hr>
+<h2 id="6-私有编码如何被观察">6. 私有编码如何被观察<a hidden class="anchor" aria-hidden="true" href="#6-私有编码如何被观察">#</a></h2>
+<p>绝对坐标不可读，不代表相对变化不可研究。</p>
+<p>考虑最小句对：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A：小明爱吃米饭。
+</span></span><span style="display:flex;"><span>B：小明爱吃土豆。
+</span></span></code></pre></div><p>两句话只改变一个概念。对每个深度、每个地址计算：</p>
+<p>$</p>
+$ \Delta_i^{(d)}=H_i^{(d)}(B)-H_i^{(d)}(A). $<p>$</p>
+<p>如果 TreeHeap encoder 真正利用树结构，那么差分不应该平均污染整棵树。我们预测它主要分布在：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>米饭/土豆叶节点
+</span></span><span style="display:flex;"><span>        ↓
+</span></span><span style="display:flex;"><span>宾语 subheap
+</span></span><span style="display:flex;"><span>        ↓
+</span></span><span style="display:flex;"><span>“吃 + 宾语”父节点
+</span></span><span style="display:flex;"><span>        ↓
+</span></span><span style="display:flex;"><span>root 的较粗变化
+</span></span></code></pre></div><p>与“小明”对应的兄弟 subheap 应当基本稳定。</p>
+<p>这就是新的可观察特征：<strong>差分传播路径</strong>。</p>
+<hr>
+<h2 id="7-差分路径的四个测量">7. 差分路径的四个测量<a hidden class="anchor" aria-hidden="true" href="#7-差分路径的四个测量">#</a></h2>
+<h3 id="71-地址局部性">7.1 地址局部性<a hidden class="anchor" aria-hidden="true" href="#71-地址局部性">#</a></h3>
+<p>设被替换 token 的祖先路径为 </p>
+$P$<p>，全树节点集合为 </p>
+$V$<p>。差分能量集中率定义为：</p>
+<p>$</p>
+$ R_{path}=\frac{\sum_{i\in P}\left\|\Delta_i\right\|_2^2} {\sum_{j\in V}\left\|\Delta_j\right\|_2^2}. $<p>$</p>
+<p>如果 </p>
+$R_{path}$<p> 很高，说明变化确实沿结构路径传播，而不是无地址地扩散。</p>
+<h3 id="72-深度轮廓">7.2 深度轮廓<a hidden class="anchor" aria-hidden="true" href="#72-深度轮廓">#</a></h3>
+<p>不同深度不必保存相同含义。我们记录每层的相对差分：</p>
+<p>$</p>
+$ D_d=\frac{1}{|V_d|}\sum_{i\in V_d}\left\|\Delta_i^{(d)}\right\|_2. $<p>$</p>
+<p>低层可能表现为具体 token 替换；高层可能只表现为“食物类别内部发生变化”。这里不要求高层重新说出“土豆”二字。</p>
+<h3 id="73-跨句式迁移">7.3 跨句式迁移<a hidden class="anchor" aria-hidden="true" href="#73-跨句式迁移">#</a></h3>
+<p>再构造：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>小红爱吃米饭。 -&gt; 小红爱吃土豆。
+</span></span><span style="display:flex;"><span>他今天吃了米饭。 -&gt; 他今天吃了土豆。
+</span></span></code></pre></div><p>如果“米饭到土豆”的差分只在第一句话成立，它可能只是样本记忆。</p>
+<p>如果多个句式中的差分方向显著一致，才说明 encoder 抽取了可迁移关系：</p>
+<p>$</p>
+$ cos(\Delta_{小明},\Delta_{小红}) > cos(\Delta_{小明},\Delta_{随机替换}). $<p>$</p>
+<h3 id="74-子堆因果替换">7.4 子堆因果替换<a hidden class="anchor" aria-hidden="true" href="#74-子堆因果替换">#</a></h3>
+<p>相关性仍然可能欺骗我们。因此需要把 B 的宾语 subheap 写入 A：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H(A)
+</span></span><span style="display:flex;"><span>  - remove: “米饭” subheap
+</span></span><span style="display:flex;"><span>  + insert: “土豆” subheap
+</span></span><span style="display:flex;"><span>  -&gt; decoder
+</span></span></code></pre></div><p>如果 decoder 的输出从“小明爱吃米饭”变为“小明爱吃土豆”，而主语和谓语保持不变，才说明这个 subheap 对目标概念具有因果作用。</p>
+<p>这一步比训练一个 probe 更强，因为 probe 可能只是从相关噪声中猜答案。</p>
+<hr>
+<h2 id="8-多语言差分观察">8. 多语言差分观察<a hidden class="anchor" aria-hidden="true" href="#8-多语言差分观察">#</a></h2>
+<p>加入英文最小句对：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>C：Xiaoming likes eating rice.
+</span></span><span style="display:flex;"><span>D：Xiaoming likes eating potatoes.
+</span></span></code></pre></div><p>中文与英文可以拥有不同的私有编码坐标。我们不要求两棵树的原始 state 完全相等，而是学习一个受控对齐映射 </p>
+$M$<p>：</p>
+<p>$</p>
+$ M\Delta_{zh}\approx\Delta_{en}. $<p>$</p>
+<p>其中：</p>
+<p>$</p>
+$ \Delta_{zh}=H(小明爱吃土豆)-H(小明爱吃米饭), $<p>$</p>
+<p>$</p>
+$ \Delta_{en}=H(Xiaoming\ likes\ potatoes)-H(Xiaoming\ likes\ rice). $<p>$</p>
+<p>如果对齐后的真实概念差分明显优于随机替换差分，就说明两套私有编码都捕获了同一种世界变化。</p>
+<p>这里有一个严格边界：任意非线性私有坐标中的裸减法未必天然稳定。因此跨语言结论必须同时接受 subheap 替换和 decoder 输出的因果验证，不能只看 cosine。</p>
+<hr>
+<h2 id="9-这会比-transformer-更容易观察吗">9. 这会比 Transformer 更容易观察吗<a hidden class="anchor" aria-hidden="true" href="#9-这会比-transformer-更容易观察吗">#</a></h2>
+<p>这是一个 Predict，不是已有结论。</p>
+<p>Transformer 也可以做 activation patching、attention 分析、linear probe 和 hidden-state diff。我们不能把 Transformer 描述成完全不可观察。</p>
+<p>TreeHeap 的潜在优势来自显式结构坐标：</p>
+<table>
+  <thead>
+      <tr>
+          <th>观察问题</th>
+          <th>Transformer</th>
+          <th>TreeHeap 的预期坐标</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>变化发生在哪里</td>
+          <td>token、层、head 的分布式激活</td>
+          <td>明确 heap 地址</td>
+      </tr>
+      <tr>
+          <td>变化如何传播</td>
+          <td>跨层和 attention 边</td>
+          <td>叶到 root 的祖先路径</td>
+      </tr>
+      <tr>
+          <td>观察尺度</td>
+          <td>依赖层和 receptive pattern</td>
+          <td>TreeHeap 深度</td>
+      </tr>
+      <tr>
+          <td>局部因果替换</td>
+          <td>activation patching</td>
+          <td>完整 subheap swap</td>
+      </tr>
+      <tr>
+          <td>多语言关系</td>
+          <td>hidden alignment</td>
+          <td>同地址、同尺度差分对齐</td>
+      </tr>
+  </tbody>
+</table>
+<p>只有当 TreeHeap 的差分确实更局部、迁移更稳定、因果替换更干净时，才能说它在这类问题上比匹配规模的 Transformer 更容易观察。</p>
+<p>树的外形本身不是证据。</p>
+<hr>
+<h2 id="10-下一条-claim-与-predict">10. 下一条 Claim 与 Predict<a hidden class="anchor" aria-hidden="true" href="#10-下一条-claim-与-predict">#</a></h2>
+<h3 id="claim">Claim<a hidden class="anchor" aria-hidden="true" href="#claim">#</a></h3>
+<blockquote>
+<p>对只替换一个概念的最小句对，TreeHeap state 差分应集中在被替换叶节点及其祖先路径；对应 subheap 的因果替换应主要改变 decoder 的目标概念。该差分规律应能跨主语、跨句式，并在对齐后跨语言迁移。</p>
+</blockquote>
+<h3 id="初步-predict">初步 Predict<a hidden class="anchor" aria-hidden="true" href="#初步-predict">#</a></h3>
+<ol>
+<li>被替换路径承载至少 70% 的全树差分能量。</li>
+<li>未改变兄弟 subheap 的平均差分显著小于祖先路径。</li>
+<li>相同概念替换的跨句式差分 cosine 比随机替换至少高 0.10。</li>
+<li>subheap swap 后，目标词变化率显著提高，非目标 token 保持率不下降超过 5%。</li>
+<li>中英对齐后的概念差分优于随机语言配对至少 0.10。</li>
+<li>与匹配维度 Transformer 做同样干预；如果 TreeHeap 没有更好的局部性或因果选择性，则不支持“更容易观察”的优势主张。</li>
+</ol>
+<p>这些阈值需要在 ARA 实验注册时冻结，然后再运行代码，不能看到结果后移动门槛。</p>
+<hr>
+<h2 id="11-当前结论">11. 当前结论<a hidden class="anchor" aria-hidden="true" href="#11-当前结论">#</a></h2>
+<p>这次打开单层以后，我们看到的不是一个已经完成的语义世界模型，而是一个更具体的中间状态：</p>
+<ol>
+<li>每个节点有明确地址、覆盖范围和非恒定 64D state；</li>
+<li>高层可以读出部分更大范围的 Bag 内容轮廓；</li>
+<li>当前有向顺序信息没有形成；</li>
+<li>极高 state cosine 仍可能返回不相关文本，说明几何空间尚未校准；</li>
+<li>下一步不能继续只看平均 loss，需要观察改变一个概念时，差分沿树如何传播；</li>
+<li>subheap swap 将把“看起来相关”升级为“对输出具有因果作用”。</li>
+</ol>
+<p>我们真正想建立的不是一个人为解释每个参数的词典，而是一种可重复的观察方法：</p>
+<blockquote>
+<p>不要求读懂模型的每一笔，但要能追踪它改了哪一笔、变化沿哪里传播，以及这一笔是否真的改变了模型的回答。</p>
+</blockquote>
+<hr>
+<h2 id="12-证据与原创边界">12. 证据与原创边界<a hidden class="anchor" aria-hidden="true" href="#12-证据与原创边界">#</a></h2>
+<p>本次实验的 ARA、代码、checkpoint、逐层观察数据与失败 Gate 均保存在开放仓库 <a href="https://github.com/houming818/sametime">SameTime</a> 中：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s3-generation/logic/treeheap_multiscale_geometry.md
+</span></span><span style="display:flex;"><span>ara/s3-generation/src/s3_treeheap_multiscale_geometry.py
+</span></span><span style="display:flex;"><span>ara/s3-generation/src/s3_treeheap_multiscale_geometry_observe.py
+</span></span><span style="display:flex;"><span>ara/s3-generation/evidence/s3_treeheap_multiscale_geometry_smoke/
+</span></span></code></pre></div><p>“高层可能表达更大几何范围而非损坏 token 副本”以及“用最小句对观察 TreeHeap 差分传播路径”的研究判断由 Houming818 提出；Codex Review 负责形式化、实验实现、证据审计和本文整理。</p>
+<p>本文是 SameTime 项目的原创研究表达，但不宣称发明表示差分、因果干预、activation patching、多语言表示对齐、随机投影或多尺度分析等已有公共方法。TreeHeap 是否具有更强的结构可观察性，仍需下一组对照实验验证。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

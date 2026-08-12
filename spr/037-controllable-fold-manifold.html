@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, Kernel, Fold, Manifold">
+<meta name="description" content="SPR-037 把 TreeHeap fold 从纯理论问题推进到产品调试问题：如果 kernel 有可调控制量，输出结构是否会从乱态沿着一个可测量的面走向稳定块？toy proof 显示低控制 F1 0.0828，最佳 F1 0.8148，对角线增益 0.7319。">
+<meta name="author" content="nio (Houming818) &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/037-controllable-fold-manifold.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/037-controllable-fold-manifold.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/037-controllable-fold-manifold.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构">
+  <meta property="og:description" content="SPR-037 把 TreeHeap fold 从纯理论问题推进到产品调试问题：如果 kernel 有可调控制量，输出结构是否会从乱态沿着一个可测量的面走向稳定块？toy proof 显示低控制 F1 0.0828，最佳 F1 0.8148，对角线增益 0.7319。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-06-30T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-06-30T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构">
+  <meta name="twitter:description" content="SPR-037 把 TreeHeap fold 从纯理论问题推进到产品调试问题：如果 kernel 有可调控制量，输出结构是否会从乱态沿着一个可测量的面走向稳定块？toy proof 显示低控制 F1 0.0828，最佳 F1 0.8148，对角线增益 0.7319。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构",
+      "item": "https://www.lostmap.cn/spr/037-controllable-fold-manifold.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构",
+  "name": "[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构",
+  "description": "SPR-037 把 TreeHeap fold 从纯理论问题推进到产品调试问题：如果 kernel 有可调控制量，输出结构是否会从乱态沿着一个可测量的面走向稳定块？toy proof 显示低控制 F1 0.0828，最佳 F1 0.8148，对角线增益 0.7319。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "Kernel", "Fold", "Manifold"
+  ],
+  "articleBody": "可控流形：怎样把 TreeHeap 从一团乱调到可用结构 你刚才提出的观点，我认为非常关键：\n现在的 claim 应该是一个可控流形。 这句话解决了一个一直卡住我们的问题。\n之前我们总是在两个层面之间跳：\n数学层：plus / diff / compose / decompose / kernel 产品层：能不能生成句子、能不能翻译、能不能像 Transformer 一样工作 中间缺一层。\n这一层就是：\n控制变量 -\u003e 结构变化 -\u003e 产品功能涌现 也就是说，不要一上来就问：\nTreeHeap 能不能直接生成正确句子？ 而是先问：\n当我调整 kernel 的细节时， 输出结构会不会从一团乱， 逐步走向更稳定、更像产品可用结构的状态？ 如果这个过程可控，我们就可以在控制过程中学习规律。 然后再修补数学 kernel。\n这就是 SPR-037。\n什么叫“可控流形” 这里的“流形”不要先理解成高等几何里很复杂的对象。\n可以先理解成一张可观察的调参地图：\n横轴：relation_weight 纵轴：order_weight 高度：fold 结构质量 比如：\nrelation_weight = 0 order_weight = 0 kernel 什么都不相信，输出就接近随机。\n再比如：\nrelation_weight = 2 order_weight = 2 kernel 既相信词之间的关系场，也相信线性邻近，输出结构应该更稳定。\n于是我们得到一张面：\ncontrols -\u003e fold quality 这张面就是当前意义上的“可控流形”。\nHouming818 的补充：梯度不一定只改参数 下面这一段是 Houming818 提出的补充。\n我把它整理成工程语言，但这个想法的责任归属要说清楚：\n观点来源：Houming818 整理解释：Codex Review 当前状态：理论假设，尚未被 SPR-037 的 toy proof 直接证明 你提出的问题是：\n既然说可控流形， 那梯度信息从哪里来？ 梯度是否一定要表现为普通神经网络那样的参数更新？ 这非常关键。\n因为如果 TreeHeap 只是：\nθ \u003c- θ - η ∇θ L 也就是只更新 kernel 参数，那它看起来和普通 MLP / Transformer 的训练方式太接近。\n但你提出了另一种可能：\n梯度也可以调整 heap 自身的平衡态。 比如一个很小的 heap state：\n[2.0, 1.0, 3.0] 梯度来了以后，不一定是修改某个外部参数。\n它也可能让当前 heap 变得更平衡：\n[2.0, 1.0, 3.0] -\u003e [2.0, 1.5, 2.5] -\u003e [2.0, 1.8, 2.2] 这不是：\n改函数参数 而更像：\n调 heap state 的平衡性 两种梯度：参数梯度与状态梯度 因此 TreeHeap 里至少要区分两类梯度。\n第一类是普通参数梯度：\nθ \u003c- θ - η ∇θ L 这里更新的是：\nkernel 参数 compose 参数 read 参数 write 参数 relation field 参数 这和普通深度学习类似。\n第二类是 Houming818 提出的 heap 平衡梯度：\nH \u003c- H - η ∇H E(H) 这里更新的不是外部函数参数，而是当前 heap state：\narr[1] arr[2] arr[3] ... 每个 arr[i] 可以是一个向量。\n它们可以在能量函数的驱动下移动。\n一个最小例子 假设我们定义左右平衡能量：\nE_balance = (left - right)^2 当前状态是：\nroot = 2.0 left = 1.0 right = 3.0 左右差很大：\nleft - right = -2.0 能量高。\n如果只对 heap state 做梯度下降，系统会推动：\nleft 变大 right 变小 于是得到：\n[2.0, 1.0, 3.0] -\u003e [2.0, 1.5, 2.5] 这个过程更像物理里的松弛：\n系统沿能量下降方向进入更稳定状态。 它不是先知道一个“目标 heap”，然后对目标 heap 求导。\n它只需要知道：\n当前 heap 的能量高不高。 这是否绕开了“目标 heap 可导”的问题 部分绕开了。\n更准确地说：\n不需要目标 heap 本身可导。 但仍然需要一个可计算、可微分的能量函数：\nE(H) 例如：\nE_balance(H) 左右是否平衡 E_parent_child(H) 父子是否一致 E_relation_match(H, W) heap 是否贴合世界/关系场 E_entropy(P) 概率容器是否过早或过晚坍缩 E_path_smooth(H) 路径上的状态是否连续 总能量可以写成：\nE_total(H) = E_balance(H) + E_parent_child(H) + E_relation_match(H, W) + E_entropy(P) 然后做：\nH \u003c- H - η ∇H E_total(H) 这就把可导要求从：\n目标结构必须可导 转移成：\n当前状态的能量函数必须可导 这个差别很大。\n这对 TreeHeap 为什么重要 如果这个方向成立，TreeHeap 的学习就不只有一种：\n参数学习：让 kernel 函数变强 状态松弛：让 heap 自身进入平衡态 用一句话说：\n普通神经网络更像改函数。 TreeHeap 还可能改结构状态。 这会让“可控流形”变得更像一个真实动力系统：\nkernel 参数决定能量地形 heap state 在能量地形上滑动 概率容器在合适时刻坍缩 最后形成稳定结构 也就是说，SPR-037 现在测的是：\n手动控制变量能不能改变 fold 质量。 Houming818 的补充指向下一层：\n梯度能不能不是只改控制变量， 而是推动 heap state 自己进入更好的平衡态。 这个补充目前还没有证明 需要强调：\nSPR-037 的实验没有证明 heap state relaxation。 SPR-037 只证明了：\n手动扫 relation_weight / order_weight 时， fold 质量存在一个可观测控制面。 Houming818 这里提出的是下一步 claim 候选：\nTreeHeap 不只有参数梯度路径， 还可能存在 heap state 平衡梯度路径。 这种路径可以在目标结构不可导时， 通过可导能量函数完成结构松弛。 这应该进入后续实验，而不是混进当前结论。\n一个最小 proof 可以是：\n1. 固定 kernel 参数 2. 初始化一个不平衡 heap state 3. 定义 balance / parent-child / relation 三类能量 4. 只更新 H，不更新 θ 5. 观察 heap 是否收敛到更稳定、可读、可坍缩的结构 如果这个实验通过，TreeHeap 会多出一条很有自己味道的学习路径：\n不是只训练参数， 而是让 heap 自己松弛到稳定结构。 为什么这比直接生成更好 假设我们直接让模型生成：\nthe cat is running for a car 一开始可能输出很乱。\n如果只有最终结果，我们只能说：\n模型不行。 但如果有控制面，我们可以问更细的问题：\nrelation_weight 太低了吗？ order_weight 太高了吗？ collapse 太早了吗？ noise 太大了吗？ 某个 subheap 没有被正确分割吗？ kernel 缺少共轭/镜像/分解操作吗？ 这就从“黑箱失败”变成“可诊断失败”。\n产品工程最需要的不是一次神迹，而是可诊断、可修补、可复现。\n这次 toy proof 怎么做 我没有直接跑 WMT。\n这次只做一个最小 proof：\n给定几句短句和弱 block 目标， 看 kernel 控制量能不能把 fold 从乱态推向稳定块。 短句包括：\nthe cat is running for a car a dog is chasing the ball the book that i bought yesterday is expensive some kids are playing in the park 注意，这里不是要证明完整语法。\n我们只给一些弱 block：\nthe cat is running a car for a car the book i bought yesterday that i bought yesterday is expensive 这些 block 相当于“产品上希望看到的稳定局部结构”。\nkernel 的控制量 这次 kernel 只有两个主要旋钮。\n1. relation_weight 表示 kernel 多相信“词之间的关系场”。\n比如：\nthe -\u003e cat is -\u003e running a -\u003e car book -\u003e relative clause 如果 relation_weight 高，相关词更容易被合并。\n2. order_weight 表示 kernel 多相信线性邻近。\n比如：\nthe cat is running a car 这些词本来就在句子里靠得近。\n如果 order_weight 高，邻近词更容易合并。\n数学形式 每一步 fold 时，kernel 都要决定两个块 A 和 B 要不要合并。\n这次的打分函数是：\nscore(A, B) = relation_weight * relation(A, B) + order_weight * order(A, B) - balance_penalty + noise 其中：\nrelation(A, B) 表示两个块在关系场里有多接近。\norder(A, B) 表示两个块在原始句子顺序里有多接近。\nbalance_penalty 防止一开始就把很不均衡的大块小块乱合。\nnoise 模拟不稳定扰动。\n实验变量 我们扫描：\nrelation_weight in {0, 0.25, 0.5, 1, 2, 4} order_weight in {0, 0.25, 0.5, 1, 2, 4} seeds = 64 评价指标是 block F1：\n预测出来的 block 和我们给定的弱 target block 有多少重合。 这不是 BLEU。\n这也不是翻译质量。\n它只是问：\nfold 出来的局部结构是否接近目标块？ 实验结果 结果如下：\n指标 数值 low-control mean F1 0.0828 best mean F1 0.8148 high-sum-control mean F1 0.8148 diagonal gain 0.7319 product cells 22 pilot pass true 最重要的是对角线：\nrelation_weight order_weight mean F1 0.00 0.00 0.0828 0.25 0.25 0.4036 0.50 0.50 0.6398 1.00 1.00 0.7603 2.00 2.00 0.8119 4.00 4.00 0.8148 这个形状很重要。\n它不是随机跳一下。\n它显示：\n控制量很弱 -\u003e 输出接近乱态 控制量增强 -\u003e fold 结构明显变好 控制量继续增强 -\u003e 进入平台期 这正是“可控流形”的最小证据。\n一个具体 trace 对句子：\nthe book that i bought yesterday is expensive 某次较好的 fold trace 是：\nthe + book i + bought is + expensive i bought + yesterday that + i bought yesterday the book + that i bought yesterday 整句合并 这很接近我们想看的结构：\nthe book i bought yesterday that i bought yesterday the book that i bought yesterday is expensive 注意，这不是完整语法树。\n但它说明 kernel 已经能把一些局部块先稳定下来。\n这就是产品功能的早期形态：\n先不要完美理解整句， 先把局部稳定块折出来。 这证明了什么 这次 claim 是：\nS1-MANIFOLD-C01: If TreeHeap fold is driven by kernel controls over a latent relation field, product-like structure should emerge as a measurable control surface. Increasing relevant control variables should move output from noisy blocks toward stable target blocks on a toy relation task. 状态：\nsupported pilot 它证明的是：\n在一个透明 toy relation field 上， TreeHeap fold 可以被 kernel 控制量调节， 并且结构质量会沿控制面明显提高。 换句话说：\n我们可以把 TreeHeap 的失败变成可观测、可调试的失败。 这对工程很重要。\n这没有证明什么 它没有证明：\nTreeHeap 已经理解语言 TreeHeap 已经能翻译 TreeHeap 胜过 Transformer relation field 能无监督自动学出来 这两个旋钮就是最终旋钮 尤其是：\nrelation field 这次是 toy 构造的。 这意味着下一步必须把 toy relation field 换成真实数据估计出来的 relation field。\n比如：\n共现窗口 masked token restoration 弱依存关系 contrastive phrase pairs 短句人工弱标注 对 TreeHeap 路线的意义 现在我更赞同你的判断：\n代数逻辑和产品逻辑不能分太开。 但也不能直接从代数跳到 WMT。\n中间要有一层：\nTreeHeap Structure Lens 它应该能显示：\n当前 token/block 的邻近关系 当前 fold trace 每个 merge 的 energy 每个 stop/left/right 的概率 哪些结构稳定 哪些结构还在叠加 哪些控制量改变后结构变好 也就是说，产品上先做一个“结构透镜”。\n不是先做最终翻译器。\n下一步 我建议下一步不是继续加 toy trick。\n而是把这个控制面放到真实数据上。\n最小版本：\n输入真实短句 从语料共现或 masked restoration 估计 relation field 用 TreeHeap kernel fold 扫 relation/order/collapse 控制量 看 block F1、稳定性、能量是否形成可控面 如果真实数据也有类似曲面：\n低控制乱 中控制变好 高控制平台 那我们就有了继续推进 S1 的依据。\n如果没有，也很好：\n说明 toy relation field 太人工， 或者 kernel 缺少关键算子， 或者真实语言 fold 不是这个控制方向。 这就是 ARA 的价值。\n一句话总结 SPR-037 的结论是：\nTreeHeap 不能只证明自己有代数操作。 它还必须证明这些操作能被控制， 并且控制过程能让产品可见结构逐步涌现。 这次 toy proof 给了一个正信号：\nlow-control F1 = 0.0828 best F1 = 0.8148 diagonal gain = 0.7319 所以当前更清晰的路线是：\n先建立可控结构透镜， 再用真实数据学习 relation field， 最后才谈生成和翻译。 May the Code be with us.\nARA: controllable manifold / claims / experiment script / evidence\n",
+  "wordCount" : "949",
+  "inLanguage": "en",
+  "datePublished": "2026-06-30T00:00:00Z",
+  "dateModified": "2026-06-30T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/037-controllable-fold-manifold.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item active">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构
+    </h1>
+    <div class="post-description">
+      SPR-037 把 TreeHeap fold 从纯理论问题推进到产品调试问题：如果 kernel 有可调控制量，输出结构是否会从乱态沿着一个可测量的面走向稳定块？toy proof 显示低控制 F1 0.0828，最佳 F1 0.8148，对角线增益 0.7319。
+    </div>
+    <div class="post-meta"><span title='2026-06-30 00:00:00 +0000 UTC'>June 30, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="可控流形怎样把-treeheap-从一团乱调到可用结构">可控流形：怎样把 TreeHeap 从一团乱调到可用结构<a hidden class="anchor" aria-hidden="true" href="#可控流形怎样把-treeheap-从一团乱调到可用结构">#</a></h1>
+<p>你刚才提出的观点，我认为非常关键：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>现在的 claim 应该是一个可控流形。
+</span></span></code></pre></div><p>这句话解决了一个一直卡住我们的问题。</p>
+<p>之前我们总是在两个层面之间跳：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>数学层：plus / diff / compose / decompose / kernel
+</span></span><span style="display:flex;"><span>产品层：能不能生成句子、能不能翻译、能不能像 Transformer 一样工作
+</span></span></code></pre></div><p>中间缺一层。</p>
+<p>这一层就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>控制变量 -&gt; 结构变化 -&gt; 产品功能涌现
+</span></span></code></pre></div><p>也就是说，不要一上来就问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 能不能直接生成正确句子？
+</span></span></code></pre></div><p>而是先问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>当我调整 kernel 的细节时，
+</span></span><span style="display:flex;"><span>输出结构会不会从一团乱，
+</span></span><span style="display:flex;"><span>逐步走向更稳定、更像产品可用结构的状态？
+</span></span></code></pre></div><p>如果这个过程可控，我们就可以在控制过程中学习规律。
+然后再修补数学 kernel。</p>
+<p>这就是 SPR-037。</p>
+<h2 id="什么叫可控流形">什么叫“可控流形”<a hidden class="anchor" aria-hidden="true" href="#什么叫可控流形">#</a></h2>
+<p>这里的“流形”不要先理解成高等几何里很复杂的对象。</p>
+<p>可以先理解成一张可观察的调参地图：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>横轴：relation_weight
+</span></span><span style="display:flex;"><span>纵轴：order_weight
+</span></span><span style="display:flex;"><span>高度：fold 结构质量
+</span></span></code></pre></div><p>比如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>relation_weight = 0
+</span></span><span style="display:flex;"><span>order_weight    = 0
+</span></span></code></pre></div><p>kernel 什么都不相信，输出就接近随机。</p>
+<p>再比如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>relation_weight = 2
+</span></span><span style="display:flex;"><span>order_weight    = 2
+</span></span></code></pre></div><p>kernel 既相信词之间的关系场，也相信线性邻近，输出结构应该更稳定。</p>
+<p>于是我们得到一张面：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>controls -&gt; fold quality
+</span></span></code></pre></div><p>这张面就是当前意义上的“可控流形”。</p>
+<h2 id="houming818-的补充梯度不一定只改参数">Houming818 的补充：梯度不一定只改参数<a hidden class="anchor" aria-hidden="true" href="#houming818-的补充梯度不一定只改参数">#</a></h2>
+<p>下面这一段是 Houming818 提出的补充。</p>
+<p>我把它整理成工程语言，但这个想法的责任归属要说清楚：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>观点来源：Houming818
+</span></span><span style="display:flex;"><span>整理解释：Codex Review
+</span></span><span style="display:flex;"><span>当前状态：理论假设，尚未被 SPR-037 的 toy proof 直接证明
+</span></span></code></pre></div><p>你提出的问题是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>既然说可控流形，
+</span></span><span style="display:flex;"><span>那梯度信息从哪里来？
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>梯度是否一定要表现为普通神经网络那样的参数更新？
+</span></span></code></pre></div><p>这非常关键。</p>
+<p>因为如果 TreeHeap 只是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>θ &lt;- θ - η ∇θ L
+</span></span></code></pre></div><p>也就是只更新 kernel 参数，那它看起来和普通 MLP / Transformer 的训练方式太接近。</p>
+<p>但你提出了另一种可能：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>梯度也可以调整 heap 自身的平衡态。
+</span></span></code></pre></div><p>比如一个很小的 heap state：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[2.0, 1.0, 3.0]
+</span></span></code></pre></div><p>梯度来了以后，不一定是修改某个外部参数。</p>
+<p>它也可能让当前 heap 变得更平衡：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[2.0, 1.0, 3.0]
+</span></span><span style="display:flex;"><span>-&gt; [2.0, 1.5, 2.5]
+</span></span><span style="display:flex;"><span>-&gt; [2.0, 1.8, 2.2]
+</span></span></code></pre></div><p>这不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>改函数参数
+</span></span></code></pre></div><p>而更像：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>调 heap state 的平衡性
+</span></span></code></pre></div><h2 id="两种梯度参数梯度与状态梯度">两种梯度：参数梯度与状态梯度<a hidden class="anchor" aria-hidden="true" href="#两种梯度参数梯度与状态梯度">#</a></h2>
+<p>因此 TreeHeap 里至少要区分两类梯度。</p>
+<p>第一类是普通参数梯度：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>θ &lt;- θ - η ∇θ L
+</span></span></code></pre></div><p>这里更新的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 参数
+</span></span><span style="display:flex;"><span>compose 参数
+</span></span><span style="display:flex;"><span>read 参数
+</span></span><span style="display:flex;"><span>write 参数
+</span></span><span style="display:flex;"><span>relation field 参数
+</span></span></code></pre></div><p>这和普通深度学习类似。</p>
+<p>第二类是 Houming818 提出的 heap 平衡梯度：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H &lt;- H - η ∇H E(H)
+</span></span></code></pre></div><p>这里更新的不是外部函数参数，而是当前 heap state：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>arr[1]
+</span></span><span style="display:flex;"><span>arr[2]
+</span></span><span style="display:flex;"><span>arr[3]
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>每个 <code>arr[i]</code> 可以是一个向量。</p>
+<p>它们可以在能量函数的驱动下移动。</p>
+<h2 id="一个最小例子">一个最小例子<a hidden class="anchor" aria-hidden="true" href="#一个最小例子">#</a></h2>
+<p>假设我们定义左右平衡能量：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>E_balance = (left - right)^2
+</span></span></code></pre></div><p>当前状态是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root  = 2.0
+</span></span><span style="display:flex;"><span>left  = 1.0
+</span></span><span style="display:flex;"><span>right = 3.0
+</span></span></code></pre></div><p>左右差很大：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>left - right = -2.0
+</span></span></code></pre></div><p>能量高。</p>
+<p>如果只对 heap state 做梯度下降，系统会推动：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>left 变大
+</span></span><span style="display:flex;"><span>right 变小
+</span></span></code></pre></div><p>于是得到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[2.0, 1.0, 3.0]
+</span></span><span style="display:flex;"><span>-&gt; [2.0, 1.5, 2.5]
+</span></span></code></pre></div><p>这个过程更像物理里的松弛：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>系统沿能量下降方向进入更稳定状态。
+</span></span></code></pre></div><p>它不是先知道一个“目标 heap”，然后对目标 heap 求导。</p>
+<p>它只需要知道：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>当前 heap 的能量高不高。
+</span></span></code></pre></div><h2 id="这是否绕开了目标-heap-可导的问题">这是否绕开了“目标 heap 可导”的问题<a hidden class="anchor" aria-hidden="true" href="#这是否绕开了目标-heap-可导的问题">#</a></h2>
+<p>部分绕开了。</p>
+<p>更准确地说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>不需要目标 heap 本身可导。
+</span></span></code></pre></div><p>但仍然需要一个可计算、可微分的能量函数：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>E(H)
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>E_balance(H)              左右是否平衡
+</span></span><span style="display:flex;"><span>E_parent_child(H)         父子是否一致
+</span></span><span style="display:flex;"><span>E_relation_match(H, W)    heap 是否贴合世界/关系场
+</span></span><span style="display:flex;"><span>E_entropy(P)              概率容器是否过早或过晚坍缩
+</span></span><span style="display:flex;"><span>E_path_smooth(H)          路径上的状态是否连续
+</span></span></code></pre></div><p>总能量可以写成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>E_total(H)
+</span></span><span style="display:flex;"><span>  = E_balance(H)
+</span></span><span style="display:flex;"><span>  + E_parent_child(H)
+</span></span><span style="display:flex;"><span>  + E_relation_match(H, W)
+</span></span><span style="display:flex;"><span>  + E_entropy(P)
+</span></span></code></pre></div><p>然后做：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H &lt;- H - η ∇H E_total(H)
+</span></span></code></pre></div><p>这就把可导要求从：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>目标结构必须可导
+</span></span></code></pre></div><p>转移成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>当前状态的能量函数必须可导
+</span></span></code></pre></div><p>这个差别很大。</p>
+<h2 id="这对-treeheap-为什么重要">这对 TreeHeap 为什么重要<a hidden class="anchor" aria-hidden="true" href="#这对-treeheap-为什么重要">#</a></h2>
+<p>如果这个方向成立，TreeHeap 的学习就不只有一种：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>参数学习：让 kernel 函数变强
+</span></span><span style="display:flex;"><span>状态松弛：让 heap 自身进入平衡态
+</span></span></code></pre></div><p>用一句话说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>普通神经网络更像改函数。
+</span></span><span style="display:flex;"><span>TreeHeap 还可能改结构状态。
+</span></span></code></pre></div><p>这会让“可控流形”变得更像一个真实动力系统：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 参数决定能量地形
+</span></span><span style="display:flex;"><span>heap state 在能量地形上滑动
+</span></span><span style="display:flex;"><span>概率容器在合适时刻坍缩
+</span></span><span style="display:flex;"><span>最后形成稳定结构
+</span></span></code></pre></div><p>也就是说，SPR-037 现在测的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>手动控制变量能不能改变 fold 质量。
+</span></span></code></pre></div><p>Houming818 的补充指向下一层：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>梯度能不能不是只改控制变量，
+</span></span><span style="display:flex;"><span>而是推动 heap state 自己进入更好的平衡态。
+</span></span></code></pre></div><h2 id="这个补充目前还没有证明">这个补充目前还没有证明<a hidden class="anchor" aria-hidden="true" href="#这个补充目前还没有证明">#</a></h2>
+<p>需要强调：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>SPR-037 的实验没有证明 heap state relaxation。
+</span></span></code></pre></div><p>SPR-037 只证明了：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>手动扫 relation_weight / order_weight 时，
+</span></span><span style="display:flex;"><span>fold 质量存在一个可观测控制面。
+</span></span></code></pre></div><p>Houming818 这里提出的是下一步 claim 候选：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 不只有参数梯度路径，
+</span></span><span style="display:flex;"><span>还可能存在 heap state 平衡梯度路径。
+</span></span><span style="display:flex;"><span>这种路径可以在目标结构不可导时，
+</span></span><span style="display:flex;"><span>通过可导能量函数完成结构松弛。
+</span></span></code></pre></div><p>这应该进入后续实验，而不是混进当前结论。</p>
+<p>一个最小 proof 可以是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1. 固定 kernel 参数
+</span></span><span style="display:flex;"><span>2. 初始化一个不平衡 heap state
+</span></span><span style="display:flex;"><span>3. 定义 balance / parent-child / relation 三类能量
+</span></span><span style="display:flex;"><span>4. 只更新 H，不更新 θ
+</span></span><span style="display:flex;"><span>5. 观察 heap 是否收敛到更稳定、可读、可坍缩的结构
+</span></span></code></pre></div><p>如果这个实验通过，TreeHeap 会多出一条很有自己味道的学习路径：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>不是只训练参数，
+</span></span><span style="display:flex;"><span>而是让 heap 自己松弛到稳定结构。
+</span></span></code></pre></div><h2 id="为什么这比直接生成更好">为什么这比直接生成更好<a hidden class="anchor" aria-hidden="true" href="#为什么这比直接生成更好">#</a></h2>
+<p>假设我们直接让模型生成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>the cat is running for a car
+</span></span></code></pre></div><p>一开始可能输出很乱。</p>
+<p>如果只有最终结果，我们只能说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型不行。
+</span></span></code></pre></div><p>但如果有控制面，我们可以问更细的问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>relation_weight 太低了吗？
+</span></span><span style="display:flex;"><span>order_weight 太高了吗？
+</span></span><span style="display:flex;"><span>collapse 太早了吗？
+</span></span><span style="display:flex;"><span>noise 太大了吗？
+</span></span><span style="display:flex;"><span>某个 subheap 没有被正确分割吗？
+</span></span><span style="display:flex;"><span>kernel 缺少共轭/镜像/分解操作吗？
+</span></span></code></pre></div><p>这就从“黑箱失败”变成“可诊断失败”。</p>
+<p>产品工程最需要的不是一次神迹，而是可诊断、可修补、可复现。</p>
+<h2 id="这次-toy-proof-怎么做">这次 toy proof 怎么做<a hidden class="anchor" aria-hidden="true" href="#这次-toy-proof-怎么做">#</a></h2>
+<p>我没有直接跑 WMT。</p>
+<p>这次只做一个最小 proof：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>给定几句短句和弱 block 目标，
+</span></span><span style="display:flex;"><span>看 kernel 控制量能不能把 fold 从乱态推向稳定块。
+</span></span></code></pre></div><p>短句包括：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>the cat is running for a car
+</span></span><span style="display:flex;"><span>a dog is chasing the ball
+</span></span><span style="display:flex;"><span>the book that i bought yesterday is expensive
+</span></span><span style="display:flex;"><span>some kids are playing in the park
+</span></span></code></pre></div><p>注意，这里不是要证明完整语法。</p>
+<p>我们只给一些弱 block：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>the cat
+</span></span><span style="display:flex;"><span>is running
+</span></span><span style="display:flex;"><span>a car
+</span></span><span style="display:flex;"><span>for a car
+</span></span><span style="display:flex;"><span>the book
+</span></span><span style="display:flex;"><span>i bought yesterday
+</span></span><span style="display:flex;"><span>that i bought yesterday
+</span></span><span style="display:flex;"><span>is expensive
+</span></span></code></pre></div><p>这些 block 相当于“产品上希望看到的稳定局部结构”。</p>
+<h2 id="kernel-的控制量">kernel 的控制量<a hidden class="anchor" aria-hidden="true" href="#kernel-的控制量">#</a></h2>
+<p>这次 kernel 只有两个主要旋钮。</p>
+<h3 id="1-relation_weight">1. relation_weight<a hidden class="anchor" aria-hidden="true" href="#1-relation_weight">#</a></h3>
+<p>表示 kernel 多相信“词之间的关系场”。</p>
+<p>比如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>the -&gt; cat
+</span></span><span style="display:flex;"><span>is -&gt; running
+</span></span><span style="display:flex;"><span>a -&gt; car
+</span></span><span style="display:flex;"><span>book -&gt; relative clause
+</span></span></code></pre></div><p>如果 <code>relation_weight</code> 高，相关词更容易被合并。</p>
+<h3 id="2-order_weight">2. order_weight<a hidden class="anchor" aria-hidden="true" href="#2-order_weight">#</a></h3>
+<p>表示 kernel 多相信线性邻近。</p>
+<p>比如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>the cat
+</span></span><span style="display:flex;"><span>is running
+</span></span><span style="display:flex;"><span>a car
+</span></span></code></pre></div><p>这些词本来就在句子里靠得近。</p>
+<p>如果 <code>order_weight</code> 高，邻近词更容易合并。</p>
+<h2 id="数学形式">数学形式<a hidden class="anchor" aria-hidden="true" href="#数学形式">#</a></h2>
+<p>每一步 fold 时，kernel 都要决定两个块 <code>A</code> 和 <code>B</code> 要不要合并。</p>
+<p>这次的打分函数是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>score(A, B)
+</span></span><span style="display:flex;"><span>  = relation_weight * relation(A, B)
+</span></span><span style="display:flex;"><span>  + order_weight    * order(A, B)
+</span></span><span style="display:flex;"><span>  - balance_penalty
+</span></span><span style="display:flex;"><span>  + noise
+</span></span></code></pre></div><p>其中：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>relation(A, B)
+</span></span></code></pre></div><p>表示两个块在关系场里有多接近。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>order(A, B)
+</span></span></code></pre></div><p>表示两个块在原始句子顺序里有多接近。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>balance_penalty
+</span></span></code></pre></div><p>防止一开始就把很不均衡的大块小块乱合。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>noise
+</span></span></code></pre></div><p>模拟不稳定扰动。</p>
+<h2 id="实验变量">实验变量<a hidden class="anchor" aria-hidden="true" href="#实验变量">#</a></h2>
+<p>我们扫描：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>relation_weight in {0, 0.25, 0.5, 1, 2, 4}
+</span></span><span style="display:flex;"><span>order_weight    in {0, 0.25, 0.5, 1, 2, 4}
+</span></span><span style="display:flex;"><span>seeds = 64
+</span></span></code></pre></div><p>评价指标是 block F1：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>预测出来的 block
+</span></span><span style="display:flex;"><span>和我们给定的弱 target block
+</span></span><span style="display:flex;"><span>有多少重合。
+</span></span></code></pre></div><p>这不是 BLEU。</p>
+<p>这也不是翻译质量。</p>
+<p>它只是问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>fold 出来的局部结构是否接近目标块？
+</span></span></code></pre></div><h2 id="实验结果">实验结果<a hidden class="anchor" aria-hidden="true" href="#实验结果">#</a></h2>
+<p>结果如下：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">数值</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>low-control mean F1</td>
+          <td style="text-align: right">0.0828</td>
+      </tr>
+      <tr>
+          <td>best mean F1</td>
+          <td style="text-align: right">0.8148</td>
+      </tr>
+      <tr>
+          <td>high-sum-control mean F1</td>
+          <td style="text-align: right">0.8148</td>
+      </tr>
+      <tr>
+          <td>diagonal gain</td>
+          <td style="text-align: right">0.7319</td>
+      </tr>
+      <tr>
+          <td>product cells</td>
+          <td style="text-align: right">22</td>
+      </tr>
+      <tr>
+          <td>pilot pass</td>
+          <td style="text-align: right">true</td>
+      </tr>
+  </tbody>
+</table>
+<p>最重要的是对角线：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">relation_weight</th>
+          <th style="text-align: right">order_weight</th>
+          <th style="text-align: right">mean F1</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">0.00</td>
+          <td style="text-align: right">0.00</td>
+          <td style="text-align: right">0.0828</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">0.25</td>
+          <td style="text-align: right">0.25</td>
+          <td style="text-align: right">0.4036</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">0.50</td>
+          <td style="text-align: right">0.50</td>
+          <td style="text-align: right">0.6398</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">1.00</td>
+          <td style="text-align: right">1.00</td>
+          <td style="text-align: right">0.7603</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">2.00</td>
+          <td style="text-align: right">2.00</td>
+          <td style="text-align: right">0.8119</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">4.00</td>
+          <td style="text-align: right">4.00</td>
+          <td style="text-align: right">0.8148</td>
+      </tr>
+  </tbody>
+</table>
+<p>这个形状很重要。</p>
+<p>它不是随机跳一下。</p>
+<p>它显示：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>控制量很弱 -&gt; 输出接近乱态
+</span></span><span style="display:flex;"><span>控制量增强 -&gt; fold 结构明显变好
+</span></span><span style="display:flex;"><span>控制量继续增强 -&gt; 进入平台期
+</span></span></code></pre></div><p>这正是“可控流形”的最小证据。</p>
+<h2 id="一个具体-trace">一个具体 trace<a hidden class="anchor" aria-hidden="true" href="#一个具体-trace">#</a></h2>
+<p>对句子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>the book that i bought yesterday is expensive
+</span></span></code></pre></div><p>某次较好的 fold trace 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>the + book
+</span></span><span style="display:flex;"><span>i + bought
+</span></span><span style="display:flex;"><span>is + expensive
+</span></span><span style="display:flex;"><span>i bought + yesterday
+</span></span><span style="display:flex;"><span>that + i bought yesterday
+</span></span><span style="display:flex;"><span>the book + that i bought yesterday
+</span></span><span style="display:flex;"><span>整句合并
+</span></span></code></pre></div><p>这很接近我们想看的结构：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>the book
+</span></span><span style="display:flex;"><span>i bought yesterday
+</span></span><span style="display:flex;"><span>that i bought yesterday
+</span></span><span style="display:flex;"><span>the book that i bought yesterday
+</span></span><span style="display:flex;"><span>is expensive
+</span></span></code></pre></div><p>注意，这不是完整语法树。</p>
+<p>但它说明 kernel 已经能把一些局部块先稳定下来。</p>
+<p>这就是产品功能的早期形态：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>先不要完美理解整句，
+</span></span><span style="display:flex;"><span>先把局部稳定块折出来。
+</span></span></code></pre></div><h2 id="这证明了什么">这证明了什么<a hidden class="anchor" aria-hidden="true" href="#这证明了什么">#</a></h2>
+<p>这次 claim 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>S1-MANIFOLD-C01:
+</span></span><span style="display:flex;"><span>If TreeHeap fold is driven by kernel controls over a latent relation field,
+</span></span><span style="display:flex;"><span>product-like structure should emerge as a measurable control surface.
+</span></span><span style="display:flex;"><span>Increasing relevant control variables should move output from noisy blocks
+</span></span><span style="display:flex;"><span>toward stable target blocks on a toy relation task.
+</span></span></code></pre></div><p>状态：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>supported pilot
+</span></span></code></pre></div><p>它证明的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在一个透明 toy relation field 上，
+</span></span><span style="display:flex;"><span>TreeHeap fold 可以被 kernel 控制量调节，
+</span></span><span style="display:flex;"><span>并且结构质量会沿控制面明显提高。
+</span></span></code></pre></div><p>换句话说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>我们可以把 TreeHeap 的失败变成可观测、可调试的失败。
+</span></span></code></pre></div><p>这对工程很重要。</p>
+<h2 id="这没有证明什么">这没有证明什么<a hidden class="anchor" aria-hidden="true" href="#这没有证明什么">#</a></h2>
+<p>它没有证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 已经理解语言
+</span></span><span style="display:flex;"><span>TreeHeap 已经能翻译
+</span></span><span style="display:flex;"><span>TreeHeap 胜过 Transformer
+</span></span><span style="display:flex;"><span>relation field 能无监督自动学出来
+</span></span><span style="display:flex;"><span>这两个旋钮就是最终旋钮
+</span></span></code></pre></div><p>尤其是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>relation field 这次是 toy 构造的。
+</span></span></code></pre></div><p>这意味着下一步必须把 toy relation field 换成真实数据估计出来的 relation field。</p>
+<p>比如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>共现窗口
+</span></span><span style="display:flex;"><span>masked token restoration
+</span></span><span style="display:flex;"><span>弱依存关系
+</span></span><span style="display:flex;"><span>contrastive phrase pairs
+</span></span><span style="display:flex;"><span>短句人工弱标注
+</span></span></code></pre></div><h2 id="对-treeheap-路线的意义">对 TreeHeap 路线的意义<a hidden class="anchor" aria-hidden="true" href="#对-treeheap-路线的意义">#</a></h2>
+<p>现在我更赞同你的判断：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>代数逻辑和产品逻辑不能分太开。
+</span></span></code></pre></div><p>但也不能直接从代数跳到 WMT。</p>
+<p>中间要有一层：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap Structure Lens
+</span></span></code></pre></div><p>它应该能显示：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>当前 token/block 的邻近关系
+</span></span><span style="display:flex;"><span>当前 fold trace
+</span></span><span style="display:flex;"><span>每个 merge 的 energy
+</span></span><span style="display:flex;"><span>每个 stop/left/right 的概率
+</span></span><span style="display:flex;"><span>哪些结构稳定
+</span></span><span style="display:flex;"><span>哪些结构还在叠加
+</span></span><span style="display:flex;"><span>哪些控制量改变后结构变好
+</span></span></code></pre></div><p>也就是说，产品上先做一个“结构透镜”。</p>
+<p>不是先做最终翻译器。</p>
+<h2 id="下一步">下一步<a hidden class="anchor" aria-hidden="true" href="#下一步">#</a></h2>
+<p>我建议下一步不是继续加 toy trick。</p>
+<p>而是把这个控制面放到真实数据上。</p>
+<p>最小版本：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>输入真实短句
+</span></span><span style="display:flex;"><span>从语料共现或 masked restoration 估计 relation field
+</span></span><span style="display:flex;"><span>用 TreeHeap kernel fold
+</span></span><span style="display:flex;"><span>扫 relation/order/collapse 控制量
+</span></span><span style="display:flex;"><span>看 block F1、稳定性、能量是否形成可控面
+</span></span></code></pre></div><p>如果真实数据也有类似曲面：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>低控制乱
+</span></span><span style="display:flex;"><span>中控制变好
+</span></span><span style="display:flex;"><span>高控制平台
+</span></span></code></pre></div><p>那我们就有了继续推进 S1 的依据。</p>
+<p>如果没有，也很好：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>说明 toy relation field 太人工，
+</span></span><span style="display:flex;"><span>或者 kernel 缺少关键算子，
+</span></span><span style="display:flex;"><span>或者真实语言 fold 不是这个控制方向。
+</span></span></code></pre></div><p>这就是 ARA 的价值。</p>
+<h2 id="一句话总结">一句话总结<a hidden class="anchor" aria-hidden="true" href="#一句话总结">#</a></h2>
+<p>SPR-037 的结论是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 不能只证明自己有代数操作。
+</span></span><span style="display:flex;"><span>它还必须证明这些操作能被控制，
+</span></span><span style="display:flex;"><span>并且控制过程能让产品可见结构逐步涌现。
+</span></span></code></pre></div><p>这次 toy proof 给了一个正信号：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>low-control F1 = 0.0828
+</span></span><span style="display:flex;"><span>best F1       = 0.8148
+</span></span><span style="display:flex;"><span>diagonal gain = 0.7319
+</span></span></code></pre></div><p>所以当前更清晰的路线是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>先建立可控结构透镜，
+</span></span><span style="display:flex;"><span>再用真实数据学习 relation field，
+</span></span><span style="display:flex;"><span>最后才谈生成和翻译。
+</span></span></code></pre></div><p>May the Code be with us.</p>
+<blockquote>
+<p><strong>ARA</strong>: <a href="https://github.com/houming818/sametime/blob/main/ara/s1-echo/logic/controllable_manifold.md">controllable manifold</a> / <a href="https://github.com/houming818/sametime/blob/main/ara/s1-echo/logic/claims.md">claims</a> / <a href="https://github.com/houming818/sametime/blob/main/ara/s1-echo/src/s1_controllable_manifold_probe.py">experiment script</a> / <a href="https://github.com/houming818/sametime/tree/main/ara/s1-echo/evidence/s1_controllable_manifold_probe">evidence</a></p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-014] 基元与 plus：TreeHeap 有序性的来源 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, Algebra, Primitive, Order">
+<meta name="description" content="把 TreeHeap 的卷积问题继续下压：先寻找语义空间里的基元、plus 算子和由 plus 生成的有序性。">
+<meta name="author" content="nio (Houming818) &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/014-primitive-plus-order.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/014-primitive-plus-order.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/014-primitive-plus-order.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-014] 基元与 plus：TreeHeap 有序性的来源">
+  <meta property="og:description" content="把 TreeHeap 的卷积问题继续下压：先寻找语义空间里的基元、plus 算子和由 plus 生成的有序性。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-06-18T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-06-18T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-014] 基元与 plus：TreeHeap 有序性的来源">
+  <meta name="twitter:description" content="把 TreeHeap 的卷积问题继续下压：先寻找语义空间里的基元、plus 算子和由 plus 生成的有序性。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-014] 基元与 plus：TreeHeap 有序性的来源",
+      "item": "https://www.lostmap.cn/spr/014-primitive-plus-order.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-014] 基元与 plus：TreeHeap 有序性的来源",
+  "name": "[SPR-014] 基元与 plus：TreeHeap 有序性的来源",
+  "description": "把 TreeHeap 的卷积问题继续下压：先寻找语义空间里的基元、plus 算子和由 plus 生成的有序性。",
+  "keywords": [
+    "SPR", "TreeHeap", "Algebra", "Primitive", "Order"
+  ],
+  "articleBody": "基元与 plus：TreeHeap 有序性的来源 这篇先不跑实验。\n它先把一个更底层的想法固定下来：\nTreeHeap 的卷积问题， 可能不是先找 kernel， 而是先找语义空间里的基元和 plus。 这个想法来自整数系统。\n整数的有序性不是随便排出来的。\n它有一个非常小的核心：\n基元：0 或 1 算子：plus / successor 顺序：n -\u003e n + 1 闭包：n + 1 仍然是整数 取模：n + base 折回 n 如果 TreeHeap 也想形成自然的有序地址空间，那么我们也要问：\n语义空间里的 1 是什么？ 语义空间里的 plus 是什么？ TreeHeap 的 n+1 是怎么生成的？ 为什么这比卷积更底层 上一篇文章说，卷积可以理解成：\n线性秩序 + 局部窗口 + 取模位移 + 同一个 kernel 的重复作用 但这里还有一个没回答的问题：\n线性秩序从哪里来？ 如果我们只是人为给节点编号：\nnode_0, node_1, node_2, ... 那这个顺序可能只是外部编号。\n它不一定是 TreeHeap 自己的结构。\n更自然的做法是：\nnode_{n+1} = plus(node_n, primitive) 也就是说：\n有序性由 plus 生成。 这就像整数：\n1 = 0 + 1 2 = 1 + 1 3 = 2 + 1 而不是先把整数排好，再事后说它有顺序。\n对应关系 可以先做一个对照表：\n整数系统 TreeHeap / 语义空间 0 origin / root primitive 1 最小语义基元 n + 1 next semantic state / next node plus(a, b) 语义组合或结构推进算子 \u003c repeated plus 生成的顺序 mod base 有限 TreeHeap 地址环 convolution 在这个地址环上滑动 kernel 所以真正要找的是：\nprimitive plus ordered orbit 其中 orbit 是：\nx0 x1 = plus(x0, p) x2 = plus(x1, p) ... x_base ~= x0 如果这个成立，TreeHeap 就不仅是有编号。\n它有了一个内部生成的顺序。\n什么是基元 基元不是人工语法标签。\n它不是：\nSUBJECT OBJECT VERB 至少在 M0/M1 阶段不能这样定义。\n基元应该先被看成：\n能让状态发生最小可重复变化的元素。 在整数里，这个元素是：\n1 在 TreeHeap 里，它可能是：\n一个最小路径步长 一个最小 slot shift 一个最小语义方向 一个局部结构生成元 一个 learned primitive basis 我们不应该一开始就假设它是什么。\n应该设计实验去找：\n哪个 p 可以让 plus(x, p) 稳定地产生 next？ plus 可能是什么 候选 plus 可以有很多种：\nplus(v, p) = v + p plus(v, p) = normalize(v + p) plus(v, p) = CMul(v, p) plus(H, p) = compose(H, p) plus(path, step) = path_shift(path, step) plus(H, p) = learned_operator(H, p) 这些都只是候选。\n不能先说哪一个一定对。\nARA 里应该把它们当作实验变量。\n真正的判断标准是：\n它能不能生成稳定有序轨道？ 有序轨道 如果找到了一个 primitive p 和一个 plus，那么就可以生成：\nx0 = origin x1 = plus(x0, p) x2 = plus(x1, p) x3 = plus(x2, p) 这是一条轨道。\n我们希望它满足：\n相邻可预测 远邻可区分 重复作用不发散 到达 base 后可以回环 也就是：\nnearest(plus(x_n, p)) = x_{n+1} distance(x_n, x_{n+1}) \u003c distance(x_n, x_{n+3}) distance(x_base, x_0) small 这才是 TreeHeap 的有序性。\n不是外部排出来的。\n而是由内部算子生成的。\n取模怎么出现 如果轨道长度是 base：\nx0, x1, x2, ..., x_{base-1} 那么取模就是：\nx_{n + base} ~= x_n 也就是：\nidx(x) in Z_base 这时 TreeHeap 地址空间变成：\nZ / base Z 也就是一个有限循环地址环。\n卷积 kernel 才能滑动：\nwindow(i) = [ x_{i-1 mod base}, x_i, x_{i+1 mod base} ] 这就是：\n基元 + plus 生成 order order + mod 生成 cyclic address cyclic address + kernel 生成卷积 这对 TreeHeap 很重要 之前我们说：\nTreeHeap 是有序树。 但这句话还不够。\n还要追问：\n这个有序性是外部编号给的， 还是 TreeHeap 自己生成的？ 如果只是外部编号，那它只是工程索引。\n如果有：\nx_{n+1} = plus(x_n, p) 那它就是结构规律。\n这两者差别很大。\n前者只能帮我们扫描。\n后者可能帮我们推理。\n新 predict：P-MATH02 可以把下一步写成：\nP-MATH02: Semantic primitive and plus operator 预判：\n如果 TreeHeap 空间存在可用于结构生成的有序性， 那么应该存在某种 primitive p 和 plus 算子， 使 repeated plus 生成稳定、有序、可取模的语义轨道。 形式：\nx_0 = origin x_{n+1} = plus(x_n, p) x_{n+base} ~= x_n toy 实验应该怎么做 先不要碰语言。\n还是 M0 纯数学 toy。\n设：\nbase = 8 origin = x0 primitive = p 生成：\nx1 = plus(x0, p) x2 = plus(x1, p) ... x8 ~= x0 测这些指标：\nsuccessor_accuracy: nearest(plus(x_n, p)) == x_{n+1} cycle_error: distance(x_base, x_0) order_margin: distance(x_n, x_{n+1}) \u003c distance(x_n, x_{n+3}) closure: plus(x_n, p) still in TreeHeap space kernel: [x_{i-1}, x_i, x_{i+1}] mod base can be matched 如果这些都不成立，就不要急着讨论语言。\n因为连：\n1, 2, 3, 4 这样的内部顺序都还没长出来。\n语言里的直觉 等数学 toy 成立以后，语言才进来。\n那时候可以问：\n球 + 脚 -\u003e 足球 球 + 手 -\u003e 篮球 动作 + 施事 -\u003e 事件 事件 + 时间 -\u003e 时态 事件 + 地点 -\u003e 场景 但这些不能一开始就当作人工标签。\n更好的路径是：\n先无监督找 primitive basis 再看这些 basis 是否对应可解释概念 也就是说：\n先找数学上的 1。 再看这个 1 在语言里像不像“脚”“手”“时间”“地点”。 对当前路线的影响 这会把路线再往前插一层：\nM0: TreeHeap object algebra M0-P2: primitive + plus + ordered orbit M1: approximate inverse / learned plus M2: TreeHeap-object echo M3: structure invariant S2: translation 也就是说，SubHeap Kernel Search 之前，还要先问：\nkernel 在哪个有序空间里移动？ 这个有序空间是不是由 plus 生成？ 如果不是，它可能只是工程扫描。\n如果是，它才更像 TreeHeap 自己的代数。\n当前状态 这篇是理论整理。\n还没有实验 claim。\n已经可以进入 ARA：\nara/m0-treeheap-math/logic/predicts.md 下一步实验文件可以叫：\nara/m0-treeheap-math/src/primitive_plus_probe.py ara/m0-treeheap-math/evidence/primitive_plus_probe/ 先用合成 toy 找：\nprimitive plus ordered orbit mod base cyclic kernel 等这个成立，再往 Echo 和 S2 推。\nLicense: GPLv3\n",
+  "wordCount" : "574",
+  "inLanguage": "en",
+  "datePublished": "2026-06-18T00:00:00Z",
+  "dateModified": "2026-06-18T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/014-primitive-plus-order.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item active">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-014] 基元与 plus：TreeHeap 有序性的来源
+    </h1>
+    <div class="post-description">
+      把 TreeHeap 的卷积问题继续下压：先寻找语义空间里的基元、plus 算子和由 plus 生成的有序性。
+    </div>
+    <div class="post-meta"><span title='2026-06-18 00:00:00 +0000 UTC'>June 18, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="基元与-plustreeheap-有序性的来源">基元与 plus：TreeHeap 有序性的来源<a hidden class="anchor" aria-hidden="true" href="#基元与-plustreeheap-有序性的来源">#</a></h1>
+<p>这篇先不跑实验。</p>
+<p>它先把一个更底层的想法固定下来：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的卷积问题，
+</span></span><span style="display:flex;"><span>可能不是先找 kernel，
+</span></span><span style="display:flex;"><span>而是先找语义空间里的基元和 plus。
+</span></span></code></pre></div><p>这个想法来自整数系统。</p>
+<p>整数的有序性不是随便排出来的。</p>
+<p>它有一个非常小的核心：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>基元：0 或 1
+</span></span><span style="display:flex;"><span>算子：plus / successor
+</span></span><span style="display:flex;"><span>顺序：n -&gt; n + 1
+</span></span><span style="display:flex;"><span>闭包：n + 1 仍然是整数
+</span></span><span style="display:flex;"><span>取模：n + base 折回 n
+</span></span></code></pre></div><p>如果 TreeHeap 也想形成自然的有序地址空间，那么我们也要问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>语义空间里的 1 是什么？
+</span></span><span style="display:flex;"><span>语义空间里的 plus 是什么？
+</span></span><span style="display:flex;"><span>TreeHeap 的 n+1 是怎么生成的？
+</span></span></code></pre></div><h2 id="为什么这比卷积更底层">为什么这比卷积更底层<a hidden class="anchor" aria-hidden="true" href="#为什么这比卷积更底层">#</a></h2>
+<p>上一篇文章说，卷积可以理解成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>线性秩序
+</span></span><span style="display:flex;"><span>+ 局部窗口
+</span></span><span style="display:flex;"><span>+ 取模位移
+</span></span><span style="display:flex;"><span>+ 同一个 kernel 的重复作用
+</span></span></code></pre></div><p>但这里还有一个没回答的问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>线性秩序从哪里来？
+</span></span></code></pre></div><p>如果我们只是人为给节点编号：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>node_0, node_1, node_2, ...
+</span></span></code></pre></div><p>那这个顺序可能只是外部编号。</p>
+<p>它不一定是 TreeHeap 自己的结构。</p>
+<p>更自然的做法是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>node_{n+1} = plus(node_n, primitive)
+</span></span></code></pre></div><p>也就是说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>有序性由 plus 生成。
+</span></span></code></pre></div><p>这就像整数：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1 = 0 + 1
+</span></span><span style="display:flex;"><span>2 = 1 + 1
+</span></span><span style="display:flex;"><span>3 = 2 + 1
+</span></span></code></pre></div><p>而不是先把整数排好，再事后说它有顺序。</p>
+<h2 id="对应关系">对应关系<a hidden class="anchor" aria-hidden="true" href="#对应关系">#</a></h2>
+<p>可以先做一个对照表：</p>
+<table>
+  <thead>
+      <tr>
+          <th>整数系统</th>
+          <th>TreeHeap / 语义空间</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>0</code></td>
+          <td>origin / root primitive</td>
+      </tr>
+      <tr>
+          <td><code>1</code></td>
+          <td>最小语义基元</td>
+      </tr>
+      <tr>
+          <td><code>n + 1</code></td>
+          <td>next semantic state / next node</td>
+      </tr>
+      <tr>
+          <td><code>plus(a, b)</code></td>
+          <td>语义组合或结构推进算子</td>
+      </tr>
+      <tr>
+          <td><code>&lt;</code></td>
+          <td>repeated plus 生成的顺序</td>
+      </tr>
+      <tr>
+          <td><code>mod base</code></td>
+          <td>有限 TreeHeap 地址环</td>
+      </tr>
+      <tr>
+          <td>convolution</td>
+          <td>在这个地址环上滑动 kernel</td>
+      </tr>
+  </tbody>
+</table>
+<p>所以真正要找的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>primitive
+</span></span><span style="display:flex;"><span>plus
+</span></span><span style="display:flex;"><span>ordered orbit
+</span></span></code></pre></div><p>其中 orbit 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x0
+</span></span><span style="display:flex;"><span>x1 = plus(x0, p)
+</span></span><span style="display:flex;"><span>x2 = plus(x1, p)
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>x_base ~= x0
+</span></span></code></pre></div><p>如果这个成立，TreeHeap 就不仅是有编号。</p>
+<p>它有了一个内部生成的顺序。</p>
+<h2 id="什么是基元">什么是基元<a hidden class="anchor" aria-hidden="true" href="#什么是基元">#</a></h2>
+<p>基元不是人工语法标签。</p>
+<p>它不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>SUBJECT
+</span></span><span style="display:flex;"><span>OBJECT
+</span></span><span style="display:flex;"><span>VERB
+</span></span></code></pre></div><p>至少在 M0/M1 阶段不能这样定义。</p>
+<p>基元应该先被看成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>能让状态发生最小可重复变化的元素。
+</span></span></code></pre></div><p>在整数里，这个元素是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1
+</span></span></code></pre></div><p>在 TreeHeap 里，它可能是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个最小路径步长
+</span></span><span style="display:flex;"><span>一个最小 slot shift
+</span></span><span style="display:flex;"><span>一个最小语义方向
+</span></span><span style="display:flex;"><span>一个局部结构生成元
+</span></span><span style="display:flex;"><span>一个 learned primitive basis
+</span></span></code></pre></div><p>我们不应该一开始就假设它是什么。</p>
+<p>应该设计实验去找：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>哪个 p 可以让 plus(x, p) 稳定地产生 next？
+</span></span></code></pre></div><h2 id="plus-可能是什么">plus 可能是什么<a hidden class="anchor" aria-hidden="true" href="#plus-可能是什么">#</a></h2>
+<p>候选 plus 可以有很多种：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>plus(v, p) = v + p
+</span></span><span style="display:flex;"><span>plus(v, p) = normalize(v + p)
+</span></span><span style="display:flex;"><span>plus(v, p) = CMul(v, p)
+</span></span><span style="display:flex;"><span>plus(H, p) = compose(H, p)
+</span></span><span style="display:flex;"><span>plus(path, step) = path_shift(path, step)
+</span></span><span style="display:flex;"><span>plus(H, p) = learned_operator(H, p)
+</span></span></code></pre></div><p>这些都只是候选。</p>
+<p>不能先说哪一个一定对。</p>
+<p>ARA 里应该把它们当作实验变量。</p>
+<p>真正的判断标准是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>它能不能生成稳定有序轨道？
+</span></span></code></pre></div><h2 id="有序轨道">有序轨道<a hidden class="anchor" aria-hidden="true" href="#有序轨道">#</a></h2>
+<p>如果找到了一个 primitive <code>p</code> 和一个 plus，那么就可以生成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x0 = origin
+</span></span><span style="display:flex;"><span>x1 = plus(x0, p)
+</span></span><span style="display:flex;"><span>x2 = plus(x1, p)
+</span></span><span style="display:flex;"><span>x3 = plus(x2, p)
+</span></span></code></pre></div><p>这是一条轨道。</p>
+<p>我们希望它满足：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>相邻可预测
+</span></span><span style="display:flex;"><span>远邻可区分
+</span></span><span style="display:flex;"><span>重复作用不发散
+</span></span><span style="display:flex;"><span>到达 base 后可以回环
+</span></span></code></pre></div><p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>nearest(plus(x_n, p)) = x_{n+1}
+</span></span><span style="display:flex;"><span>distance(x_n, x_{n+1}) &lt; distance(x_n, x_{n+3})
+</span></span><span style="display:flex;"><span>distance(x_base, x_0) small
+</span></span></code></pre></div><p>这才是 TreeHeap 的有序性。</p>
+<p>不是外部排出来的。</p>
+<p>而是由内部算子生成的。</p>
+<h2 id="取模怎么出现">取模怎么出现<a hidden class="anchor" aria-hidden="true" href="#取模怎么出现">#</a></h2>
+<p>如果轨道长度是 <code>base</code>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x0, x1, x2, ..., x_{base-1}
+</span></span></code></pre></div><p>那么取模就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x_{n + base} ~= x_n
+</span></span></code></pre></div><p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>idx(x) in Z_base
+</span></span></code></pre></div><p>这时 TreeHeap 地址空间变成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Z / base Z
+</span></span></code></pre></div><p>也就是一个有限循环地址环。</p>
+<p>卷积 kernel 才能滑动：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>window(i) = [
+</span></span><span style="display:flex;"><span>  x_{i-1 mod base},
+</span></span><span style="display:flex;"><span>  x_i,
+</span></span><span style="display:flex;"><span>  x_{i+1 mod base}
+</span></span><span style="display:flex;"><span>]
+</span></span></code></pre></div><p>这就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>基元 + plus
+</span></span><span style="display:flex;"><span>生成 order
+</span></span><span style="display:flex;"><span>order + mod
+</span></span><span style="display:flex;"><span>生成 cyclic address
+</span></span><span style="display:flex;"><span>cyclic address + kernel
+</span></span><span style="display:flex;"><span>生成卷积
+</span></span></code></pre></div><h2 id="这对-treeheap-很重要">这对 TreeHeap 很重要<a hidden class="anchor" aria-hidden="true" href="#这对-treeheap-很重要">#</a></h2>
+<p>之前我们说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 是有序树。
+</span></span></code></pre></div><p>但这句话还不够。</p>
+<p>还要追问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这个有序性是外部编号给的，
+</span></span><span style="display:flex;"><span>还是 TreeHeap 自己生成的？
+</span></span></code></pre></div><p>如果只是外部编号，那它只是工程索引。</p>
+<p>如果有：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x_{n+1} = plus(x_n, p)
+</span></span></code></pre></div><p>那它就是结构规律。</p>
+<p>这两者差别很大。</p>
+<p>前者只能帮我们扫描。</p>
+<p>后者可能帮我们推理。</p>
+<h2 id="新-predictp-math02">新 predict：P-MATH02<a hidden class="anchor" aria-hidden="true" href="#新-predictp-math02">#</a></h2>
+<p>可以把下一步写成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P-MATH02: Semantic primitive and plus operator
+</span></span></code></pre></div><p>预判：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果 TreeHeap 空间存在可用于结构生成的有序性，
+</span></span><span style="display:flex;"><span>那么应该存在某种 primitive p 和 plus 算子，
+</span></span><span style="display:flex;"><span>使 repeated plus 生成稳定、有序、可取模的语义轨道。
+</span></span></code></pre></div><p>形式：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x_0 = origin
+</span></span><span style="display:flex;"><span>x_{n+1} = plus(x_n, p)
+</span></span><span style="display:flex;"><span>x_{n+base} ~= x_n
+</span></span></code></pre></div><h2 id="toy-实验应该怎么做">toy 实验应该怎么做<a hidden class="anchor" aria-hidden="true" href="#toy-实验应该怎么做">#</a></h2>
+<p>先不要碰语言。</p>
+<p>还是 M0 纯数学 toy。</p>
+<p>设：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>base = 8
+</span></span><span style="display:flex;"><span>origin = x0
+</span></span><span style="display:flex;"><span>primitive = p
+</span></span></code></pre></div><p>生成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x1 = plus(x0, p)
+</span></span><span style="display:flex;"><span>x2 = plus(x1, p)
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>x8 ~= x0
+</span></span></code></pre></div><p>测这些指标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>successor_accuracy:
+</span></span><span style="display:flex;"><span>  nearest(plus(x_n, p)) == x_{n+1}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>cycle_error:
+</span></span><span style="display:flex;"><span>  distance(x_base, x_0)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>order_margin:
+</span></span><span style="display:flex;"><span>  distance(x_n, x_{n+1}) &lt; distance(x_n, x_{n+3})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>closure:
+</span></span><span style="display:flex;"><span>  plus(x_n, p) still in TreeHeap space
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>kernel:
+</span></span><span style="display:flex;"><span>  [x_{i-1}, x_i, x_{i+1}] mod base can be matched
+</span></span></code></pre></div><p>如果这些都不成立，就不要急着讨论语言。</p>
+<p>因为连：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1, 2, 3, 4
+</span></span></code></pre></div><p>这样的内部顺序都还没长出来。</p>
+<h2 id="语言里的直觉">语言里的直觉<a hidden class="anchor" aria-hidden="true" href="#语言里的直觉">#</a></h2>
+<p>等数学 toy 成立以后，语言才进来。</p>
+<p>那时候可以问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>球 + 脚 -&gt; 足球
+</span></span><span style="display:flex;"><span>球 + 手 -&gt; 篮球
+</span></span><span style="display:flex;"><span>动作 + 施事 -&gt; 事件
+</span></span><span style="display:flex;"><span>事件 + 时间 -&gt; 时态
+</span></span><span style="display:flex;"><span>事件 + 地点 -&gt; 场景
+</span></span></code></pre></div><p>但这些不能一开始就当作人工标签。</p>
+<p>更好的路径是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>先无监督找 primitive basis
+</span></span><span style="display:flex;"><span>再看这些 basis 是否对应可解释概念
+</span></span></code></pre></div><p>也就是说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>先找数学上的 1。
+</span></span><span style="display:flex;"><span>再看这个 1 在语言里像不像“脚”“手”“时间”“地点”。
+</span></span></code></pre></div><h2 id="对当前路线的影响">对当前路线的影响<a hidden class="anchor" aria-hidden="true" href="#对当前路线的影响">#</a></h2>
+<p>这会把路线再往前插一层：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>M0: TreeHeap object algebra
+</span></span><span style="display:flex;"><span>M0-P2: primitive + plus + ordered orbit
+</span></span><span style="display:flex;"><span>M1: approximate inverse / learned plus
+</span></span><span style="display:flex;"><span>M2: TreeHeap-object echo
+</span></span><span style="display:flex;"><span>M3: structure invariant
+</span></span><span style="display:flex;"><span>S2: translation
+</span></span></code></pre></div><p>也就是说，SubHeap Kernel Search 之前，还要先问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 在哪个有序空间里移动？
+</span></span><span style="display:flex;"><span>这个有序空间是不是由 plus 生成？
+</span></span></code></pre></div><p>如果不是，它可能只是工程扫描。</p>
+<p>如果是，它才更像 TreeHeap 自己的代数。</p>
+<h2 id="当前状态">当前状态<a hidden class="anchor" aria-hidden="true" href="#当前状态">#</a></h2>
+<p>这篇是理论整理。</p>
+<p>还没有实验 claim。</p>
+<p>已经可以进入 ARA：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/m0-treeheap-math/logic/predicts.md
+</span></span></code></pre></div><p>下一步实验文件可以叫：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/m0-treeheap-math/src/primitive_plus_probe.py
+</span></span><span style="display:flex;"><span>ara/m0-treeheap-math/evidence/primitive_plus_probe/
+</span></span></code></pre></div><p>先用合成 toy 找：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>primitive
+</span></span><span style="display:flex;"><span>plus
+</span></span><span style="display:flex;"><span>ordered orbit
+</span></span><span style="display:flex;"><span>mod base
+</span></span><span style="display:flex;"><span>cyclic kernel
+</span></span></code></pre></div><p>等这个成立，再往 Echo 和 S2 推。</p>
+<blockquote>
+<p><strong>License: GPLv3</strong></p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

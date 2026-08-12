@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>[WATERMELON-001] 西瓜书学习专题——从一条公式开始 on LostMap</title>
+    <link>https://www.lostmap.cn/watermelon/index.html</link>
+    <description>Recent content in [WATERMELON-001] 西瓜书学习专题——从一条公式开始 on LostMap</description>
+    <generator>Hugo</generator>
+    <language>zh-CN</language>
+    <lastBuildDate>Sat, 09 May 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://www.lostmap.cn/watermelon/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</title>
+      <link>https://www.lostmap.cn/watermelon/006-fft-probability-spectrum.html</link>
+      <pubDate>Sat, 09 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/watermelon/006-fft-probability-spectrum.html</guid>
+      <description>把三色球的概率向量做傅里叶变换，频率成分为何恰好编码了&amp;#34;分布不均匀度&amp;#34;？这不是巧合，是特征函数理论的一个特例。附带 FFT vs Attention 的启发式类比。</description>
+    </item>
+    <item>
+      <title>[WATERMELON-002] 从对称开始——回归与分类是同一个问题</title>
+      <link>https://www.lostmap.cn/watermelon/002-symmetric-prediction.html</link>
+      <pubDate>Fri, 08 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/watermelon/002-symmetric-prediction.html</guid>
+      <description>回归和分类在假设空间层面完全对称——同样的线性基底，不同的输出层。从 wx&#43;b 出发，统一广义线性模型框架。</description>
+    </item>
+    <item>
+      <title>[WATERMELON-003] softmax——从离散标签到连续梯度</title>
+      <link>https://www.lostmap.cn/watermelon/003-softmax-continuous-relaxation.html</link>
+      <pubDate>Fri, 08 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/watermelon/003-softmax-continuous-relaxation.html</guid>
+      <description>分类标签是离散的，梯度在离散点上不存在。softmax 把离散选择转化为连续概率分布，让梯度得以流过——这是分类问题能被优化的数学前提。</description>
+    </item>
+    <item>
+      <title>[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</title>
+      <link>https://www.lostmap.cn/watermelon/004-probability-simplex-linear-space.html</link>
+      <pubDate>Fri, 08 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/watermelon/004-probability-simplex-linear-space.html</guid>
+      <description>10 次放回取样，用黑白球和黑白灰球实验，直观看到概率空间是三角形（不是线性的），而 softmax 把它变成了自由实数的线性空间。</description>
+    </item>
+    <item>
+      <title>[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</title>
+      <link>https://www.lostmap.cn/watermelon/005-simplex-mappings.html</link>
+      <pubDate>Fri, 08 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/watermelon/005-simplex-mappings.html</guid>
+      <description>softmax 不是概率单纯形到实数空间的唯一映射。ALR、CLR、ILR 三族 log-ratio 变换各有何几何性质？它们的梯度行为有何不同？</description>
+    </item>
+  </channel>
+</rss>

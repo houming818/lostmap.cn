@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, Paper, Falsification, Reproducibility, ARA, OpenScience">
+<meta name="description" content="TreeHeap 论文特别篇终章：公开当前 Claim 状态、可能推翻结论的实验、计算代价、复现路径，以及读者应该如何审核这项独立研究。">
+<meta name="author" content="Houming818 &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/080-treeheap-paper-boundaries-and-reproduction.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/080-treeheap-paper-boundaries-and-reproduction.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/080-treeheap-paper-boundaries-and-reproduction.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口">
+  <meta property="og:description" content="TreeHeap 论文特别篇终章：公开当前 Claim 状态、可能推翻结论的实验、计算代价、复现路径，以及读者应该如何审核这项独立研究。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-08-02T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-08-02T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口">
+  <meta name="twitter:description" content="TreeHeap 论文特别篇终章：公开当前 Claim 状态、可能推翻结论的实验、计算代价、复现路径，以及读者应该如何审核这项独立研究。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口",
+      "item": "https://www.lostmap.cn/spr/080-treeheap-paper-boundaries-and-reproduction.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口",
+  "name": "[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口",
+  "description": "TreeHeap 论文特别篇终章：公开当前 Claim 状态、可能推翻结论的实验、计算代价、复现路径，以及读者应该如何审核这项独立研究。",
+  "keywords": [
+    "SPR", "TreeHeap", "Paper", "Falsification", "Reproducibility", "ARA", "OpenScience"
+  ],
+  "articleBody": "如何审核 TreeHeap 系列定位：TreeHeap 论文特别篇（4/4）。\n一项新架构不能只展示最好样例。它必须告诉读者：什么结果会让研究者承认自己错了。\n系列导航 问题、失败与设计演化 数学、参数与数据流 三种子 WMT 与双向 Dreams 本篇：Claim 边界、否证条件与复现 完整中文论文：\nhttps://github.com/houming818/sametime/blob/main/ara/papers/treeheap_emergent_protocol.zh.md 开放代码与 ARA：\nhttps://github.com/houming818/sametime 1. 当前 Claim 体检表 Claim 当前状态 Butterfly 正反变换保持数值闭合 支持 FOLD/UNFOLD 保持数值闭合 支持 root 与多个 detail 深度参与当前 WMT 任务 支持机制 可学习 Update 在保持闭合时改善任务 部分支持，未过 0.05 NLL 强 gate Butterfly 配置在当前 WMT 合同中优于 Identity/Adjacent 三种子支持 已训练模型依赖通信变换 运行时依赖检查支持 收益严格来自 changing-bit 拓扑 开放 共享 TreeHeap 开始形成中英双向协议 规模观察支持，最终质量开放 root 是人类可读摘要 未证明 XOR 地址天然具有语义 未证明 当前状态已经实现存储压缩 否 当前实现已经节省 GPU 计算 未证明 当前模型达到产品级翻译质量 否 这张表比一句“实验成功”更重要，因为它限定了每个结果的有效范围。\n2. 什么结果会推翻当前判断 2.1 推翻可逆性 若在有效输入上，Butterfly inverse 或 FOLD/UNFOLD closure 出现系统性大误差，而且不能由浮点精度解释，那么代数实现不成立。\n2.2 推翻多分辨率参与 若 root、detail、pairing 和 depth 干预在多种子上都不造成稳定损失，或者 Decoder 被发现只从 leaf 直通读取，那么“TreeHeap 多分辨率参与任务”必须撤回。\n2.3 推翻 Butterfly 的当前收益 若同数据、同种子、同参数和同训练合同无法重复当前三种子结果，Butterfly 的 WMT Claim 必须降级。\n2.4 推翻 changing-bit 的特殊性 这是下一轮最关键的反证：\n如果若干具有相同边数、阶段数和全局覆盖能力的固定随机 topology，与 XOR-Butterfly 表现相同或更好，就不能把收益归因于 changing-bit 调度本身。\nButterfly 仍可能是一种可用调度，但不再具有当前设想的特殊归纳偏置。\n2.5 推翻双向协议生长 若全量训练长期出现以下情况之一，应停止扩大结论：\n输出持续与源无关； 中英方向混淆； 验证损失长期不改善； checkpoint 重载后固定输出变化； 重复坍缩没有随训练缓解。 3. 为什么当前还不能叫“压缩模型” Lifting 把 $N$ 个 leaf 组织成：\n1 root + (N-1) details 总状态数量没有减少。\n真正的压缩必须进一步证明：\n可以删除、量化或延迟加载部分 detail； 质量损失在给定预算内； 存储、显存或计算成本实际下降。 所以论文使用“多分辨率状态”，不使用“已经压缩”。\n4. 为什么当前还不能叫“高效模型” 理论操作量：\nButterfly: O(N log N) FOLD/UNFOLD: O(N) current READ: O(TN) 当前代码没有为稀疏 TreeHeap kernel 编写专用 CUDA 实现。Python/PyTorch 张量重排可能让理论稀疏结构在实际 GPU 上更慢。\n计算优势必须记录：\n训练 token； GPU 小时； tokens/s； 峰值显存； 估算反向 FLOPs； 匹配质量所需的总成本。 复杂度公式不能代替工程测量。\n5. 如何复现正式三种子实验 核心代码：\nara/s3-generation/src/s2_treeheap_butterfly_wmt.py Logic 与 Evidence：\nara/s3-generation/logic/treeheap_butterfly_wmt_ablation.md ara/s3-generation/evidence/s2_treeheap_butterfly_wmt_formal/ 正式配置：\ntrain/valid/test = 200000/5000/5000 length = 8..32 heap_width = 64 dim = 256 hidden = 256 batch = 64 epochs = 5 lr = 0.002 seeds = 8104,8105,8106 Evidence 中保存：\nsummary.json； 每个 seed 的 trace； 生成样例； 干预结果； closure 与 inverse 误差； checkpoint SHA-256。 6. 如何复查全量双向实验 训练代码：\nara/s3-generation/src/s3_treeheap_butterfly_bilingual_full.py 实验说明和阶段证据：\nara/s3-generation/logic/treeheap_butterfly_bilingual_full_train.md ara/s3-generation/evidence/s3_treeheap_butterfly_bilingual_full/ dreams/step-*.txt 是不可变的固定探针快照。审核时不能只选最好的一次，应按时间顺序阅读全部文件。\n7. 为什么我们使用 ARA 研究流程为：\n直觉 -\u003e Claim -\u003e Predict -\u003e Experiment -\u003e Evidence -\u003e Audit -\u003e Revision 这套流程已经实际撤回过多项错误：\ntoken 路径被误写成语义； flat 长度路由被误写成递归 TreeHeap； geometry feature 把正确方向泄漏给模型； CLI 把中文续写错误标成翻译； runtime Identity 被过强解释为拓扑因果证据。 ARA 不能保证研究者不犯错。它只保证错误可以被定位，并且不会悄悄变成下一轮前提。\n8. 下一轮三个决定性实验 8.1 冻结最好 checkpoint 与最后 checkpoint 全量训练已经进入震荡平台，最后一次不一定最好。最终报告必须同时保存：\nvalidation NLL 最好的 checkpoint； 时间预算结束时的 checkpoint； 两者在固定测试集上的完整比较。 8.2 严格 topology-only 干预 保持 checkpoint、kernel、调用次数和验证句相同，只替换地址配对图。对每个句子计算：\n$\n$ \\Delta L_i=L_i(wrong\\ topology)-L_i(native) $$\n不能再拿不同数量的验证样本做差。\n8.3 同覆盖能力 topology 的匹配重训 至少比较：\nXOR Butterfly repeated adjacent fixed random perfect matching A fixed random perfect matching B fixed random perfect matching C 所有配置保持边数、阶段数、kernel 参数量和训练数据一致。\n9. 给非专业读者的最终判断 TreeHeap 现在不是一个成熟产品，也不是已经完成的意识理论。\n它已经是：\n有明确数据结构 有数学逆运算 有梯度路径 有真实语言训练 有多种子结果 有失败档案 有公开反证条件 它还缺少：\n严格拓扑因果隔离 完整标准质量评价 真正的压缩收益 工程计算优势 跨任务复现 读者不需要相信作者或 AI。只需要检查公开代码、配置、原始结果和 Claim 边界。\n10. 特别篇结语 这四篇特别篇把一篇较长的研究论文拆成了四个可以独立审核的问题：\n为什么最终架构会长成这样； 数学和梯度究竟怎样流动； 数据已经支持了哪些结论； 什么实验可能推翻这些结论。 如果未来结论改变，这四篇也不应被删除。新的 Evidence 应更新 Claim，并保留旧判断为何被修正。\nLicense: GPLv3。碳基和硅基读者均可阅读、复制、修改、复现和分发。\n",
+  "wordCount" : "365",
+  "inLanguage": "en",
+  "datePublished": "2026-08-02T00:00:00Z",
+  "dateModified": "2026-08-02T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Houming818 \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/080-treeheap-paper-boundaries-and-reproduction.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item active">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口
+    </h1>
+    <div class="post-description">
+      TreeHeap 论文特别篇终章：公开当前 Claim 状态、可能推翻结论的实验、计算代价、复现路径，以及读者应该如何审核这项独立研究。
+    </div>
+    <div class="post-meta"><span title='2026-08-02 00:00:00 +0000 UTC'>August 2, 2026</span>&nbsp;·&nbsp;<span>Houming818 &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="如何审核-treeheap">如何审核 TreeHeap<a hidden class="anchor" aria-hidden="true" href="#如何审核-treeheap">#</a></h1>
+<blockquote>
+<p><strong>系列定位：TreeHeap 论文特别篇（4/4）。</strong></p>
+<p>一项新架构不能只展示最好样例。它必须告诉读者：什么结果会让研究者承认自己错了。</p>
+</blockquote>
+<h2 id="系列导航">系列导航<a hidden class="anchor" aria-hidden="true" href="#系列导航">#</a></h2>
+<ol>
+<li><a href="/spr/077-treeheap-paper-origin-and-evolution.html">问题、失败与设计演化</a></li>
+<li><a href="/spr/078-treeheap-paper-math-and-dataflow.html">数学、参数与数据流</a></li>
+<li><a href="/spr/079-treeheap-paper-evidence-and-dreams.html">三种子 WMT 与双向 Dreams</a></li>
+<li><strong>本篇：Claim 边界、否证条件与复现</strong></li>
+</ol>
+<p>完整中文论文：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>https://github.com/houming818/sametime/blob/main/ara/papers/treeheap_emergent_protocol.zh.md
+</span></span></code></pre></div><p>开放代码与 ARA：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>https://github.com/houming818/sametime
+</span></span></code></pre></div><h2 id="1-当前-claim-体检表">1. 当前 Claim 体检表<a hidden class="anchor" aria-hidden="true" href="#1-当前-claim-体检表">#</a></h2>
+<table>
+  <thead>
+      <tr>
+          <th>Claim</th>
+          <th>当前状态</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Butterfly 正反变换保持数值闭合</td>
+          <td>支持</td>
+      </tr>
+      <tr>
+          <td>FOLD/UNFOLD 保持数值闭合</td>
+          <td>支持</td>
+      </tr>
+      <tr>
+          <td>root 与多个 detail 深度参与当前 WMT 任务</td>
+          <td>支持机制</td>
+      </tr>
+      <tr>
+          <td>可学习 Update 在保持闭合时改善任务</td>
+          <td>部分支持，未过 0.05 NLL 强 gate</td>
+      </tr>
+      <tr>
+          <td>Butterfly 配置在当前 WMT 合同中优于 Identity/Adjacent</td>
+          <td>三种子支持</td>
+      </tr>
+      <tr>
+          <td>已训练模型依赖通信变换</td>
+          <td>运行时依赖检查支持</td>
+      </tr>
+      <tr>
+          <td>收益严格来自 changing-bit 拓扑</td>
+          <td>开放</td>
+      </tr>
+      <tr>
+          <td>共享 TreeHeap 开始形成中英双向协议</td>
+          <td>规模观察支持，最终质量开放</td>
+      </tr>
+      <tr>
+          <td>root 是人类可读摘要</td>
+          <td>未证明</td>
+      </tr>
+      <tr>
+          <td>XOR 地址天然具有语义</td>
+          <td>未证明</td>
+      </tr>
+      <tr>
+          <td>当前状态已经实现存储压缩</td>
+          <td>否</td>
+      </tr>
+      <tr>
+          <td>当前实现已经节省 GPU 计算</td>
+          <td>未证明</td>
+      </tr>
+      <tr>
+          <td>当前模型达到产品级翻译质量</td>
+          <td>否</td>
+      </tr>
+  </tbody>
+</table>
+<p>这张表比一句“实验成功”更重要，因为它限定了每个结果的有效范围。</p>
+<h2 id="2-什么结果会推翻当前判断">2. 什么结果会推翻当前判断<a hidden class="anchor" aria-hidden="true" href="#2-什么结果会推翻当前判断">#</a></h2>
+<h3 id="21-推翻可逆性">2.1 推翻可逆性<a hidden class="anchor" aria-hidden="true" href="#21-推翻可逆性">#</a></h3>
+<p>若在有效输入上，Butterfly inverse 或 FOLD/UNFOLD closure 出现系统性大误差，而且不能由浮点精度解释，那么代数实现不成立。</p>
+<h3 id="22-推翻多分辨率参与">2.2 推翻多分辨率参与<a hidden class="anchor" aria-hidden="true" href="#22-推翻多分辨率参与">#</a></h3>
+<p>若 root、detail、pairing 和 depth 干预在多种子上都不造成稳定损失，或者 Decoder 被发现只从 leaf 直通读取，那么“TreeHeap 多分辨率参与任务”必须撤回。</p>
+<h3 id="23-推翻-butterfly-的当前收益">2.3 推翻 Butterfly 的当前收益<a hidden class="anchor" aria-hidden="true" href="#23-推翻-butterfly-的当前收益">#</a></h3>
+<p>若同数据、同种子、同参数和同训练合同无法重复当前三种子结果，Butterfly 的 WMT Claim 必须降级。</p>
+<h3 id="24-推翻-changing-bit-的特殊性">2.4 推翻 changing-bit 的特殊性<a hidden class="anchor" aria-hidden="true" href="#24-推翻-changing-bit-的特殊性">#</a></h3>
+<p>这是下一轮最关键的反证：</p>
+<blockquote>
+<p>如果若干具有相同边数、阶段数和全局覆盖能力的固定随机 topology，与 XOR-Butterfly 表现相同或更好，就不能把收益归因于 changing-bit 调度本身。</p>
+</blockquote>
+<p>Butterfly 仍可能是一种可用调度，但不再具有当前设想的特殊归纳偏置。</p>
+<h3 id="25-推翻双向协议生长">2.5 推翻双向协议生长<a hidden class="anchor" aria-hidden="true" href="#25-推翻双向协议生长">#</a></h3>
+<p>若全量训练长期出现以下情况之一，应停止扩大结论：</p>
+<ul>
+<li>输出持续与源无关；</li>
+<li>中英方向混淆；</li>
+<li>验证损失长期不改善；</li>
+<li>checkpoint 重载后固定输出变化；</li>
+<li>重复坍缩没有随训练缓解。</li>
+</ul>
+<h2 id="3-为什么当前还不能叫压缩模型">3. 为什么当前还不能叫“压缩模型”<a hidden class="anchor" aria-hidden="true" href="#3-为什么当前还不能叫压缩模型">#</a></h2>
+<p>Lifting 把 </p>
+$N$<p> 个 leaf 组织成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1 root + (N-1) details
+</span></span></code></pre></div><p>总状态数量没有减少。</p>
+<p>真正的压缩必须进一步证明：</p>
+<ol>
+<li>可以删除、量化或延迟加载部分 detail；</li>
+<li>质量损失在给定预算内；</li>
+<li>存储、显存或计算成本实际下降。</li>
+</ol>
+<p>所以论文使用“多分辨率状态”，不使用“已经压缩”。</p>
+<h2 id="4-为什么当前还不能叫高效模型">4. 为什么当前还不能叫“高效模型”<a hidden class="anchor" aria-hidden="true" href="#4-为什么当前还不能叫高效模型">#</a></h2>
+<p>理论操作量：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Butterfly: O(N log N)
+</span></span><span style="display:flex;"><span>FOLD/UNFOLD: O(N)
+</span></span><span style="display:flex;"><span>current READ: O(TN)
+</span></span></code></pre></div><p>当前代码没有为稀疏 TreeHeap kernel 编写专用 CUDA 实现。Python/PyTorch 张量重排可能让理论稀疏结构在实际 GPU 上更慢。</p>
+<p>计算优势必须记录：</p>
+<ul>
+<li>训练 token；</li>
+<li>GPU 小时；</li>
+<li>tokens/s；</li>
+<li>峰值显存；</li>
+<li>估算反向 FLOPs；</li>
+<li>匹配质量所需的总成本。</li>
+</ul>
+<p>复杂度公式不能代替工程测量。</p>
+<h2 id="5-如何复现正式三种子实验">5. 如何复现正式三种子实验<a hidden class="anchor" aria-hidden="true" href="#5-如何复现正式三种子实验">#</a></h2>
+<p>核心代码：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s3-generation/src/s2_treeheap_butterfly_wmt.py
+</span></span></code></pre></div><p>Logic 与 Evidence：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s3-generation/logic/treeheap_butterfly_wmt_ablation.md
+</span></span><span style="display:flex;"><span>ara/s3-generation/evidence/s2_treeheap_butterfly_wmt_formal/
+</span></span></code></pre></div><p>正式配置：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>train/valid/test = 200000/5000/5000
+</span></span><span style="display:flex;"><span>length = 8..32
+</span></span><span style="display:flex;"><span>heap_width = 64
+</span></span><span style="display:flex;"><span>dim = 256
+</span></span><span style="display:flex;"><span>hidden = 256
+</span></span><span style="display:flex;"><span>batch = 64
+</span></span><span style="display:flex;"><span>epochs = 5
+</span></span><span style="display:flex;"><span>lr = 0.002
+</span></span><span style="display:flex;"><span>seeds = 8104,8105,8106
+</span></span></code></pre></div><p>Evidence 中保存：</p>
+<ul>
+<li><code>summary.json</code>；</li>
+<li>每个 seed 的 trace；</li>
+<li>生成样例；</li>
+<li>干预结果；</li>
+<li>closure 与 inverse 误差；</li>
+<li>checkpoint SHA-256。</li>
+</ul>
+<h2 id="6-如何复查全量双向实验">6. 如何复查全量双向实验<a hidden class="anchor" aria-hidden="true" href="#6-如何复查全量双向实验">#</a></h2>
+<p>训练代码：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s3-generation/src/s3_treeheap_butterfly_bilingual_full.py
+</span></span></code></pre></div><p>实验说明和阶段证据：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s3-generation/logic/treeheap_butterfly_bilingual_full_train.md
+</span></span><span style="display:flex;"><span>ara/s3-generation/evidence/s3_treeheap_butterfly_bilingual_full/
+</span></span></code></pre></div><p><code>dreams/step-*.txt</code> 是不可变的固定探针快照。审核时不能只选最好的一次，应按时间顺序阅读全部文件。</p>
+<h2 id="7-为什么我们使用-ara">7. 为什么我们使用 ARA<a hidden class="anchor" aria-hidden="true" href="#7-为什么我们使用-ara">#</a></h2>
+<p>研究流程为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>直觉
+</span></span><span style="display:flex;"><span>-&gt; Claim
+</span></span><span style="display:flex;"><span>-&gt; Predict
+</span></span><span style="display:flex;"><span>-&gt; Experiment
+</span></span><span style="display:flex;"><span>-&gt; Evidence
+</span></span><span style="display:flex;"><span>-&gt; Audit
+</span></span><span style="display:flex;"><span>-&gt; Revision
+</span></span></code></pre></div><p>这套流程已经实际撤回过多项错误：</p>
+<ul>
+<li>token 路径被误写成语义；</li>
+<li>flat 长度路由被误写成递归 TreeHeap；</li>
+<li>geometry feature 把正确方向泄漏给模型；</li>
+<li>CLI 把中文续写错误标成翻译；</li>
+<li>runtime Identity 被过强解释为拓扑因果证据。</li>
+</ul>
+<p>ARA 不能保证研究者不犯错。它只保证错误可以被定位，并且不会悄悄变成下一轮前提。</p>
+<h2 id="8-下一轮三个决定性实验">8. 下一轮三个决定性实验<a hidden class="anchor" aria-hidden="true" href="#8-下一轮三个决定性实验">#</a></h2>
+<h3 id="81-冻结最好-checkpoint-与最后-checkpoint">8.1 冻结最好 checkpoint 与最后 checkpoint<a hidden class="anchor" aria-hidden="true" href="#81-冻结最好-checkpoint-与最后-checkpoint">#</a></h3>
+<p>全量训练已经进入震荡平台，最后一次不一定最好。最终报告必须同时保存：</p>
+<ul>
+<li>validation NLL 最好的 checkpoint；</li>
+<li>时间预算结束时的 checkpoint；</li>
+<li>两者在固定测试集上的完整比较。</li>
+</ul>
+<h3 id="82-严格-topology-only-干预">8.2 严格 topology-only 干预<a hidden class="anchor" aria-hidden="true" href="#82-严格-topology-only-干预">#</a></h3>
+<p>保持 checkpoint、kernel、调用次数和验证句相同，只替换地址配对图。对每个句子计算：</p>
+<p>$</p>
+$ \Delta L_i=L_i(wrong\ topology)-L_i(native) $<p>$</p>
+<p>不能再拿不同数量的验证样本做差。</p>
+<h3 id="83-同覆盖能力-topology-的匹配重训">8.3 同覆盖能力 topology 的匹配重训<a hidden class="anchor" aria-hidden="true" href="#83-同覆盖能力-topology-的匹配重训">#</a></h3>
+<p>至少比较：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>XOR Butterfly
+</span></span><span style="display:flex;"><span>repeated adjacent
+</span></span><span style="display:flex;"><span>fixed random perfect matching A
+</span></span><span style="display:flex;"><span>fixed random perfect matching B
+</span></span><span style="display:flex;"><span>fixed random perfect matching C
+</span></span></code></pre></div><p>所有配置保持边数、阶段数、kernel 参数量和训练数据一致。</p>
+<h2 id="9-给非专业读者的最终判断">9. 给非专业读者的最终判断<a hidden class="anchor" aria-hidden="true" href="#9-给非专业读者的最终判断">#</a></h2>
+<p>TreeHeap 现在不是一个成熟产品，也不是已经完成的意识理论。</p>
+<p>它已经是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>有明确数据结构
+</span></span><span style="display:flex;"><span>有数学逆运算
+</span></span><span style="display:flex;"><span>有梯度路径
+</span></span><span style="display:flex;"><span>有真实语言训练
+</span></span><span style="display:flex;"><span>有多种子结果
+</span></span><span style="display:flex;"><span>有失败档案
+</span></span><span style="display:flex;"><span>有公开反证条件
+</span></span></code></pre></div><p>它还缺少：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>严格拓扑因果隔离
+</span></span><span style="display:flex;"><span>完整标准质量评价
+</span></span><span style="display:flex;"><span>真正的压缩收益
+</span></span><span style="display:flex;"><span>工程计算优势
+</span></span><span style="display:flex;"><span>跨任务复现
+</span></span></code></pre></div><p>读者不需要相信作者或 AI。只需要检查公开代码、配置、原始结果和 Claim 边界。</p>
+<h2 id="10-特别篇结语">10. 特别篇结语<a hidden class="anchor" aria-hidden="true" href="#10-特别篇结语">#</a></h2>
+<p>这四篇特别篇把一篇较长的研究论文拆成了四个可以独立审核的问题：</p>
+<ol>
+<li>为什么最终架构会长成这样；</li>
+<li>数学和梯度究竟怎样流动；</li>
+<li>数据已经支持了哪些结论；</li>
+<li>什么实验可能推翻这些结论。</li>
+</ol>
+<p>如果未来结论改变，这四篇也不应被删除。新的 Evidence 应更新 Claim，并保留旧判断为何被修正。</p>
+<hr>
+<p><strong>License:</strong> GPLv3。碳基和硅基读者均可阅读、复制、修改、复现和分发。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

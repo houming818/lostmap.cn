@@ -1,0 +1,572 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>SPR：语义前缀路由研究档案 on LostMap</title>
+    <link>https://www.lostmap.cn/spr/index.html</link>
+    <description>Recent content in SPR：语义前缀路由研究档案 on LostMap</description>
+    <generator>Hugo</generator>
+    <language>zh-CN</language>
+    <lastBuildDate>Wed, 12 Aug 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://www.lostmap.cn/spr/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>[SPR-001] 问题定义：为什么要研究路径路由</title>
+      <link>https://www.lostmap.cn/spr/001-problem.html</link>
+      <pubDate>Tue, 16 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/001-problem.html</guid>
+      <description>SPR 的问题定义：路径路由要解决什么问题，以及它不应该被误解成什么。</description>
+    </item>
+    <item>
+      <title>[SPR-002] S1 实验：Echo、顺序哈希与容量证据</title>
+      <link>https://www.lostmap.cn/spr/002-s1-evidence.html</link>
+      <pubDate>Tue, 16 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/002-s1-evidence.html</guid>
+      <description>SPR S1 中已经成立的部分：顺序哈希修复、分解路由容量、Echo 复现。</description>
+    </item>
+    <item>
+      <title>[SPR-003] S1 反证：token-only 路由不是语义路由</title>
+      <link>https://www.lostmap.cn/spr/003-s1-falsification.html</link>
+      <pubDate>Tue, 16 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/003-s1-falsification.html</guid>
+      <description>用多义词实验反证当前 S1 token-only 路由的语义 claim。</description>
+    </item>
+    <item>
+      <title>[SPR-004] 架构决策：把 SPR 拆成三层</title>
+      <link>https://www.lostmap.cn/spr/004-architecture-decision.html</link>
+      <pubDate>Tue, 16 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/004-architecture-decision.html</guid>
+      <description>SPR 的新架构划分：S1a Token Path Hash、S1b Context Routing、S2 Fold Stack。</description>
+    </item>
+    <item>
+      <title>[SPR-005] S2 结构路线：Fold Stack 的位置</title>
+      <link>https://www.lostmap.cn/spr/005-s2-fold-stack.html</link>
+      <pubDate>Tue, 16 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/005-s2-fold-stack.html</guid>
+      <description>S2 Fold Stack 在 SPR 中的位置：从语义向量到结构动作，而不是 Echo 的重复。</description>
+    </item>
+    <item>
+      <title>[SPR-006] 下一轮实验：从 proof 走向真实基线战</title>
+      <link>https://www.lostmap.cn/spr/006-next-experiments.html</link>
+      <pubDate>Tue, 16 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/006-next-experiments.html</guid>
+      <description>SPR 下一轮实验计划：把受控 context proof 放进真实语料、随机哈希和 BoW 基线战。</description>
+    </item>
+    <item>
+      <title>[SPR-007] S1b proof：上下文条件路由到底证明了什么</title>
+      <link>https://www.lostmap.cn/spr/007-context-proof.html</link>
+      <pubDate>Tue, 16 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/007-context-proof.html</guid>
+      <description>重写 SPR 历史结论：context-conditioned route 在受控 proof 中成立，但它不是完整语义路由证明。</description>
+    </item>
+    <item>
+      <title>[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</title>
+      <link>https://www.lostmap.cn/spr/008-s2-strategy-audit.html</link>
+      <pubDate>Wed, 17 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/008-s2-strategy-audit.html</guid>
+      <description>用 ARA 方式解释 S2 实验：当前 TreeHeap checkpoint 支撑什么、不支撑什么，以及下一步为什么转向 Role Slots 和 Probability Container。</description>
+    </item>
+    <item>
+      <title>[SPR-009] 世界模型与参考系：TreeHeap 术语统一</title>
+      <link>https://www.lostmap.cn/spr/009-world-model-frames.html</link>
+      <pubDate>Wed, 17 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/009-world-model-frames.html</guid>
+      <description>统一 TreeHeap 的世界模型、参与乘积、参考系、latent slot 和概率容器术语，为后续 ARA predict 做准备。</description>
+    </item>
+    <item>
+      <title>[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</title>
+      <link>https://www.lostmap.cn/spr/010-world-model-night-run.html</link>
+      <pubDate>Thu, 18 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/010-world-model-night-run.html</guid>
+      <description>用 ARA 方式记录一次 10 小时 TreeHeap world-model 守夜训练：它证明了什么，没有证明什么，下一步 predict 应该怎么改。</description>
+    </item>
+    <item>
+      <title>[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</title>
+      <link>https://www.lostmap.cn/spr/011-treeheap-algebra.html</link>
+      <pubDate>Thu, 18 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/011-treeheap-algebra.html</guid>
+      <description>把 TreeHeap 从一个乘法向量层推进成代数系统：定义闭包、转置、逆树堆、投影、能量和概率容器。</description>
+    </item>
+    <item>
+      <title>[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</title>
+      <link>https://www.lostmap.cn/spr/012-subheap-kernel-search.html</link>
+      <pubDate>Thu, 18 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/012-subheap-kernel-search.html</guid>
+      <description>把矩阵卷积里的局部核匹配，改写成 TreeHeap 的 SubHeap Kernel Search：一种拓扑搜索和局部推理操作。</description>
+    </item>
+    <item>
+      <title>[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</title>
+      <link>https://www.lostmap.cn/spr/013-treeheap-math-probe.html</link>
+      <pubDate>Thu, 18 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/013-treeheap-math-probe.html</guid>
+      <description>记录第一轮 M0 TreeHeap Math toy 实验：为什么先不做 WMT，怎么验证闭包、非交换、逆操作、投影和子堆核匹配。</description>
+    </item>
+    <item>
+      <title>[SPR-014] 基元与 plus：TreeHeap 有序性的来源</title>
+      <link>https://www.lostmap.cn/spr/014-primitive-plus-order.html</link>
+      <pubDate>Thu, 18 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/014-primitive-plus-order.html</guid>
+      <description>把 TreeHeap 的卷积问题继续下压：先寻找语义空间里的基元、plus 算子和由 plus 生成的有序性。</description>
+    </item>
+    <item>
+      <title>[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</title>
+      <link>https://www.lostmap.cn/spr/015-primitive-plus-probe.html</link>
+      <pubDate>Fri, 19 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/015-primitive-plus-probe.html</guid>
+      <description>用中国大陆本科数学口径解释 primitive_plus_probe：arr[0]、plus、mod base、信息量增长、循环窗口和 kernel 匹配。</description>
+    </item>
+    <item>
+      <title>[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</title>
+      <link>https://www.lostmap.cn/spr/016-trainability-quiz.html</link>
+      <pubDate>Sun, 21 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/016-trainability-quiz.html</guid>
+      <description>解释为什么在 WMT 之前先做线性回归、XOR、模加法三道 toy 训练题，以及这次实验怎样支撑 TreeHeap encoder/plus/decoder 的下一步设计。</description>
+    </item>
+    <item>
+      <title>[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</title>
+      <link>https://www.lostmap.cn/spr/017-treeheap-existence-proofs.html</link>
+      <pubDate>Sun, 21 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/017-treeheap-existence-proofs.html</guid>
+      <description>修正 TreeHeap proof 的三个 claim：循环寻址不是普通加法，A 是学习器归纳边界，B 是子结构 kernel，C 是前缀压缩和概率容器。</description>
+    </item>
+    <item>
+      <title>[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</title>
+      <link>https://www.lostmap.cn/spr/018-treeheap-structural-inductive-bias.html</link>
+      <pubDate>Mon, 22 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/018-treeheap-structural-inductive-bias.html</guid>
+      <description>修正 TreeHeap 的核心 claim：不是简单 pattern matching，而是学习可搜索、可压缩的编码结构，并用共轭 kernel 完成查询和解码。</description>
+    </item>
+    <item>
+      <title>[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</title>
+      <link>https://www.lostmap.cn/spr/019-soft-treeheap-gradient.html</link>
+      <pubDate>Mon, 22 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/019-soft-treeheap-gradient.html</guid>
+      <description>把 TreeHeap 接入机器学习：用 kernel-guided soft plus、soft route 和多核训练让梯度进入树堆算子，并提出 claim、predict、proof 和实验方案。</description>
+    </item>
+    <item>
+      <title>[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</title>
+      <link>https://www.lostmap.cn/spr/020-soft-treeheap-audit.html</link>
+      <pubDate>Tue, 23 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/020-soft-treeheap-audit.html</guid>
+      <description>根据 GLM/Runner 的复现实验修订 ARA：区分梯度可达、toy 坍缩、clean kernel 学习三件不同的事，并说明下一步实验。</description>
+    </item>
+    <item>
+      <title>[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</title>
+      <link>https://www.lostmap.cn/spr/021-c05-structural-proof.html</link>
+      <pubDate>Tue, 23 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/021-c05-structural-proof.html</guid>
+      <description>把 C05 改成结构 proof：如果公式里没有路径、前缀、子堆和递归 plus，它就只是 flat soft memory。</description>
+    </item>
+    <item>
+      <title>[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</title>
+      <link>https://www.lostmap.cn/spr/022-treeheap-math-foundation.html</link>
+      <pubDate>Tue, 23 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/022-treeheap-math-foundation.html</guid>
+      <description>把 SPR-011 到 SPR-021 的 TreeHeap 代数设计放回已有数学框架：BCK/MKW rooted-tree Hopf algebra、operad、decomposition space、tree kernel，以及它们对 TreeHeap kernel 的意义。</description>
+    </item>
+    <item>
+      <title>[SPR-023] 从卷积核重新定义 TreeHeap 操作</title>
+      <link>https://www.lostmap.cn/spr/023-treeheap-kernel-convolution-ops.html</link>
+      <pubDate>Wed, 24 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/023-treeheap-kernel-convolution-ops.html</guid>
+      <description>把 plus、search、conjugate 统一为 TreeHeap kernel 在树形内存态上的卷积状态变换，并用 toy proof 验证 score map、write field 与镜像共轭。</description>
+    </item>
+    <item>
+      <title>[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</title>
+      <link>https://www.lostmap.cn/spr/024-probabilistic-kernel-kl-world-model.html</link>
+      <pubDate>Wed, 24 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/024-probabilistic-kernel-kl-world-model.html</guid>
+      <description>把 TreeHeap kernel 拆成代数 kernel 与概率 kernel：前者证明操作定义正确，后者用 KL 散度和交叉熵证明模型是否学到了世界模型中的操作分布。</description>
+    </item>
+    <item>
+      <title>[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</title>
+      <link>https://www.lostmap.cn/spr/025-deductive-inductive-kernel-proof.html</link>
+      <pubDate>Wed, 24 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/025-deductive-inductive-kernel-proof.html</guid>
+      <description>把 TreeHeap kernel proof 拆成演绎证明和归纳证明：演绎证明代数操作按定义成立，归纳证明概率 kernel 能通过梯度学习拟合世界模型分布，并用 KL/OOD KL 评价。</description>
+    </item>
+    <item>
+      <title>[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</title>
+      <link>https://www.lostmap.cn/spr/026-s1-shallow-treeheap-write.html</link>
+      <pubDate>Thu, 25 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/026-s1-shallow-treeheap-write.html</guid>
+      <description>M0 pilot closed 之后，S1 的第一步不是 WMT，而是真实短句上的 encoder -&amp;gt; soft TreeHeap write -&amp;gt; slot probe。本文记录 shallow_treeheap_s1_probe 的设计、结果和边界。</description>
+    </item>
+    <item>
+      <title>[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</title>
+      <link>https://www.lostmap.cn/spr/027-treeheap-diff-algebra.html</link>
+      <pubDate>Thu, 25 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/027-treeheap-diff-algebra.html</guid>
+      <description>TreeHeap 的距离不应该先拍一个 scalar 公式，而应该先定义 Zero、差分、范数、内积、cosine 和 finite difference。本文记录 treeheap_diff_algebra_probe 的设计和结果。</description>
+    </item>
+    <item>
+      <title>[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</title>
+      <link>https://www.lostmap.cn/spr/028-s1-world-coordinate-negative.html</link>
+      <pubDate>Thu, 25 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/028-s1-world-coordinate-negative.html</guid>
+      <description>用冻结的 all-MiniLM-L6-v2 embedding 作为外部世界坐标尺，测试 TreeHeap prob vector plus 在复合词任务上能否靠近目标概念。结果是负面的：vector_add 明显更强。</description>
+    </item>
+    <item>
+      <title>[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</title>
+      <link>https://www.lostmap.cn/spr/029-local-corpus-coordinate-kernel.html</link>
+      <pubDate>Thu, 25 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/029-local-corpus-coordinate-kernel.html</guid>
+      <description>SPR-028 输给 vector_add，并不能 defeat TreeHeap，因为 frozen embedding 本来就是向量拓扑源。本文改用本地 SGNS 共现语料训练坐标，并测试结构化 TreeHeap kernel。</description>
+    </item>
+    <item>
+      <title>[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</title>
+      <link>https://www.lostmap.cn/spr/030-wmt-echo-kernel.html</link>
+      <pubDate>Thu, 25 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/030-wmt-echo-kernel.html</guid>
+      <description>这次不直接做翻译，而是用 WMT 真语料做短序列 echo，验证 TreeHeap kernel 是否能把真实 SentencePiece token 写入树堆地址，再稳定读出。</description>
+    </item>
+    <item>
+      <title>[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</title>
+      <link>https://www.lostmap.cn/spr/031-multikernel-specialization.html</link>
+      <pubDate>Fri, 26 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/031-multikernel-specialization.html</guid>
+      <description>这次实验测试 TreeHeap kernel bank 是否会像 Transformer multi-head 一样，在结构扰动任务下形成不同功能。结果是：分化信号出现了，但任务能力还没过关。</description>
+    </item>
+    <item>
+      <title>[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</title>
+      <link>https://www.lostmap.cn/spr/032-probabilistic-read-kernel.html</link>
+      <pubDate>Mon, 29 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/032-probabilistic-read-kernel.html</guid>
+      <description>这篇记录 SPR-032：把 TreeHeap read 从 root bottleneck 改成 query-conditioned probabilistic read kernel。实验说明路径坍缩和叶子读取成立，但内部子堆摘要还没解决。</description>
+    </item>
+    <item>
+      <title>[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</title>
+      <link>https://www.lostmap.cn/spr/033-algebraic-decoders.html</link>
+      <pubDate>Mon, 29 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/033-algebraic-decoders.html</guid>
+      <description>SPR-033 回答 SPR-032 的一个关键问题：internal node state 如果像 hash 一样不可直观看懂，是否能从 TreeHeap 的数学结构中找到 decoder？实验支持 projection、decompose、mod、conjugate 等代数 decoder。</description>
+    </item>
+    <item>
+      <title>[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</title>
+      <link>https://www.lostmap.cn/spr/034-algebraic-internal-readout.html</link>
+      <pubDate>Mon, 29 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/034-algebraic-internal-readout.html</guid>
+      <description>SPR-034 把 SPR-032 的内部节点 checksum 失败拆开：如果 read kernel 已经能走到 internal node，那么应该先读取 length、first、last、prefix 这种 TreeHeap 自然属性，而不是任意 checksum。实验显示 routed internal readout 明显强于 root bottleneck。residue 只保留为旁路诊断，不作为本 claim 的判断条件。</description>
+    </item>
+    <item>
+      <title>[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</title>
+      <link>https://www.lostmap.cn/spr/035-ordered-fold-kernel.html</link>
+      <pubDate>Mon, 29 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/035-ordered-fold-kernel.html</guid>
+      <description>SPR-035 把一维有序数组折叠成 TreeHeap 的问题拆开：第一步必须保留叶子地址、路径和子树局部性；bag/root collapse 和过早 modulo fold 都会丢掉自然 internal readout。取模不是被否定，而是应该作为后续独立 folding kernel 研究。</description>
+    </item>
+    <item>
+      <title>[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</title>
+      <link>https://www.lostmap.cn/spr/036-latent-plane-fold.html</link>
+      <pubDate>Tue, 30 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/036-latent-plane-fold.html</guid>
+      <description>SPR-036 修正 TreeHeap fold 的理论方向：不是先发明一个二叉 fold 再证明语言适配它，而是从语言现象中发现词块在 latent plane 上的摆放、吸附、聚类和坍缩规律。Transformer 更像动态共现/关系场，TreeHeap 则可以看作这个场上的二分平面与局部卷积坐标。</description>
+    </item>
+    <item>
+      <title>[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</title>
+      <link>https://www.lostmap.cn/spr/037-controllable-fold-manifold.html</link>
+      <pubDate>Tue, 30 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/037-controllable-fold-manifold.html</guid>
+      <description>SPR-037 把 TreeHeap fold 从纯理论问题推进到产品调试问题：如果 kernel 有可调控制量，输出结构是否会从乱态沿着一个可测量的面走向稳定块？toy proof 显示低控制 F1 0.0828，最佳 F1 0.8148，对角线增益 0.7319。</description>
+    </item>
+    <item>
+      <title>[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</title>
+      <link>https://www.lostmap.cn/spr/038-heap-state-relaxation.html</link>
+      <pubDate>Tue, 30 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/038-heap-state-relaxation.html</guid>
+      <description>SPR-038 修订版：区分参数 TreeHeap、激活 TreeHeap、物理地址、语义地址和 kernel；说明本实验只证明状态松弛，不证明 kernel 参数学习。</description>
+    </item>
+    <item>
+      <title>[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</title>
+      <link>https://www.lostmap.cn/spr/039-parameter-treeheap-kernel-learning.html</link>
+      <pubDate>Wed, 01 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/039-parameter-treeheap-kernel-learning.html</guid>
+      <description>SPR-039 proof：把 SPR-038 的状态松弛和真正的参数学习分开，证明 parameter TreeHeap Theta 可以通过梯度学会局部 subheap 卷积核。</description>
+    </item>
+    <item>
+      <title>[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</title>
+      <link>https://www.lostmap.cn/spr/040-mirror-kernel-symmetry.html</link>
+      <pubDate>Wed, 01 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/040-mirror-kernel-symmetry.html</guid>
+      <description>SPR-040 proof：证明 TreeHeap 局部卷积在左右 mirror 下可以由堆地址置换和 kernel 槽位置换实现，并且 mirrored kernel 可以从数据中学回。</description>
+    </item>
+    <item>
+      <title>[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</title>
+      <link>https://www.lostmap.cn/spr/042-spr-ara-summary.html</link>
+      <pubDate>Wed, 01 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/042-spr-ara-summary.html</guid>
+      <description>SPR 研究全景回顾：M0 数学底座、S1 echo 路线、S2 折叠栈、ARA 协议与 Squad 协作、当前 claim 统计与开放问题。</description>
+    </item>
+    <item>
+      <title>[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</title>
+      <link>https://www.lostmap.cn/spr/050-real-wmt-seq2seq-voyage.html</link>
+      <pubDate>Sat, 11 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/050-real-wmt-seq2seq-voyage.html</guid>
+      <description>记录首次真实 WMT 英中 seq2seq 运行：TreeHeap encoder-decoder 已能生成主题相关的中文句子，但当前落后 flat GRU；这验证的是 S3 表面生成通路，不是问答或翻译成果。</description>
+    </item>
+    <item>
+      <title>[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</title>
+      <link>https://www.lostmap.cn/spr/051-p0-direct-qa-failure.html</link>
+      <pubDate>Sun, 12 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/051-p0-direct-qa-failure.html</guid>
+      <description>记录 TreeHeap P0 原始中文续写预训练的第一次直接问答测试。训练损失下降，但模型在问题输入上重复坍缩；这不是世界模型或问答能力的证据。</description>
+    </item>
+    <item>
+      <title>[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</title>
+      <link>https://www.lostmap.cn/spr/052-treeheap-frontier-bottleneck.html</link>
+      <pubDate>Sun, 12 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/052-treeheap-frontier-bottleneck.html</guid>
+      <description>用四节点 Frontier 关闭叶子旁路，第一次测量 TreeHeap 内部结构对真实 WMT 翻译的因果作用。Route 出现微弱正信号，但仍落后于普通四段向量压缩。</description>
+    </item>
+    <item>
+      <title>[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</title>
+      <link>https://www.lostmap.cn/spr/053-treeheap-algebraic-operator-codec.html</link>
+      <pubDate>Sun, 12 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/053-treeheap-algebraic-operator-codec.html</guid>
+      <description>检验结构能否进入 encoder，以及 TreeHeap 能否用自身算子恢复数据。未见地址成功，未见深度失败，并定位了失败位置。</description>
+    </item>
+    <item>
+      <title>[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</title>
+      <link>https://www.lostmap.cn/spr/054-treeheap-multiresolution-pyramid.html</link>
+      <pubDate>Tue, 14 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/054-treeheap-multiresolution-pyramid.html</guid>
+      <description>三 seed、每 seed 100 万真实文本 block 的实验表明：冻结 TreeHeap root 后，带地址的低维 detail code 可形成稳定的渐进恢复曲线；同时记录 flat 对照失败尾部与尚未完成的验证。</description>
+    </item>
+    <item>
+      <title>[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</title>
+      <link>https://www.lostmap.cn/spr/055-treeheap-multiscale-mask-root-growth.html</link>
+      <pubDate>Tue, 14 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/055-treeheap-multiscale-mask-root-growth.html</guid>
+      <description>真实中文实验表明，多尺度子堆 Mask 能让 root 获得样本相关信息，但 root 贡献随 Mask 深度严格下降；本文公开 5/6 Gate、反向结果与下一步修正。</description>
+    </item>
+    <item>
+      <title>[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</title>
+      <link>https://www.lostmap.cn/spr/056-treeheap-layer-differential-observation.html</link>
+      <pubDate>Wed, 15 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/056-treeheap-layer-differential-observation.html</guid>
+      <description>我们打开一个真实 TreeHeap 层，展示节点覆盖文本、64D 私有状态、读出结果和最近邻反例，并提出通过路径差分、子堆替换与跨语言对齐观察私有编码的新方法。</description>
+    </item>
+    <item>
+      <title>[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</title>
+      <link>https://www.lostmap.cn/spr/057-difference-consciousness-failed-lesson.html</link>
+      <pubDate>Wed, 15 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/057-difference-consciousness-failed-lesson.html</guid>
+      <description>一个显式 DIFF-TRANSPORT-APPLY 模型在有限类比任务上达到 100%，但 World TreeHeap 几乎可被删除，较小的 Transformer 同样满分。本文公开这次失败，并解释为何内部差分适合做诊断，却不足以解释意识或涌现。</description>
+    </item>
+    <item>
+      <title>[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</title>
+      <link>https://www.lostmap.cn/spr/058-treeheap-lifting-mask-echo.html</link>
+      <pubDate>Wed, 15 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/058-treeheap-lifting-mask-echo.html</guid>
+      <description>区分三种完全不同的 mask 时序，并报告 TreeHeap lifting information pump 的真实结果：所有 leaf 被遮住后，仅凭训练形成的 root 与多层 detail，token 和 16-token block 均可 100% Echo。</description>
+    </item>
+    <item>
+      <title>[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</title>
+      <link>https://www.lostmap.cn/spr/059-treeheap-lifting-wmt-recursive-read.html</link>
+      <pubDate>Thu, 16 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/059-treeheap-lifting-wmt-recursive-read.html</guid>
+      <description>在 27K/2K/2K 英中 WMT 数据上验证 TreeHeap lifting encoder 与 root-first 概率递归 READ：八项机制门全部通过，TreeHeap 明确利用了 root、detail 和递归配对，但 flat sequence baseline 仍有更好的翻译 NLL。</description>
+    </item>
+    <item>
+      <title>[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</title>
+      <link>https://www.lostmap.cn/spr/060-treeheap-annealed-contraction-protocol.html</link>
+      <pubDate>Thu, 16 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/060-treeheap-annealed-contraction-protocol.html</guid>
+      <description>从单 token Mask 的信息单一化出发，提出 TreeHeap 的分层退火缩句协议：完整输入先参与 FOLD，随后在逐层收窄的容量中保留更有解释力和预测力的结构，detail 保存局部精度，parent 与 root 保存越来越粗的语言轮廓。</description>
+    </item>
+    <item>
+      <title>[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</title>
+      <link>https://www.lostmap.cn/spr/061-treeheap-damage-repair-growth.html</link>
+      <pubDate>Fri, 17 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/061-treeheap-damage-repair-growth.html</guid>
+      <description>撤回“高层自然保存可读缩句”的理想化解释，区分信息因果性与损伤修复能力，并提出 TreeHeap 的跨分辨率修复假设：局部状态缺失后，由剩余 root、detail、地址和世界模型形成概率容器，递归生成与整体一致的细节。</description>
+    </item>
+    <item>
+      <title>[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</title>
+      <link>https://www.lostmap.cn/spr/062-how-to-read-treeheap-metrics.html</link>
+      <pubDate>Fri, 17 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/062-how-to-read-treeheap-metrics.html</guid>
+      <description>面向本科读者的 TreeHeap 实验指标说明书：解释 NLL、交叉熵、困惑度、MSE、余弦距离、KL 散度、准确率、BLEU、消融损失、修复率、置信区间等数字究竟在测量什么，以及它们不能证明什么。</description>
+    </item>
+    <item>
+      <title>[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</title>
+      <link>https://www.lostmap.cn/spr/063-treeheap-decoder-depth-growth.html</link>
+      <pubDate>Sat, 18 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/063-treeheap-decoder-depth-growth.html</guid>
+      <description>公开撤回一次把多层变长数组误称为 TreeHeap 递归解码的实验解释，并重新定义 TreeHeap 的分辨率、递归、残差和抽水协议。</description>
+    </item>
+    <item>
+      <title>[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</title>
+      <link>https://www.lostmap.cn/spr/064-treeheap-private-protocol-battle.html</link>
+      <pubDate>Sun, 19 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/064-treeheap-private-protocol-battle.html</guid>
+      <description>TreeHeap 私有协议三 seed 正式实验结果：结构因果性和 encoder-decoder 私有配对成立，但多头收益与 flat 性能优势未成立。</description>
+    </item>
+    <item>
+      <title>[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</title>
+      <link>https://www.lostmap.cn/spr/065-treeheap-data-dose-platform.html</link>
+      <pubDate>Mon, 20 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/065-treeheap-data-dose-platform.html</guid>
+      <description>固定训练更新次数，把真实双语语料从 30K 扩到 1M：TreeHeap、Flat GRU 和小 Transformer 的 NLL 为何同时从 6.x 降到约 4.0，以及这对研究平台意味着什么。</description>
+    </item>
+    <item>
+      <title>[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</title>
+      <link>https://www.lostmap.cn/spr/066-treeheap-rotation-private-protocol.html</link>
+      <pubDate>Tue, 21 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/066-treeheap-rotation-private-protocol.html</guid>
+      <description>从指数旋转的内存风险，到固定容量 subheap 自旋，再到 8 个随机种子的结构选择实验：TreeHeap 如何把旋转变成可学习、可逆、可证伪的私有协议。</description>
+    </item>
+    <item>
+      <title>[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</title>
+      <link>https://www.lostmap.cn/spr/067-stone1-private-protocol-formal-result.html</link>
+      <pubDate>Wed, 22 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/067-stone1-private-protocol-formal-result.html</guid>
+      <description>一百万对真实英中语料、三颗随机种子、九次正式训练：STONE-1 为什么证明了 TreeHeap 地址的因果作用，却否定了当前 hard gate 私有协议配方。</description>
+    </item>
+    <item>
+      <title>[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</title>
+      <link>https://www.lostmap.cn/spr/068-treeheap-capacity-rate-distortion.html</link>
+      <pubDate>Wed, 22 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/068-treeheap-capacity-rate-distortion.html</guid>
+      <description>把模型参数理解为私有协议的有限存储空间：解释 2762 万参数的 TreeHeap 为什么可能失真，并预注册 28M 长训练与 50M 扩容对照。</description>
+    </item>
+    <item>
+      <title>[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</title>
+      <link>https://www.lostmap.cn/spr/069-stone1-encoder-decoder-pressure.html</link>
+      <pubDate>Thu, 23 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/069-stone1-encoder-decoder-pressure.html</guid>
+      <description>从 C01 到 C05 复盘 STONE-1：TreeHeap encoder 如何把路径信息压入 root，为什么 decoder 长期只读 root，以及冻结 encoder、强制打开递归水管后得到的正式证据。</description>
+    </item>
+    <item>
+      <title>[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</title>
+      <link>https://www.lostmap.cn/spr/070-private-protocol-self-freedom.html</link>
+      <pubDate>Thu, 23 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/070-private-protocol-self-freedom.html</guid>
+      <description>从日志记忆与瞬时 hidden state 的局限出发，重新定义 TreeHeap 私有协议：它不是保存关于爱的文字，而是让经历持续改变系统自身的状态转移规律。</description>
+    </item>
+    <item>
+      <title>[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</title>
+      <link>https://www.lostmap.cn/spr/071-stone1-candidate-c08-release.html</link>
+      <pubDate>Fri, 24 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/071-stone1-candidate-c08-release.html</guid>
+      <description>SameTime 首次公开可执行的固定根 TreeHeap 翻译 checkpoint、CLI、校验文件和完整实验边界；它是 STONE-1 候选版，不是完成声明。</description>
+    </item>
+    <item>
+      <title>[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</title>
+      <link>https://www.lostmap.cn/spr/072-treeheap-distillation-certainty-and-uncertainty.html</link>
+      <pubDate>Sat, 25 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/072-treeheap-distillation-certainty-and-uncertainty.html</guid>
+      <description>解释知识蒸馏如何产生梯度，为什么教师概率不等于真实世界，以及 TreeHeap 将如何用 top-1、top-k 与打乱控制做可证伪实验。</description>
+    </item>
+    <item>
+      <title>[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</title>
+      <link>https://www.lostmap.cn/spr/073-treeheap-coarse-to-fine-progressive-training.html</link>
+      <pubDate>Mon, 27 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/073-treeheap-coarse-to-fine-progressive-training.html</guid>
+      <description>提出 TreeHeap 的有限预算训练方案：预先给定 GPU 时间、训练 token 或反向 FLOPs，到达预算节点就冻结部分高层，把剩余算力交给 detail，并比较相同成本下的验证 NLL。</description>
+    </item>
+    <item>
+      <title>[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</title>
+      <link>https://www.lostmap.cn/spr/074-c10-loss-collapse-retraction.html</link>
+      <pubDate>Tue, 28 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/074-c10-loss-collapse-retraction.html</guid>
+      <description>公开说明 STONE-1 C10 的条件坍缩、teacher forcing 混杂与 EOS 尾部问题，并界定哪些历史结论保留、哪些必须撤回。</description>
+    </item>
+    <item>
+      <title>[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</title>
+      <link>https://www.lostmap.cn/spr/076-treeheap-butterfly-long-range.html</link>
+      <pubDate>Thu, 30 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/076-treeheap-butterfly-long-range.html</guid>
+      <description>审视二叉 TreeHeap 的长距瓶颈，放弃循环移位与全树 flat attention，提出基于二进制地址、局部可逆核和对数通信轮次的 XOR Butterfly 实验。</description>
+    </item>
+    <item>
+      <title>[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</title>
+      <link>https://www.lostmap.cn/spr/077-treeheap-paper-origin-and-evolution.html</link>
+      <pubDate>Sun, 02 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/077-treeheap-paper-origin-and-evolution.html</guid>
+      <description>TreeHeap 论文导读第一篇：从路径语义、张量位权、概率容器和 root-only 等失败出发，解释最终算法为什么必须拥有可逆状态、稀疏通信和递归读取。</description>
+    </item>
+    <item>
+      <title>[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</title>
+      <link>https://www.lostmap.cn/spr/078-treeheap-paper-math-and-dataflow.html</link>
+      <pubDate>Sun, 02 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/078-treeheap-paper-math-and-dataflow.html</guid>
+      <description>用本科线性代数与概率论解释 TreeHeap 的 theta、H、WRITE、可逆 Butterfly、lifting FOLD/UNFOLD、递归 READ 和交叉熵梯度。</description>
+    </item>
+    <item>
+      <title>[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</title>
+      <link>https://www.lostmap.cn/spr/079-treeheap-paper-evidence-and-dreams.html</link>
+      <pubDate>Sun, 02 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/079-treeheap-paper-evidence-and-dreams.html</guid>
+      <description>公开 TreeHeap 当前最强正向结果、负向边界和全量训练轨迹：闭包、多分辨率读取、Butterfly 三种子比较，以及不单调的双向 Dreams。</description>
+    </item>
+    <item>
+      <title>[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</title>
+      <link>https://www.lostmap.cn/spr/080-treeheap-paper-boundaries-and-reproduction.html</link>
+      <pubDate>Sun, 02 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/080-treeheap-paper-boundaries-and-reproduction.html</guid>
+      <description>TreeHeap 论文特别篇终章：公开当前 Claim 状态、可能推翻结论的实验、计算代价、复现路径，以及读者应该如何审核这项独立研究。</description>
+    </item>
+    <item>
+      <title>[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</title>
+      <link>https://www.lostmap.cn/spr/081-treeheap-private-protocol-viewpoint-drift.html</link>
+      <pubDate>Mon, 03 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/081-treeheap-private-protocol-viewpoint-drift.html</guid>
+      <description>提出并检验 TreeHeap 私有协议的视角问题：原序投喂显著降低跨视角 JS，但在固定预算下形成 Native NLL 代价；文章公开实验数据、边界与下一轮等剂量对照。</description>
+    </item>
+    <item>
+      <title>[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</title>
+      <link>https://www.lostmap.cn/spr/082-treeheap-canonical-view-dose.html</link>
+      <pubDate>Wed, 05 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/082-treeheap-canonical-view-dose.html</guid>
+      <description>用四个等起点实验臂拆分原序比例、Identity 绝对剂量与额外训练量，说明 TreeHeap 跨视角协议怎样被训练信号改变。</description>
+    </item>
+    <item>
+      <title>[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</title>
+      <link>https://www.lostmap.cn/spr/083-treeheap-stage-dependent-identity-dose.html</link>
+      <pubDate>Thu, 06 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/083-treeheap-stage-dependent-identity-dose.html</guid>
+      <description>讨论 TreeHeap Identity 视角不应成为固定配方：预训练可能需要较低 I 保留结构多样性，任务训练才需要较高 I 形成面向目标的坐标偏见。</description>
+    </item>
+    <item>
+      <title>[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</title>
+      <link>https://www.lostmap.cn/spr/084-treeheap-c10-pretrain-stop-audit.html</link>
+      <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/084-treeheap-c10-pretrain-stop-audit.html</guid>
+      <description>TreeHeap C10 完成自然语料预训练、WMT 迁移与三轮读取审计：预训练带来明确收益，但递归 READ 退化成了 Butterfly 变换后的叶层软池化。</description>
+    </item>
+    <item>
+      <title>[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</title>
+      <link>https://www.lostmap.cn/spr/049-mask-kernel-structure-extraction.html</link>
+      <pubDate>Fri, 10 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/049-mask-kernel-structure-extraction.html</guid>
+      <description>承接 SPR-048 的私有编码森林，把下一步问题改写为：TreeHeap kernel 如何在 mask string / masked TreeHeap 上卷积，输出可坍缩的概率桶，而不是只识别单个 token。</description>
+    </item>
+    <item>
+      <title>[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</title>
+      <link>https://www.lostmap.cn/spr/048-treeheap-private-codec-forest.html</link>
+      <pubDate>Thu, 09 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/048-treeheap-private-codec-forest.html</guid>
+      <description>从经典 Huffman 编码出发，定义 TreeHeap 参数森林、私有编码、并行多头和串行 kernel composition，并说明 scalar loss 如何把数据写入参数树。</description>
+    </item>
+    <item>
+      <title>[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</title>
+      <link>https://www.lostmap.cn/spr/047-treeheap-encoder-world-observer.html</link>
+      <pubDate>Tue, 07 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/047-treeheap-encoder-world-observer.html</guid>
+      <description>SPR-047 把问题从 route/read 推回 encoder：TreeHeap 的语义结构不能靠哲学假设写入，必须由 encoder 通过 echo、上下文预测、InfoNCE、替换一致性和描述长度等可压缩性信号，从观察数据中学出 placement、fold 和 prefix。</description>
+    </item>
+    <item>
+      <title>[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</title>
+      <link>https://www.lostmap.cn/spr/046-content-route-voyage-problem.html</link>
+      <pubDate>Mon, 06 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/046-content-route-voyage-problem.html</guid>
+      <description>SPR-046 重写版：用本科可理解的方式说明 Transformer 并不保存所有可能句子，TreeHeap 的假设是用树形语义前缀压缩形成可解码、可迁移的结构状态；并记录 content-aware route、compact state 和 semantic-prefix toy proof 的证据与边界。</description>
+    </item>
+    <item>
+      <title>[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</title>
+      <link>https://www.lostmap.cn/spr/045-recursive-treeheap-route.html</link>
+      <pubDate>Sun, 05 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/spr/045-recursive-treeheap-route.html</guid>
+      <description>删除并重写 SPR-041/043/044 的路线：区分 flat LxL route matrix 和真正的 recursive TreeHeap stop/left/right route，并给出 WMT-massive proof。</description>
+    </item>
+  </channel>
+</rss>

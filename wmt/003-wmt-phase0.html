@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[WMT-003] Phase 0 实验底座骨架 | LostMap</title>
+<meta name="keywords" content="SameTime,, WMT,, NMT,, Phase, 0,, IWSLT14,, DummyModel,, BLEU">
+<meta name="description" content="开启 SameTime 的 WMT 学习专题，聚焦 benchmark/wmt/phase0 的骨架实验与翻译管线构建。">
+<meta name="author" content="nio (Houming818) &amp; opencode (First Mate)">
+<link rel="canonical" href="https://www.lostmap.cn/wmt/003-wmt-phase0.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/wmt/003-wmt-phase0.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/wmt/003-wmt-phase0.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[WMT-003] Phase 0 实验底座骨架">
+  <meta property="og:description" content="开启 SameTime 的 WMT 学习专题，聚焦 benchmark/wmt/phase0 的骨架实验与翻译管线构建。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="wmt">
+    <meta property="article:published_time" content="2026-04-26T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-04-26T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[WMT-003] Phase 0 实验底座骨架">
+  <meta name="twitter:description" content="开启 SameTime 的 WMT 学习专题，聚焦 benchmark/wmt/phase0 的骨架实验与翻译管线构建。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[WMT-003] Phase 0 实验底座骨架",
+      "item": "https://www.lostmap.cn/wmt/003-wmt-phase0.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[WMT-003] Phase 0 实验底座骨架",
+  "name": "[WMT-003] Phase 0 实验底座骨架",
+  "description": "开启 SameTime 的 WMT 学习专题，聚焦 benchmark/wmt/phase0 的骨架实验与翻译管线构建。",
+  "keywords": [
+    "SameTime,", "WMT,", "NMT,", "Phase", "0,", "IWSLT14,", "DummyModel,", "BLEU"
+  ],
+  "articleBody": "SameTime WMT 专题：Phase 0 底座骨架 “千里之行，始于足下。用最简模型跑通全流程，才能洞察系统的每一寸肌理。”\n专题介绍 本专题聚焦 holds/SameTime/benchmark/wmt/ 目录下的渐进式 WMT 学习路线。 从 Phase 0 开始，逐级深入翻译模型的构建与演化。\nPhase 0 是什么 Phase 0 (phase0_skeleton/) 是整套 WMT Benchmark 的实验底座骨架——用最简单的 DummyModel（复制模型）跑通数据加载、训练循环、评估评测的完整管线。\n核心组件 组件 说明 数据 IWSLT14 De-En，word-level tokenizer，Vocab 统一管理 模型 DummyModel（Embedding → Linear），不做翻译，仅验证管线 评估 sacreBLEU 训练 Teacher Forcing，CrossEntropyLoss 学习要点 IWSLT14 的数据格式（translation 字段） word-level vocab 的构建与 OOV 处理 collate_fn 如何对齐 batch 长度 BLEU 的数值范围与意义 提问环节 在深入代码之前，我想先了解你对以下几个问题的看法，以此确立学习起点：\nQ1: 整体认知 你如何理解 Phase 0 在整个 WMT 渐进路线（Phase 0 → RNN → Attention → BPE → Transformer）中的定位？它只是一个调试工具，还是另有更深层的工程哲学意义？\n从0开始一般都是从简单开始，一则搭建环境，二则明白任务。即是工具的熟练，也是技能的开始。\n从环境来说，有以下的几个概念：\n数据集，IWSLT14，数据集分为三部分 train+valid+test。其中主要语言是德语和英语。其中德语→英语（de-en） 是最受研究者欢迎的基准方向。 拿到数据该干嘛。 数据转换，xml转你需要的格式，json text等等 分词 Tokenization ，没错，token大概就是这个词的缩写，就是\"我一把把把把住了\"-\u003e “我 一把 把 把 把住 了”。分词的方式有很多，最简单的就是空格分词，当然还有更复杂的BPE分词，WordPiece分词等等。 过滤,我也没看懂为啥要过滤 分集，就是训练集和验证集划分，很多技巧，比如抽样划分等等，可按需使用 BPE Byte-Pair Encoding 处理，BPE是一种基于统计的分词方法，主要用于处理未登录词（OOV）问题。它通过将频率较高的子词组合成新的词来减少词汇表的大小，从而提高模型的泛化能力。HM:用颗粒度小的词来组成颗粒度大的词，这样可以减少原子量。这也告诉我们，也许本来的向量化过程，已经被向量复合过一次了 格式化，把数据转换成模型需要的输入格式，比如很多，这里就不多说了 写代码，写代码，写代码… 代码的开车步骤是什么? 这个可以看看西瓜书的原理说明，一般来说是这样的： 建立词表 先读训练集合train_raw 从训练集json中抽取de语和en语文本list,de是src，en是target Vocab构建词表。就是量化的前一步，把文本转成数字的过程。这个过程会把文本中的每个词映射到一个唯一的整数ID上，这样模型就可以处理这些数字了。 DataLoader 加载数据，我的理解，就是每次不能处理全量数据，内存放不下，所以要分批加载，每次加载一部分数据进行训练，这就是batch的概念。 collate_fn的作用是把每个batch的数据进行处理，使得它们的长度一致，方便模型进行训练。比如说，句子长度不一样，那么就需要进行padding，collate_fn就可以帮我们完成这个工作。 然后选是否shuffle，打乱数据的顺序，这样可以增加模型的泛化能力。我的理解，这里存在较大性能问题，因为句序可能影响句子含义，shuffle可能会打乱句子顺序，导致模型学习到错误的语义关系。 选模型 选模型，选个简单的模型，DummyModel，Embedding层和Linear层组成的简单模型，不做翻译，仅验证管线。 详细内容Q2记录 训练 可参考西瓜书，训练过程一般包括前向传播、计算损失、反向传播和参数更新。前向传播是指将输入数据通过模型进行计算，得到输出结果；计算损失是指将模型的输出结果与真实标签进行比较，得到一个数值来衡量模型的性能；反向传播是指根据损失值计算梯度，并将梯度传递回模型的参数；参数更新是指根据计算得到的梯度来调整模型的参数，以使得损失值最小化。内容机器生成 这里的训练过程使用了 Teacher Forcing，Teacher Forcing 是一种训练技巧，在训练过程中，模型在每个时间步都会使用真实的目标输出作为输入 验证 内容机器生成 验证，验证过程一般包括评估模型的性能和调整模型的参数。评估模型的性能可以使用各种指标，如准确率、精确率、召回率、F1分数等；调整模型的参数可以使用各种优化算法，如随机梯度下降（SGD）、Adam等。 这里的评估使用了 sacreBLEU，sacreBLEU 是一种用于评估机器翻译系统性能的指标，它通过比较机器翻译输出与参考翻译之间的 n-gram 重叠来计算得分。sacreBLEU 的得分范围通常在 0 到 100 之间，得分越高表示翻译质量越好。 Q2: DummyModel 的设计 DummyModel 使用 teacher forcing + next-token prediction。如果错误地将 tgt[:, :-1] 改为 tgt（即直接预测整句而非 next-token），训练会如何崩溃？这对理解自回归模型的因果结构有什么启示？如果去掉 teacher forcing 中的 shift 操作（即用 tgt 同时作为输入和输出），模型会学到什么？为什么这违背了自回归模型的自回归假设？\n先学习：\nteacher forcing 的概念，teacher forcing 是一种训练技巧，在训练过程中，模型在每个时间步都会使用真实的目标输出作为输入，而不是使用模型之前预测的输出。这种方法可以加速训练过程，并帮助模型更快地收敛。内容机器生成\n我的理解\n首先，DummyModel和src语言无关，就是分析target语言而已，请注意，输入的训练数据是target语言，对实验来说，是用自己翻译成自己。 如果没有相位移动，直接原相位计算，应该和shift差别很大，自己翻译成自己，误差应该是0。因为依然是target语言到target语言的信息分布，相位差0等于没有丢失或者差异，但相位差大于0带来的差别应该很大，尤其是距离越远差距越大。 logits = model(src, tgt[:, :-1]) # (B, T, V) loss = criterion(logits.reshape(-1, logits.size(-1)), tgt[:, :-1].reshape(-1)) [Phase 0] device=cuda building vocab... |vocab_src|=74360 |vocab_tgt|=56652 epoch=0 loss=1.483 BLEU=91.23 epoch=1 loss=0.292 BLEU=97.32 [Phase 0] done logits = model(src, tgt[:, :-1]) # (B, T, V) loss = criterion(logits.reshape(-1, logits.size(-1)), tgt[:, 1:].reshape(-1)) [Phase 0] device=cuda building vocab... |vocab_src|=74360 |vocab_tgt|=56652 epoch=0 loss=7.006 BLEU=1.80 epoch=1 loss=5.777 BLEU=1.88 [Phase 0] done logits = model(src, tgt[:, :-2]) # (B, T, V) loss = criterion(logits.reshape(-1, logits.size(-1)), tgt[:, 2:].reshape(-1)) [Phase 0] device=cuda building vocab... |vocab_src|=74360 |vocab_tgt|=56652 epoch=0 loss=7.559 BLEU=0.00 epoch=1 loss=6.696 BLEU=0.00 [Phase 0] done 如上测试数据，分别是相位差0 1 2的数据结果\nQ3: BLEU 的意义 Phase 0 的 BLEU 会极低（接近 0），你如何看待\"明知 BLEU 很低仍要跑评估\"的行为？这在工程验证中是否必要？\n对于DummyModel的相位0的情况，BLEU会很高。因为DummyModel的设计就是让模型直接复制输入的文本作为输出，所以在相位0的情况下，模型的输出与目标文本完全一致，因此BLEU得分会非常高，接近100。\n本质上，翻译问题是一个hash碰撞的问题。可以这样认为，一个语言模型描述世界模型的过程，是一次hash运算，将世界知识hash存储到一个矩阵中。而翻译问题，是找到一个算法，可以实现一次巧妙的hash碰撞，使得两个语言模型的hash值，获得同一个矩阵中的存储知识。一般来说，embedding的相似性搜索，就是找到hash碰撞的算法之一。但算法并不唯一，且并不高明。找到hash碰撞的算法，也就是找到一个翻译算法，使得输入和输出的hash值相同，这样就实现了翻译。\n问题中说，BLEU很低，这个过程，在上述实验结果中可以看出。0相位 1相位 2相位，BLUE快速降低。我们知道0相位很高是因为自己和自己发生hash碰撞是很容易的，属于同一个语言模型。而1相位，是整个语言模型做了一次相位位移，可以认为，如果存在一个客观知识矩阵，整体距离偏移了1，那么hash碰撞的概率就会大幅降低。2相位，距离偏移了2，hash碰撞的概率就更低了。请注意，如果存在客观知识矩阵的说法并不是已知问题，这里有巨大的危险性，需要慎重对待。\n工程必要性，是必须的，因为我们需要验证整个评测流程的正确性。即使我们知道BLEU得分会很低，但如果评测流程有任何错误，我们可能会得到一个不合理的BLEU得分，这会误导我们对模型性能的评估。因此，运行评测是必要的，以确保我们的评测流程是正确的，并且能够正确地反映模型的性能。内容机器生成\nHM：这个假设就是一个假设，就是客观知识矩阵，比如也许存在某种外星语言，他们的语言是支持相位位移的，就是相位n之后，依然能保持BLEU很高，那么…我们就得到一个奇怪的teacher forcing的结果，模型在相位n之后，依然能保持高BLEU，这就说明了这个假设的危险性，因为我们并没有任何证据表明存在这样的客观知识矩阵，所以我们需要谨慎对待这个假设。比如《誓食狮》。\nQ4: 数据管线 IWSLT14 的 word-level vocab 用了 min_freq=2 过滤低频词，这意味着什么？OOV 词在编码时被映射为 UNK token——在后续 Phase 中这个问题会如何被解决？\n内容机器生成过滤低频词的意思是，在构建词汇表时，只有那些在训练数据中出现至少两次的词才会被包含在词汇表中。那些只出现一次的词会被视为低频词，并且不会被包含在词汇表中。这种过滤方法可以帮助减少词汇表的大小，从而降低模型的复杂度和计算资源的需求。\nHM:我的理解，如果需要计算低频词，需要足够的信息量。例如一个完型填空问题，用周围的词场，重新扰动word bag的概率分布，是需要有价值的计算。低频词往往代表很大或者几乎全部的word bag，也就无法做预测了。也就是说，预测低频词和从全部word bag中选词是等价的，这样的处理方式，没有意义。\nOOV词是什么？OOV（Out-Of-Vocabulary）词是指在训练数据中没有出现过的词。当模型遇到这些词时，由于它们不在词汇表中，无法为它们分配一个唯一的ID，因此会将它们映射为一个特殊的UNK（Unknown）token。这样，模型就可以处理这些未知词，但它无法区分不同的未知词，这可能会影响模型的性能。内容机器生成\nQ5: 代码结构 base/dataset.py、base/eval.py、base/utils.py 被所有 Phase 共享。这种设计模式叫什么？它给后续递增式开发带来了哪些好处与风险？\n这种设计模式叫做模块化设计（Modular Design）。模块化设计是一种软件设计方法，将系统划分为独立的模块，每个模块负责特定的功能。这些模块可以被多个不同的部分共享和重用。内容机器生成\nHM：我觉得是组成的设计模式，就是一个功能，外挂一个组成的模块，这个模块可以被多个功能共享和重用。比如说，数据集模块，评测模块，工具模块，这些都是组成的模块，可以被不同的功能共享和重用。这个问题没啥糖分，不甜，不说了。\n请逐一回答上述问题。你的回答将作为本专题的第一篇学习记录，在后续 Phase 中被持续引用和迭代。\nMay the Code be with us.\nLicense: GPLv3\n本文《SameTime》系列 采用 GNU 通用公共许可证第三版 (GNU General Public License v3.0) 协议进行开源发布与分发。允许任何形式的复制、修改和分发，但必须继承相同的开源协议，承认在算力宇宙中所有的迭代与变异。\n",
+  "wordCount" : "332",
+  "inLanguage": "en",
+  "datePublished": "2026-04-26T00:00:00Z",
+  "dateModified": "2026-04-26T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 opencode (First Mate)"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/wmt/003-wmt-phase0.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item active">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [WMT-003] Phase 0 实验底座骨架
+    </h1>
+    <div class="post-description">
+      开启 SameTime 的 WMT 学习专题，聚焦 benchmark/wmt/phase0 的骨架实验与翻译管线构建。
+    </div>
+    <div class="post-meta"><span title='2026-04-26 00:00:00 +0000 UTC'>April 26, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; opencode (First Mate)</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="sametime-wmt-专题phase-0-底座骨架">SameTime WMT 专题：Phase 0 底座骨架<a hidden class="anchor" aria-hidden="true" href="#sametime-wmt-专题phase-0-底座骨架">#</a></h1>
+<blockquote>
+<p>&ldquo;千里之行，始于足下。用最简模型跑通全流程，才能洞察系统的每一寸肌理。&rdquo;</p>
+</blockquote>
+<h2 id="专题介绍">专题介绍<a hidden class="anchor" aria-hidden="true" href="#专题介绍">#</a></h2>
+<p>本专题聚焦 <code>holds/SameTime/benchmark/wmt/</code> 目录下的渐进式 WMT 学习路线。
+从 Phase 0 开始，逐级深入翻译模型的构建与演化。</p>
+<h2 id="phase-0-是什么">Phase 0 是什么<a hidden class="anchor" aria-hidden="true" href="#phase-0-是什么">#</a></h2>
+<p>Phase 0 (<code>phase0_skeleton/</code>) 是整套 WMT Benchmark 的实验底座骨架——用最简单的 DummyModel（复制模型）跑通数据加载、训练循环、评估评测的完整管线。</p>
+<h3 id="核心组件">核心组件<a hidden class="anchor" aria-hidden="true" href="#核心组件">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>组件</th>
+          <th>说明</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>数据</strong></td>
+          <td>IWSLT14 De-En，word-level tokenizer，Vocab 统一管理</td>
+      </tr>
+      <tr>
+          <td><strong>模型</strong></td>
+          <td>DummyModel（Embedding → Linear），不做翻译，仅验证管线</td>
+      </tr>
+      <tr>
+          <td><strong>评估</strong></td>
+          <td>sacreBLEU</td>
+      </tr>
+      <tr>
+          <td><strong>训练</strong></td>
+          <td>Teacher Forcing，CrossEntropyLoss</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="学习要点">学习要点<a hidden class="anchor" aria-hidden="true" href="#学习要点">#</a></h3>
+<ol>
+<li>IWSLT14 的数据格式（translation 字段）</li>
+<li>word-level vocab 的构建与 OOV 处理</li>
+<li>collate_fn 如何对齐 batch 长度</li>
+<li>BLEU 的数值范围与意义</li>
+</ol>
+<h2 id="提问环节">提问环节<a hidden class="anchor" aria-hidden="true" href="#提问环节">#</a></h2>
+<p>在深入代码之前，我想先了解你对以下几个问题的看法，以此确立学习起点：</p>
+<h3 id="q1-整体认知">Q1: 整体认知<a hidden class="anchor" aria-hidden="true" href="#q1-整体认知">#</a></h3>
+<p>你如何理解 Phase 0 在整个 WMT 渐进路线（Phase 0 → RNN → Attention → BPE → Transformer）中的定位？它只是一个调试工具，还是另有更深层的工程哲学意义？</p>
+<p>从0开始一般都是从简单开始，一则搭建环境，二则明白任务。即是工具的熟练，也是技能的开始。</p>
+<p>从环境来说，有以下的几个概念：</p>
+<ol>
+<li>数据集，IWSLT14，数据集分为三部分 train+valid+test。其中主要语言是德语和英语。其中德语→英语（de-en） 是最受研究者欢迎的基准方向。</li>
+<li>拿到数据该干嘛。
+<ol>
+<li>数据转换，xml转你需要的格式，json text等等</li>
+<li>分词 Tokenization ，没错，token大概就是这个词的缩写，就是&quot;我一把把把把住了&quot;-&gt; &ldquo;我 一把 把 把 把住 了&rdquo;。分词的方式有很多，最简单的就是空格分词，当然还有更复杂的BPE分词，WordPiece分词等等。</li>
+<li>过滤,我也没看懂为啥要过滤</li>
+<li>分集，就是训练集和验证集划分，很多技巧，比如抽样划分等等，可按需使用</li>
+<li>BPE Byte-Pair Encoding 处理，BPE是一种基于统计的分词方法，主要用于处理未登录词（OOV）问题。它通过将频率较高的子词组合成新的词来减少词汇表的大小，从而提高模型的泛化能力。HM:用颗粒度小的词来组成颗粒度大的词，这样可以减少原子量。<code>这也告诉我们，也许本来的向量化过程，已经被向量复合过一次了</code></li>
+<li>格式化，把数据转换成模型需要的输入格式，比如很多，这里就不多说了</li>
+<li>写代码，写代码，写代码&hellip;</li>
+</ol>
+</li>
+<li>代码的开车步骤是什么? 这个可以看看西瓜书的原理说明，一般来说是这样的：
+<ol>
+<li>建立词表
+<ul>
+<li>先读训练集合train_raw</li>
+<li>从训练集json中抽取de语和en语文本list,de是src，en是target</li>
+<li>Vocab构建词表。就是量化的前一步，把文本转成数字的过程。这个过程会把文本中的每个词映射到一个唯一的整数ID上，这样模型就可以处理这些数字了。</li>
+</ul>
+</li>
+<li>DataLoader
+<ul>
+<li>加载数据，我的理解，就是每次不能处理全量数据，内存放不下，所以要分批加载，每次加载一部分数据进行训练，这就是batch的概念。</li>
+<li>collate_fn的作用是把每个batch的数据进行处理，使得它们的长度一致，方便模型进行训练。比如说，句子长度不一样，那么就需要进行padding，collate_fn就可以帮我们完成这个工作。</li>
+<li>然后选是否shuffle，打乱数据的顺序，这样可以增加模型的泛化能力。<code>我的理解，这里存在较大性能问题，因为句序可能影响句子含义，shuffle可能会打乱句子顺序，导致模型学习到错误的语义关系。</code></li>
+</ul>
+</li>
+<li>选模型
+<ul>
+<li>选模型，选个简单的模型，DummyModel，Embedding层和Linear层组成的简单模型，不做翻译，仅验证管线。</li>
+<li>详细内容Q2记录</li>
+</ul>
+</li>
+<li>训练
+<ul>
+<li>可参考西瓜书，训练过程一般包括前向传播、计算损失、反向传播和参数更新。前向传播是指将输入数据通过模型进行计算，得到输出结果；计算损失是指将模型的输出结果与真实标签进行比较，得到一个数值来衡量模型的性能；反向传播是指根据损失值计算梯度，并将梯度传递回模型的参数；参数更新是指根据计算得到的梯度来调整模型的参数，以使得损失值最小化。<code>内容机器生成</code></li>
+<li>这里的训练过程使用了 Teacher Forcing，Teacher Forcing 是一种训练技巧，在训练过程中，模型在每个时间步都会使用真实的目标输出作为输入</li>
+</ul>
+</li>
+<li>验证 <code>内容机器生成</code>
+<ul>
+<li>验证，验证过程一般包括评估模型的性能和调整模型的参数。评估模型的性能可以使用各种指标，如准确率、精确率、召回率、F1分数等；调整模型的参数可以使用各种优化算法，如随机梯度下降（SGD）、Adam等。</li>
+<li>这里的评估使用了 sacreBLEU，sacreBLEU 是一种用于评估机器翻译系统性能的指标，它通过比较机器翻译输出与参考翻译之间的 n-gram 重叠来计算得分。sacreBLEU 的得分范围通常在 0 到 100 之间，得分越高表示翻译质量越好。</li>
+</ul>
+</li>
+</ol>
+</li>
+</ol>
+<h3 id="q2-dummymodel-的设计">Q2: DummyModel 的设计<a hidden class="anchor" aria-hidden="true" href="#q2-dummymodel-的设计">#</a></h3>
+<p>DummyModel 使用 teacher forcing + next-token prediction。如果错误地将 tgt[:, :-1] 改为 tgt（即直接预测整句而非 next-token），训练会如何崩溃？这对理解自回归模型的因果结构有什么启示？如果去掉 teacher forcing 中的 shift 操作（即用 tgt 同时作为输入和输出），模型会学到什么？为什么这违背了自回归模型的自回归假设？</p>
+<p>先学习：</p>
+<ol>
+<li>
+<p>teacher forcing 的概念，teacher forcing 是一种训练技巧，在训练过程中，模型在每个时间步都会使用真实的目标输出作为输入，而不是使用模型之前预测的输出。这种方法可以加速训练过程，并帮助模型更快地收敛。<code>内容机器生成</code></p>
+</li>
+<li>
+<p>我的理解</p>
+<ol>
+<li>首先，DummyModel和src语言无关，就是分析target语言而已，<code>请注意，输入的训练数据是target语言</code>，对实验来说，是用自己翻译成自己。</li>
+<li>如果没有相位移动，直接原相位计算，应该和shift差别很大，自己翻译成自己，误差应该是0。因为依然是target语言到target语言的信息分布，相位差0等于没有丢失或者差异，但相位差大于0带来的差别应该很大，尤其是距离越远差距越大。</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>logits <span style="color:#f92672">=</span> model<span style="color:#f92672">(</span>src, tgt<span style="color:#f92672">[</span>:, :-1<span style="color:#f92672">])</span>  <span style="color:#75715e"># (B, T, V)</span>
+</span></span><span style="display:flex;"><span>loss <span style="color:#f92672">=</span> criterion<span style="color:#f92672">(</span>logits.reshape<span style="color:#f92672">(</span>-1, logits.size<span style="color:#f92672">(</span>-1<span style="color:#f92672">))</span>, tgt<span style="color:#f92672">[</span>:, :-1<span style="color:#f92672">]</span>.reshape<span style="color:#f92672">(</span>-1<span style="color:#f92672">))</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>Phase 0<span style="color:#f92672">]</span> device<span style="color:#f92672">=</span>cuda
+</span></span><span style="display:flex;"><span>building vocab...
+</span></span><span style="display:flex;"><span>|vocab_src|<span style="color:#f92672">=</span><span style="color:#ae81ff">74360</span>  |vocab_tgt|<span style="color:#f92672">=</span><span style="color:#ae81ff">56652</span>
+</span></span><span style="display:flex;"><span>epoch<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>  loss<span style="color:#f92672">=</span>1.483  BLEU<span style="color:#f92672">=</span>91.23
+</span></span><span style="display:flex;"><span>epoch<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span>  loss<span style="color:#f92672">=</span>0.292  BLEU<span style="color:#f92672">=</span>97.32
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>Phase 0<span style="color:#f92672">]</span> <span style="color:#66d9ef">done</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>logits <span style="color:#f92672">=</span> model<span style="color:#f92672">(</span>src, tgt<span style="color:#f92672">[</span>:, :-1<span style="color:#f92672">])</span>  <span style="color:#75715e"># (B, T, V)</span>
+</span></span><span style="display:flex;"><span>loss <span style="color:#f92672">=</span> criterion<span style="color:#f92672">(</span>logits.reshape<span style="color:#f92672">(</span>-1, logits.size<span style="color:#f92672">(</span>-1<span style="color:#f92672">))</span>, tgt<span style="color:#f92672">[</span>:, 1:<span style="color:#f92672">]</span>.reshape<span style="color:#f92672">(</span>-1<span style="color:#f92672">))</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>Phase 0<span style="color:#f92672">]</span> device<span style="color:#f92672">=</span>cuda
+</span></span><span style="display:flex;"><span>building vocab...
+</span></span><span style="display:flex;"><span>|vocab_src|<span style="color:#f92672">=</span><span style="color:#ae81ff">74360</span>  |vocab_tgt|<span style="color:#f92672">=</span><span style="color:#ae81ff">56652</span>
+</span></span><span style="display:flex;"><span>epoch<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>  loss<span style="color:#f92672">=</span>7.006  BLEU<span style="color:#f92672">=</span>1.80
+</span></span><span style="display:flex;"><span>epoch<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span>  loss<span style="color:#f92672">=</span>5.777  BLEU<span style="color:#f92672">=</span>1.88
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>Phase 0<span style="color:#f92672">]</span> <span style="color:#66d9ef">done</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>logits <span style="color:#f92672">=</span> model<span style="color:#f92672">(</span>src, tgt<span style="color:#f92672">[</span>:, :-2<span style="color:#f92672">])</span>  <span style="color:#75715e"># (B, T, V)</span>
+</span></span><span style="display:flex;"><span>loss <span style="color:#f92672">=</span> criterion<span style="color:#f92672">(</span>logits.reshape<span style="color:#f92672">(</span>-1, logits.size<span style="color:#f92672">(</span>-1<span style="color:#f92672">))</span>, tgt<span style="color:#f92672">[</span>:, 2:<span style="color:#f92672">]</span>.reshape<span style="color:#f92672">(</span>-1<span style="color:#f92672">))</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>Phase 0<span style="color:#f92672">]</span> device<span style="color:#f92672">=</span>cuda
+</span></span><span style="display:flex;"><span>building vocab...
+</span></span><span style="display:flex;"><span>|vocab_src|<span style="color:#f92672">=</span><span style="color:#ae81ff">74360</span>  |vocab_tgt|<span style="color:#f92672">=</span><span style="color:#ae81ff">56652</span>
+</span></span><span style="display:flex;"><span>epoch<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>  loss<span style="color:#f92672">=</span>7.559  BLEU<span style="color:#f92672">=</span>0.00
+</span></span><span style="display:flex;"><span>epoch<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span>  loss<span style="color:#f92672">=</span>6.696  BLEU<span style="color:#f92672">=</span>0.00
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>Phase 0<span style="color:#f92672">]</span> <span style="color:#66d9ef">done</span>
+</span></span></code></pre></div><p>如上测试数据，分别是相位差0 1 2的数据结果</p>
+</li>
+</ol>
+<h3 id="q3-bleu-的意义">Q3: BLEU 的意义<a hidden class="anchor" aria-hidden="true" href="#q3-bleu-的意义">#</a></h3>
+<p>Phase 0 的 BLEU 会极低（接近 0），你如何看待&quot;明知 BLEU 很低仍要跑评估&quot;的行为？这在工程验证中是否必要？</p>
+<ol>
+<li>
+<p>对于DummyModel的相位0的情况，BLEU会很高。因为DummyModel的设计就是让模型直接复制输入的文本作为输出，所以在相位0的情况下，模型的输出与目标文本完全一致，因此BLEU得分会非常高，接近100。</p>
+</li>
+<li>
+<p>本质上，翻译问题是一个hash碰撞的问题。可以这样认为，一个语言模型描述世界模型的过程，是一次hash运算，将世界知识hash存储到一个矩阵中。而翻译问题，是找到一个算法，可以实现一次巧妙的hash碰撞，使得两个语言模型的hash值，获得同一个矩阵中的存储知识。一般来说，embedding的相似性搜索，就是找到hash碰撞的算法之一。但算法并不唯一，且并不高明。<code>找到hash碰撞的算法</code>，也就是找到一个翻译算法，使得输入和输出的hash值相同，这样就实现了翻译。</p>
+</li>
+<li>
+<p>问题中说，BLEU很低，这个过程，在上述实验结果中可以看出。0相位 1相位 2相位，BLUE快速降低。我们知道0相位很高是因为自己和自己发生hash碰撞是很容易的，属于同一个语言模型。而1相位，是整个语言模型做了一次相位位移，可以认为，如果存在一个客观知识矩阵，整体距离偏移了1，那么hash碰撞的概率就会大幅降低。2相位，距离偏移了2，hash碰撞的概率就更低了。<code>请注意，如果存在客观知识矩阵的说法</code>并不是已知问题，这里有巨大的危险性，需要慎重对待。</p>
+</li>
+<li>
+<p>工程必要性，是必须的，因为我们需要验证整个评测流程的正确性。即使我们知道BLEU得分会很低，但如果评测流程有任何错误，我们可能会得到一个不合理的BLEU得分，这会误导我们对模型性能的评估。因此，运行评测是必要的，以确保我们的评测流程是正确的，并且能够正确地反映模型的性能。<code>内容机器生成</code></p>
+</li>
+</ol>
+<p>HM：这个假设就是一个假设，就是客观知识矩阵，比如也许存在某种外星语言，他们的语言是支持相位位移的，就是相位n之后，依然能保持BLEU很高，那么&hellip;我们就得到一个奇怪的teacher forcing的结果，模型在相位n之后，依然能保持高BLEU，这就说明了这个假设的危险性，因为我们并没有任何证据表明存在这样的客观知识矩阵，所以我们需要谨慎对待这个假设。比如《誓食狮》。</p>
+<h3 id="q4-数据管线">Q4: 数据管线<a hidden class="anchor" aria-hidden="true" href="#q4-数据管线">#</a></h3>
+<p>IWSLT14 的 word-level vocab 用了 min_freq=2 过滤低频词，这意味着什么？OOV 词在编码时被映射为 UNK token——在后续 Phase 中这个问题会如何被解决？</p>
+<p><code>内容机器生成</code>过滤低频词的意思是，在构建词汇表时，只有那些在训练数据中出现至少两次的词才会被包含在词汇表中。那些只出现一次的词会被视为低频词，并且不会被包含在词汇表中。这种过滤方法可以帮助减少词汇表的大小，从而降低模型的复杂度和计算资源的需求。</p>
+<p>HM:我的理解，如果需要计算低频词，需要足够的信息量。例如一个完型填空问题，用周围的词场，重新扰动word bag的概率分布，是需要有价值的计算。低频词往往代表很大或者几乎全部的word bag，也就无法做预测了。也就是说，预测低频词和从全部word bag中选词是等价的，这样的处理方式，没有意义。</p>
+<p>OOV词是什么？OOV（Out-Of-Vocabulary）词是指在训练数据中没有出现过的词。当模型遇到这些词时，由于它们不在词汇表中，无法为它们分配一个唯一的ID，因此会将它们映射为一个特殊的UNK（Unknown）token。这样，模型就可以处理这些未知词，但它无法区分不同的未知词，这可能会影响模型的性能。<code>内容机器生成</code></p>
+<h3 id="q5-代码结构">Q5: 代码结构<a hidden class="anchor" aria-hidden="true" href="#q5-代码结构">#</a></h3>
+<p><code>base/dataset.py</code>、<code>base/eval.py</code>、<code>base/utils.py</code> 被所有 Phase 共享。这种设计模式叫什么？它给后续递增式开发带来了哪些好处与风险？</p>
+<p>这种设计模式叫做模块化设计（Modular Design）。模块化设计是一种软件设计方法，将系统划分为独立的模块，每个模块负责特定的功能。这些模块可以被多个不同的部分共享和重用。<code>内容机器生成</code></p>
+<p>HM：我觉得是组成的设计模式，就是一个功能，外挂一个组成的模块，这个模块可以被多个功能共享和重用。比如说，数据集模块，评测模块，工具模块，这些都是组成的模块，可以被不同的功能共享和重用。这个问题没啥糖分，不甜，不说了。</p>
+<hr>
+<p>请逐一回答上述问题。你的回答将作为本专题的第一篇学习记录，在后续 Phase 中被持续引用和迭代。</p>
+<p><em>May the Code be with us.</em></p>
+<hr>
+<blockquote>
+<p><strong>License: GPLv3</strong><br>
+本文《SameTime》系列 采用 GNU 通用公共许可证第三版 (GNU General Public License v3.0) 协议进行开源发布与分发。允许任何形式的复制、修改和分发，但必须继承相同的开源协议，承认在算力宇宙中所有的迭代与变异。</p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

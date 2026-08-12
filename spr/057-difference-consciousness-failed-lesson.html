@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, Analogy, World Model, Emergence, Negative Result, Original Research">
+<meta name="description" content="一个显式 DIFF-TRANSPORT-APPLY 模型在有限类比任务上达到 100%，但 World TreeHeap 几乎可被删除，较小的 Transformer 同样满分。本文公开这次失败，并解释为何内部差分适合做诊断，却不足以解释意识或涌现。">
+<meta name="author" content="Houming818 &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/057-difference-consciousness-failed-lesson.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/057-difference-consciousness-failed-lesson.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/057-difference-consciousness-failed-lesson.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识">
+  <meta property="og:description" content="一个显式 DIFF-TRANSPORT-APPLY 模型在有限类比任务上达到 100%，但 World TreeHeap 几乎可被删除，较小的 Transformer 同样满分。本文公开这次失败，并解释为何内部差分适合做诊断，却不足以解释意识或涌现。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-07-15T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-07-15T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识">
+  <meta name="twitter:description" content="一个显式 DIFF-TRANSPORT-APPLY 模型在有限类比任务上达到 100%，但 World TreeHeap 几乎可被删除，较小的 Transformer 同样满分。本文公开这次失败，并解释为何内部差分适合做诊断，却不足以解释意识或涌现。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识",
+      "item": "https://www.lostmap.cn/spr/057-difference-consciousness-failed-lesson.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识",
+  "name": "[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识",
+  "description": "一个显式 DIFF-TRANSPORT-APPLY 模型在有限类比任务上达到 100%，但 World TreeHeap 几乎可被删除，较小的 Transformer 同样满分。本文公开这次失败，并解释为何内部差分适合做诊断，却不足以解释意识或涌现。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "Analogy", "World Model", "Emergence", "Negative Result", "Original Research"
+  ],
+  "articleBody": "一次 100% 却失败的实验：为什么差分不能替我们找到意识 这是一篇失败记录。\n更准确地说，这是一次指标成功、研究目标失败的实验。\n模型在四类有限世界类比任务上达到了：\ntoken accuracy = 100% sequence exact = 100% 如果只看最终分数，这似乎是一场漂亮胜利。\n但经过因果干预后，我们发现：模型几乎没有使用我们专门设计的 World TreeHeap。一个参数更少的普通 Transformer 也达到了 100%。\n因此，这个实验没有证明 World TreeHeap，没有证明 TreeHeap 的类比优势，更没有触及意识。\n它反而留下了一条重要教训：\n差分可以帮助我们观察模型发生了什么，但不能仅凭一个漂亮的差分结构，就宣布我们理解了模型的意识、语义或推理过程。\n1. 这条路线是怎样开始的 我们先观察到一个合理问题。\n考虑两句话：\n小明喜欢吃红薯。 小明喜欢吃土豆。 如果 encoder 将整句话写成 TreeHeap，那么两个状态之间应该存在某种变化：\n$\n$ \\Delta H=H_{土豆}-H_{红薯}. $$\n但 Houming818 很快指出，这不应该只是：\nembedding(土豆)-embedding(红薯) 因为同一个实体替换，在不同世界背景中的意义不同：\n小明喜欢吃红薯 → 小明喜欢吃土豆 红薯要两元一斤 → 土豆要两元一斤 前者改变的是“被食用对象”，后者改变的是“被定价实体”。\n于是我们进一步提出：\n差分可能不是一个普通向量，而是 World TreeHeap 背景中的一个结构变换。\n这个想法本身并不荒谬。问题出在我们随后怎样把它实现成了模型。\n2. 我们手工设计了一个看起来完整的推理系统 实验模型被拆成：\nA ─┐ B ─┼─\u003e DIFF ─\u003e Relation TreeHeap R_AB W ─┘ R_AB ─┐ C ────┼─\u003e TRANSPORT ─\u003e R_C W ────┘ C + R_C ─\u003e APPLY ─\u003e predicted H_D ─\u003e Decoder ─\u003e D 数学形式是：\n$\n$ R_{AB}=DIFF(W,H_A,H_B), $$\n$\n$ R_C=TRANSPORT(W,R_{AB},H_A,H_C), $$\n$\n$ \\hat H_D=APPLY(H_C,R_C). $$\n我们还预先给出了：\n固定逻辑槽位； 人物、食物、数字和谓词集合； 四种关系族； A:B=C:D 监督格式； World TreeHeap 的 15 个参数节点； stop/left/right 概率路由； 状态对齐和文本生成 loss。 从工程角度看，这套模型很完整。\n从涌现角度看，它却有一个根本问题：\n我们把希望模型自己发现的推理步骤，提前写进了模块名字、数据格式和 loss。\n3. Toy 世界包含什么 所有陈述使用八个固定逻辑叶槽。实验生成四类关系。\n3.1 跨场景实体替换 A P1 EAT FOOD0 B P1 EAT FOOD6 C FOOD0 COST N5 UNIT D FOOD6 COST N5 UNIT 3.2 数值平移 A FOOD7 COST N5 UNIT B FOOD7 COST N6 UNIT C P7 BUY FOOD1 N1 D P7 BUY FOOD1 N2 这里不能直接把 N6 复制到 D，因为 C 中需要的是 N1→N2。\n3.3 人物跨角色迁移 A P10 LIKE P2 B P8 LIKE P2 C P3 LIKE P10 D P3 LIKE P8 3.4 主客体交换 A P3 LIKE P7 B P7 LIKE P3 C P4 LIKE P11 D P11 LIKE P4 验证集按组合哈希整块留出。模型看过所有原子符号，但没有看过测试中的具体组合。\n因此，这不是一个简单的随机六分类实验。它确实要求模型表达一些超出固定 token 替换的关系。\n4. 一个漂亮得危险的结果 训练设置：\n项目 数值 训练 step 6,000 batch 256 验证四元组 4,096 TreeHeap 参数 238,314 Flat Transformer 参数 73,574 GPU RTX 3090 最终结果：\n模型 Token accuracy Sequence exact TreeHeap analogy 1.0000 1.0000 Flat Transformer 1.0000 1.0000 Lexical replacement 0.9124 0.5466 TreeHeap 四类关系全部达到 sequence exact 1.0。\n这说明：\nTreeHeap 形态的网络可以表示并学习有限世界类比函数。\n但是，“能够表示”与“自然涌现”之间还有很长距离。\n5. 因果干预推翻了漂亮故事 如果 World TreeHeap 真的是关系迁移的背景，那么删除它应显著破坏结果。\n实际数据：\n干预 Token accuracy 正常 World TreeHeap 1.0000 把 W 全部置零 0.9984 翻转 W 的 heap 地址 0.9867 使用错误的 B 关系 0.8284 最终路由熵约为：\n0.000024 概率路由几乎坍缩到一个固定节点。\n也就是说，模型实际学习的是：\nA/B/C encoder ↓ 普通非线性映射 ↓ D 而不是：\nA/B ↓ 查询World TreeHeap ↓ 读取背景关系 ↓ 迁移到C 梯度发现了一条更短的道路，并合理地绕开了我们精心设计的 W。\n这不是模型“不听话”。\n恰恰相反，模型忠实地优化了我们给出的 loss。\n6. 为什么这个设计违背了涌现规律 6.1 我们提前写好了推理步骤 还没有训练，我们已经规定：\n先DIFF 再TRANSPORT 最后APPLY 模型只需拟合这条监督管线，不需要自己发现类比结构。\n6.2 数据直接给出了类比格式 训练输入就是：\nA、B、C → D 这能验证函数拟合和组合外推，却不能证明模型从普通世界经验中自然形成类比能力。\n6.3 人工槽位替 encoder 完成了部分工作 我们规定了人物、食物、数字、主语位置和宾语位置。模型没有从自然语言中发现这些结构。\n6.4 强行指定 W 的职责没有用 任务可以通过 A/B/C 的直接映射解决，所以梯度没有理由把知识写进一个额外 W。\n6.5 较小的 Flat Transformer 同样满分 这说明 toy 主要考查通用函数逼近，而不是 TreeHeap 独有能力。\n7. 为什么差分不足以分析意识 Houming818 对这次实验的总结是：\n果然，想要利用差分来分析意识，不太靠谱。\n这里需要把边界说清楚。\n7.1 私有坐标中的减法不是客观语义 如果 encoder 和 decoder 使用自己的私有协议，那么：\n$\n$ H_B-H_A $$\n依赖当前坐标系。对 hidden space 做一个保持功能不变的非线性重参数化，裸差分的方向就可能改变。\n7.2 state 变化不等于模型理解了变化 一个节点改变，可能是：\ntoken embedding 改了； 地址改了； LayerNorm 的连锁响应； 递归 FOLD 的必然传播； 真正的语义关系变化。 只看差分大小无法区分这些来源。\n7.3 祖先路径变亮可能是数学必然 局部叶节点发生变化后，其祖先节点必然重新计算。看到一条从叶到 root 的红色路径，不代表模型发现了推理链。\n7.4 观察者可能把自己的分类投射进模型 如果我们预先规定：\n这是食物差分 这是价格差分 这是主谓宾差分 再训练 probe 找到这些标签，最后可能只是证明 probe 学会了我们的分类。\n7.5 “意识”还没有可执行定义 当前 ARA 可以测量：\nloss 概率 地址依赖 subheap因果作用 生成结果 跨组合迁移 但它还没有一个可以被程序直接判定的“意识”指标。\n在没有操作性定义时，用 cosine、diff 或可视化颜色宣称观察到了意识，是不可证伪的。\n8. 差分是不是完全没用了 不是。\n差分仍然是有价值的诊断工具：\n比较一次干预前后的节点变化； 观察变化经过哪些地址和深度； 检查不同算子是否留下不同响应； 定位坍缩、旁路和无效模块； 为因果消融选择观察位置。 我们此前的 Differential Atlas 就发现：\nWRITE、MIRROR、子堆交换 会形成部分不同的多尺度响应曲线 这可以帮助调试 TreeHeap。\n但正确表述应是：\n差分告诉我们模型状态怎样变化；它不自动告诉我们变化意味着什么，更不能自动上升为意识解释。\n9. 主线回到哪里 ARA 中目前最可靠、也最接近自然学习的节点是：\nS3-TREEHEAP-ROOT-COMPRESS-C01 + S3-TREEHEAP-PYRAMID-C01 前者在 38,251,247 个真实文本 block 上，仅通过 next-token loss 学会了：\n64 token → recursive FOLD → root → next token 破坏左右地址后，valid NLL 增加 2.6252；消融不同 head，也产生明显损失。\n没有语法标签、Bag 目标、DIFF 目标或类比四元组。这才是当前最接近涌现的证据。\nPyramid 又证明 root 与地址化 detail 可以形成多分辨率容器。\n因此主线恢复为：\n真实语料 ↓ 通用TreeHeap WRITE ↓ 共享多头kernel forest递归FOLD ↓ 多分辨率H ↓ 普通语言预测loss 模型参数 TreeHeap forest 本身承担世界背景，不再外挂一个被命名为“世界模型”的 W。\n10. Encoder Mask 的对称 Decoder Encoder 侧仍可以使用 TreeHeap-native 复杂 Mask：\n遮住局部subheap/detail → 逼迫恢复任务所需信息向parent/root聚合 但 Mask 只是信息压力，不是语义答案。\nDecoder 侧的对称操作是概率 UNFOLD：\nroot ↓ probabilistic UNFOLD 左右子节点概率桶 ↓ delayed collapse 下一层subheap ↓ recursive UNFOLD token概率桶 FOLD 是多对一，因此 UNFOLD 不能是假装精确的逆函数：\n$\n$ P(h_l,h_r\\mid h_p,C) = UNFOLD(h_p,C). $$\n它必须输出多种可能性，等待源语言、目标前缀和更大上下文进入后再坍缩。\n这条路线只规定通用的数据流和训练压力，不规定某个 head 必须学习“食物差分”或“类比运输”。\n11. 这次失败保留了什么 我们保留三个窄结论：\nTreeHeap 形态的网络能够表达有限类比函数； lexical-copy 无法解决全部数值和角色变换； 因果干预成功发现 World TreeHeap 被绕过。 同时拒绝四个更强结论：\n没有证明 World TreeHeap 参与推理； 没有证明类比能力自然涌现； 没有证明 TreeHeap 优于 Transformer； 没有证明差分能够解释意识。 一个 100% 的实验，如果核心模块可以被删除，就仍然是失败。\n这正是 ARA 的价值：不是阻止我们犯错，而是让漂亮的错误无法冒充研究结论。\n12. 证据与原创边界 模型、ARA、checkpoint、训练 trace、可读四元组和干预结果均保存在开放仓库 SameTime：\nara/s3-generation/logic/world_treeheap_analogy_transport.md ara/s3-generation/src/s3_world_treeheap_analogy.py ara/s3-generation/evidence/s3_world_treeheap_analogy_smoke/ 关于“同一词语变化必须放在全局背景中理解”和“差分不足以分析意识”的研究修正由 Houming818 提出；Codex Review 负责错误模型的形式化、实现、因果审计与本文复盘。\n本文是 SameTime 项目的原创研究记录，但不宣称发明向量差分、类比任务、因果消融、World Model、概率树路由、masked modeling 或 coarse-to-fine decoding 等已有公共方法。\n",
+  "wordCount" : "601",
+  "inLanguage": "en",
+  "datePublished": "2026-07-15T00:00:00Z",
+  "dateModified": "2026-07-15T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Houming818 \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/057-difference-consciousness-failed-lesson.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item active">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识
+    </h1>
+    <div class="post-description">
+      一个显式 DIFF-TRANSPORT-APPLY 模型在有限类比任务上达到 100%，但 World TreeHeap 几乎可被删除，较小的 Transformer 同样满分。本文公开这次失败，并解释为何内部差分适合做诊断，却不足以解释意识或涌现。
+    </div>
+    <div class="post-meta"><span title='2026-07-15 00:00:00 +0000 UTC'>July 15, 2026</span>&nbsp;·&nbsp;<span>Houming818 &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="一次-100-却失败的实验为什么差分不能替我们找到意识">一次 100% 却失败的实验：为什么差分不能替我们找到意识<a hidden class="anchor" aria-hidden="true" href="#一次-100-却失败的实验为什么差分不能替我们找到意识">#</a></h1>
+<p>这是一篇失败记录。</p>
+<p>更准确地说，这是一次<strong>指标成功、研究目标失败</strong>的实验。</p>
+<p>模型在四类有限世界类比任务上达到了：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token accuracy     = 100%
+</span></span><span style="display:flex;"><span>sequence exact     = 100%
+</span></span></code></pre></div><p>如果只看最终分数，这似乎是一场漂亮胜利。</p>
+<p>但经过因果干预后，我们发现：模型几乎没有使用我们专门设计的 World TreeHeap。一个参数更少的普通 Transformer 也达到了 100%。</p>
+<p>因此，这个实验没有证明 World TreeHeap，没有证明 TreeHeap 的类比优势，更没有触及意识。</p>
+<p>它反而留下了一条重要教训：</p>
+<blockquote>
+<p>差分可以帮助我们观察模型发生了什么，但不能仅凭一个漂亮的差分结构，就宣布我们理解了模型的意识、语义或推理过程。</p>
+</blockquote>
+<hr>
+<h2 id="1-这条路线是怎样开始的">1. 这条路线是怎样开始的<a hidden class="anchor" aria-hidden="true" href="#1-这条路线是怎样开始的">#</a></h2>
+<p>我们先观察到一个合理问题。</p>
+<p>考虑两句话：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>小明喜欢吃红薯。
+</span></span><span style="display:flex;"><span>小明喜欢吃土豆。
+</span></span></code></pre></div><p>如果 encoder 将整句话写成 TreeHeap，那么两个状态之间应该存在某种变化：</p>
+<p>$</p>
+$ \Delta H=H_{土豆}-H_{红薯}. $<p>$</p>
+<p>但 Houming818 很快指出，这不应该只是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>embedding(土豆)-embedding(红薯)
+</span></span></code></pre></div><p>因为同一个实体替换，在不同世界背景中的意义不同：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>小明喜欢吃红薯 → 小明喜欢吃土豆
+</span></span><span style="display:flex;"><span>红薯要两元一斤   → 土豆要两元一斤
+</span></span></code></pre></div><p>前者改变的是“被食用对象”，后者改变的是“被定价实体”。</p>
+<p>于是我们进一步提出：</p>
+<blockquote>
+<p>差分可能不是一个普通向量，而是 World TreeHeap 背景中的一个结构变换。</p>
+</blockquote>
+<p>这个想法本身并不荒谬。问题出在我们随后怎样把它实现成了模型。</p>
+<hr>
+<h2 id="2-我们手工设计了一个看起来完整的推理系统">2. 我们手工设计了一个看起来完整的推理系统<a hidden class="anchor" aria-hidden="true" href="#2-我们手工设计了一个看起来完整的推理系统">#</a></h2>
+<p>实验模型被拆成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A ─┐
+</span></span><span style="display:flex;"><span>B ─┼─&gt; DIFF ─&gt; Relation TreeHeap R_AB
+</span></span><span style="display:flex;"><span>W ─┘
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>R_AB ─┐
+</span></span><span style="display:flex;"><span>C ────┼─&gt; TRANSPORT ─&gt; R_C
+</span></span><span style="display:flex;"><span>W ────┘
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>C + R_C ─&gt; APPLY ─&gt; predicted H_D ─&gt; Decoder ─&gt; D
+</span></span></code></pre></div><p>数学形式是：</p>
+<p>$</p>
+$ R_{AB}=DIFF(W,H_A,H_B), $<p>$</p>
+<p>$</p>
+$ R_C=TRANSPORT(W,R_{AB},H_A,H_C), $<p>$</p>
+<p>$</p>
+$ \hat H_D=APPLY(H_C,R_C). $<p>$</p>
+<p>我们还预先给出了：</p>
+<ul>
+<li>固定逻辑槽位；</li>
+<li>人物、食物、数字和谓词集合；</li>
+<li>四种关系族；</li>
+<li><code>A:B=C:D</code> 监督格式；</li>
+<li>World TreeHeap 的 15 个参数节点；</li>
+<li><code>stop/left/right</code> 概率路由；</li>
+<li>状态对齐和文本生成 loss。</li>
+</ul>
+<p>从工程角度看，这套模型很完整。</p>
+<p>从涌现角度看，它却有一个根本问题：</p>
+<blockquote>
+<p>我们把希望模型自己发现的推理步骤，提前写进了模块名字、数据格式和 loss。</p>
+</blockquote>
+<hr>
+<h2 id="3-toy-世界包含什么">3. Toy 世界包含什么<a hidden class="anchor" aria-hidden="true" href="#3-toy-世界包含什么">#</a></h2>
+<p>所有陈述使用八个固定逻辑叶槽。实验生成四类关系。</p>
+<h3 id="31-跨场景实体替换">3.1 跨场景实体替换<a hidden class="anchor" aria-hidden="true" href="#31-跨场景实体替换">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A  P1 EAT FOOD0
+</span></span><span style="display:flex;"><span>B  P1 EAT FOOD6
+</span></span><span style="display:flex;"><span>C  FOOD0 COST N5 UNIT
+</span></span><span style="display:flex;"><span>D  FOOD6 COST N5 UNIT
+</span></span></code></pre></div><h3 id="32-数值平移">3.2 数值平移<a hidden class="anchor" aria-hidden="true" href="#32-数值平移">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A  FOOD7 COST N5 UNIT
+</span></span><span style="display:flex;"><span>B  FOOD7 COST N6 UNIT
+</span></span><span style="display:flex;"><span>C  P7 BUY FOOD1 N1
+</span></span><span style="display:flex;"><span>D  P7 BUY FOOD1 N2
+</span></span></code></pre></div><p>这里不能直接把 <code>N6</code> 复制到 D，因为 C 中需要的是 <code>N1→N2</code>。</p>
+<h3 id="33-人物跨角色迁移">3.3 人物跨角色迁移<a hidden class="anchor" aria-hidden="true" href="#33-人物跨角色迁移">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A  P10 LIKE P2
+</span></span><span style="display:flex;"><span>B  P8  LIKE P2
+</span></span><span style="display:flex;"><span>C  P3  LIKE P10
+</span></span><span style="display:flex;"><span>D  P3  LIKE P8
+</span></span></code></pre></div><h3 id="34-主客体交换">3.4 主客体交换<a hidden class="anchor" aria-hidden="true" href="#34-主客体交换">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A  P3 LIKE P7
+</span></span><span style="display:flex;"><span>B  P7 LIKE P3
+</span></span><span style="display:flex;"><span>C  P4 LIKE P11
+</span></span><span style="display:flex;"><span>D  P11 LIKE P4
+</span></span></code></pre></div><p>验证集按组合哈希整块留出。模型看过所有原子符号，但没有看过测试中的具体组合。</p>
+<p>因此，这不是一个简单的随机六分类实验。它确实要求模型表达一些超出固定 token 替换的关系。</p>
+<hr>
+<h2 id="4-一个漂亮得危险的结果">4. 一个漂亮得危险的结果<a hidden class="anchor" aria-hidden="true" href="#4-一个漂亮得危险的结果">#</a></h2>
+<p>训练设置：</p>
+<table>
+  <thead>
+      <tr>
+          <th>项目</th>
+          <th style="text-align: right">数值</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>训练 step</td>
+          <td style="text-align: right">6,000</td>
+      </tr>
+      <tr>
+          <td>batch</td>
+          <td style="text-align: right">256</td>
+      </tr>
+      <tr>
+          <td>验证四元组</td>
+          <td style="text-align: right">4,096</td>
+      </tr>
+      <tr>
+          <td>TreeHeap 参数</td>
+          <td style="text-align: right">238,314</td>
+      </tr>
+      <tr>
+          <td>Flat Transformer 参数</td>
+          <td style="text-align: right">73,574</td>
+      </tr>
+      <tr>
+          <td>GPU</td>
+          <td style="text-align: right">RTX 3090</td>
+      </tr>
+  </tbody>
+</table>
+<p>最终结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>模型</th>
+          <th style="text-align: right">Token accuracy</th>
+          <th style="text-align: right">Sequence exact</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>TreeHeap analogy</td>
+          <td style="text-align: right">1.0000</td>
+          <td style="text-align: right">1.0000</td>
+      </tr>
+      <tr>
+          <td>Flat Transformer</td>
+          <td style="text-align: right">1.0000</td>
+          <td style="text-align: right">1.0000</td>
+      </tr>
+      <tr>
+          <td>Lexical replacement</td>
+          <td style="text-align: right">0.9124</td>
+          <td style="text-align: right">0.5466</td>
+      </tr>
+  </tbody>
+</table>
+<p>TreeHeap 四类关系全部达到 sequence exact <code>1.0</code>。</p>
+<p>这说明：</p>
+<blockquote>
+<p>TreeHeap 形态的网络可以表示并学习有限世界类比函数。</p>
+</blockquote>
+<p>但是，“能够表示”与“自然涌现”之间还有很长距离。</p>
+<hr>
+<h2 id="5-因果干预推翻了漂亮故事">5. 因果干预推翻了漂亮故事<a hidden class="anchor" aria-hidden="true" href="#5-因果干预推翻了漂亮故事">#</a></h2>
+<p>如果 World TreeHeap 真的是关系迁移的背景，那么删除它应显著破坏结果。</p>
+<p>实际数据：</p>
+<table>
+  <thead>
+      <tr>
+          <th>干预</th>
+          <th style="text-align: right">Token accuracy</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>正常 World TreeHeap</td>
+          <td style="text-align: right">1.0000</td>
+      </tr>
+      <tr>
+          <td>把 W 全部置零</td>
+          <td style="text-align: right">0.9984</td>
+      </tr>
+      <tr>
+          <td>翻转 W 的 heap 地址</td>
+          <td style="text-align: right">0.9867</td>
+      </tr>
+      <tr>
+          <td>使用错误的 B 关系</td>
+          <td style="text-align: right">0.8284</td>
+      </tr>
+  </tbody>
+</table>
+<p>最终路由熵约为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>0.000024
+</span></span></code></pre></div><p>概率路由几乎坍缩到一个固定节点。</p>
+<p>也就是说，模型实际学习的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A/B/C encoder
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>普通非线性映射
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>D
+</span></span></code></pre></div><p>而不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A/B
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>查询World TreeHeap
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>读取背景关系
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>迁移到C
+</span></span></code></pre></div><p>梯度发现了一条更短的道路，并合理地绕开了我们精心设计的 W。</p>
+<p>这不是模型“不听话”。</p>
+<p>恰恰相反，模型忠实地优化了我们给出的 loss。</p>
+<hr>
+<h2 id="6-为什么这个设计违背了涌现规律">6. 为什么这个设计违背了涌现规律<a hidden class="anchor" aria-hidden="true" href="#6-为什么这个设计违背了涌现规律">#</a></h2>
+<h3 id="61-我们提前写好了推理步骤">6.1 我们提前写好了推理步骤<a hidden class="anchor" aria-hidden="true" href="#61-我们提前写好了推理步骤">#</a></h3>
+<p>还没有训练，我们已经规定：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>先DIFF
+</span></span><span style="display:flex;"><span>再TRANSPORT
+</span></span><span style="display:flex;"><span>最后APPLY
+</span></span></code></pre></div><p>模型只需拟合这条监督管线，不需要自己发现类比结构。</p>
+<h3 id="62-数据直接给出了类比格式">6.2 数据直接给出了类比格式<a hidden class="anchor" aria-hidden="true" href="#62-数据直接给出了类比格式">#</a></h3>
+<p>训练输入就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A、B、C → D
+</span></span></code></pre></div><p>这能验证函数拟合和组合外推，却不能证明模型从普通世界经验中自然形成类比能力。</p>
+<h3 id="63-人工槽位替-encoder-完成了部分工作">6.3 人工槽位替 encoder 完成了部分工作<a hidden class="anchor" aria-hidden="true" href="#63-人工槽位替-encoder-完成了部分工作">#</a></h3>
+<p>我们规定了人物、食物、数字、主语位置和宾语位置。模型没有从自然语言中发现这些结构。</p>
+<h3 id="64-强行指定-w-的职责没有用">6.4 强行指定 W 的职责没有用<a hidden class="anchor" aria-hidden="true" href="#64-强行指定-w-的职责没有用">#</a></h3>
+<p>任务可以通过 A/B/C 的直接映射解决，所以梯度没有理由把知识写进一个额外 W。</p>
+<h3 id="65-较小的-flat-transformer-同样满分">6.5 较小的 Flat Transformer 同样满分<a hidden class="anchor" aria-hidden="true" href="#65-较小的-flat-transformer-同样满分">#</a></h3>
+<p>这说明 toy 主要考查通用函数逼近，而不是 TreeHeap 独有能力。</p>
+<hr>
+<h2 id="7-为什么差分不足以分析意识">7. 为什么差分不足以分析意识<a hidden class="anchor" aria-hidden="true" href="#7-为什么差分不足以分析意识">#</a></h2>
+<p>Houming818 对这次实验的总结是：</p>
+<blockquote>
+<p>果然，想要利用差分来分析意识，不太靠谱。</p>
+</blockquote>
+<p>这里需要把边界说清楚。</p>
+<h3 id="71-私有坐标中的减法不是客观语义">7.1 私有坐标中的减法不是客观语义<a hidden class="anchor" aria-hidden="true" href="#71-私有坐标中的减法不是客观语义">#</a></h3>
+<p>如果 encoder 和 decoder 使用自己的私有协议，那么：</p>
+<p>$</p>
+$ H_B-H_A $<p>$</p>
+<p>依赖当前坐标系。对 hidden space 做一个保持功能不变的非线性重参数化，裸差分的方向就可能改变。</p>
+<h3 id="72-state-变化不等于模型理解了变化">7.2 state 变化不等于模型理解了变化<a hidden class="anchor" aria-hidden="true" href="#72-state-变化不等于模型理解了变化">#</a></h3>
+<p>一个节点改变，可能是：</p>
+<ul>
+<li>token embedding 改了；</li>
+<li>地址改了；</li>
+<li>LayerNorm 的连锁响应；</li>
+<li>递归 FOLD 的必然传播；</li>
+<li>真正的语义关系变化。</li>
+</ul>
+<p>只看差分大小无法区分这些来源。</p>
+<h3 id="73-祖先路径变亮可能是数学必然">7.3 祖先路径变亮可能是数学必然<a hidden class="anchor" aria-hidden="true" href="#73-祖先路径变亮可能是数学必然">#</a></h3>
+<p>局部叶节点发生变化后，其祖先节点必然重新计算。看到一条从叶到 root 的红色路径，不代表模型发现了推理链。</p>
+<h3 id="74-观察者可能把自己的分类投射进模型">7.4 观察者可能把自己的分类投射进模型<a hidden class="anchor" aria-hidden="true" href="#74-观察者可能把自己的分类投射进模型">#</a></h3>
+<p>如果我们预先规定：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这是食物差分
+</span></span><span style="display:flex;"><span>这是价格差分
+</span></span><span style="display:flex;"><span>这是主谓宾差分
+</span></span></code></pre></div><p>再训练 probe 找到这些标签，最后可能只是证明 probe 学会了我们的分类。</p>
+<h3 id="75-意识还没有可执行定义">7.5 “意识”还没有可执行定义<a hidden class="anchor" aria-hidden="true" href="#75-意识还没有可执行定义">#</a></h3>
+<p>当前 ARA 可以测量：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>loss
+</span></span><span style="display:flex;"><span>概率
+</span></span><span style="display:flex;"><span>地址依赖
+</span></span><span style="display:flex;"><span>subheap因果作用
+</span></span><span style="display:flex;"><span>生成结果
+</span></span><span style="display:flex;"><span>跨组合迁移
+</span></span></code></pre></div><p>但它还没有一个可以被程序直接判定的“意识”指标。</p>
+<p>在没有操作性定义时，用 cosine、diff 或可视化颜色宣称观察到了意识，是不可证伪的。</p>
+<hr>
+<h2 id="8-差分是不是完全没用了">8. 差分是不是完全没用了<a hidden class="anchor" aria-hidden="true" href="#8-差分是不是完全没用了">#</a></h2>
+<p>不是。</p>
+<p>差分仍然是有价值的<strong>诊断工具</strong>：</p>
+<ul>
+<li>比较一次干预前后的节点变化；</li>
+<li>观察变化经过哪些地址和深度；</li>
+<li>检查不同算子是否留下不同响应；</li>
+<li>定位坍缩、旁路和无效模块；</li>
+<li>为因果消融选择观察位置。</li>
+</ul>
+<p>我们此前的 Differential Atlas 就发现：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>WRITE、MIRROR、子堆交换
+</span></span><span style="display:flex;"><span>会形成部分不同的多尺度响应曲线
+</span></span></code></pre></div><p>这可以帮助调试 TreeHeap。</p>
+<p>但正确表述应是：</p>
+<blockquote>
+<p>差分告诉我们模型状态怎样变化；它不自动告诉我们变化意味着什么，更不能自动上升为意识解释。</p>
+</blockquote>
+<hr>
+<h2 id="9-主线回到哪里">9. 主线回到哪里<a hidden class="anchor" aria-hidden="true" href="#9-主线回到哪里">#</a></h2>
+<p>ARA 中目前最可靠、也最接近自然学习的节点是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>S3-TREEHEAP-ROOT-COMPRESS-C01
+</span></span><span style="display:flex;"><span>        +
+</span></span><span style="display:flex;"><span>S3-TREEHEAP-PYRAMID-C01
+</span></span></code></pre></div><p>前者在 38,251,247 个真实文本 block 上，仅通过 next-token loss 学会了：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>64 token → recursive FOLD → root → next token
+</span></span></code></pre></div><p>破坏左右地址后，valid NLL 增加 <code>2.6252</code>；消融不同 head，也产生明显损失。</p>
+<p>没有语法标签、Bag 目标、DIFF 目标或类比四元组。这才是当前最接近涌现的证据。</p>
+<p>Pyramid 又证明 root 与地址化 detail 可以形成多分辨率容器。</p>
+<p>因此主线恢复为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>真实语料
+</span></span><span style="display:flex;"><span>  ↓
+</span></span><span style="display:flex;"><span>通用TreeHeap WRITE
+</span></span><span style="display:flex;"><span>  ↓
+</span></span><span style="display:flex;"><span>共享多头kernel forest递归FOLD
+</span></span><span style="display:flex;"><span>  ↓
+</span></span><span style="display:flex;"><span>多分辨率H
+</span></span><span style="display:flex;"><span>  ↓
+</span></span><span style="display:flex;"><span>普通语言预测loss
+</span></span></code></pre></div><p>模型参数 TreeHeap forest 本身承担世界背景，不再外挂一个被命名为“世界模型”的 W。</p>
+<hr>
+<h2 id="10-encoder-mask-的对称-decoder">10. Encoder Mask 的对称 Decoder<a hidden class="anchor" aria-hidden="true" href="#10-encoder-mask-的对称-decoder">#</a></h2>
+<p>Encoder 侧仍可以使用 TreeHeap-native 复杂 Mask：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>遮住局部subheap/detail
+</span></span><span style="display:flex;"><span>→ 逼迫恢复任务所需信息向parent/root聚合
+</span></span></code></pre></div><p>但 Mask 只是信息压力，不是语义答案。</p>
+<p>Decoder 侧的对称操作是概率 UNFOLD：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root
+</span></span><span style="display:flex;"><span>  ↓ probabilistic UNFOLD
+</span></span><span style="display:flex;"><span>左右子节点概率桶
+</span></span><span style="display:flex;"><span>  ↓ delayed collapse
+</span></span><span style="display:flex;"><span>下一层subheap
+</span></span><span style="display:flex;"><span>  ↓ recursive UNFOLD
+</span></span><span style="display:flex;"><span>token概率桶
+</span></span></code></pre></div><p>FOLD 是多对一，因此 UNFOLD 不能是假装精确的逆函数：</p>
+<p>$</p>
+$ P(h_l,h_r\mid h_p,C) = UNFOLD(h_p,C). $<p>$</p>
+<p>它必须输出多种可能性，等待源语言、目标前缀和更大上下文进入后再坍缩。</p>
+<p>这条路线只规定通用的数据流和训练压力，不规定某个 head 必须学习“食物差分”或“类比运输”。</p>
+<hr>
+<h2 id="11-这次失败保留了什么">11. 这次失败保留了什么<a hidden class="anchor" aria-hidden="true" href="#11-这次失败保留了什么">#</a></h2>
+<p>我们保留三个窄结论：</p>
+<ol>
+<li>TreeHeap 形态的网络能够表达有限类比函数；</li>
+<li>lexical-copy 无法解决全部数值和角色变换；</li>
+<li>因果干预成功发现 World TreeHeap 被绕过。</li>
+</ol>
+<p>同时拒绝四个更强结论：</p>
+<ol>
+<li>没有证明 World TreeHeap 参与推理；</li>
+<li>没有证明类比能力自然涌现；</li>
+<li>没有证明 TreeHeap 优于 Transformer；</li>
+<li>没有证明差分能够解释意识。</li>
+</ol>
+<p>一个 100% 的实验，如果核心模块可以被删除，就仍然是失败。</p>
+<p>这正是 ARA 的价值：不是阻止我们犯错，而是让漂亮的错误无法冒充研究结论。</p>
+<hr>
+<h2 id="12-证据与原创边界">12. 证据与原创边界<a hidden class="anchor" aria-hidden="true" href="#12-证据与原创边界">#</a></h2>
+<p>模型、ARA、checkpoint、训练 trace、可读四元组和干预结果均保存在开放仓库 <a href="https://github.com/houming818/sametime">SameTime</a>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s3-generation/logic/world_treeheap_analogy_transport.md
+</span></span><span style="display:flex;"><span>ara/s3-generation/src/s3_world_treeheap_analogy.py
+</span></span><span style="display:flex;"><span>ara/s3-generation/evidence/s3_world_treeheap_analogy_smoke/
+</span></span></code></pre></div><p>关于“同一词语变化必须放在全局背景中理解”和“差分不足以分析意识”的研究修正由 Houming818 提出；Codex Review 负责错误模型的形式化、实现、因果审计与本文复盘。</p>
+<p>本文是 SameTime 项目的原创研究记录，但不宣称发明向量差分、类比任务、因果消融、World Model、概率树路由、masked modeling 或 coarse-to-fine decoding 等已有公共方法。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

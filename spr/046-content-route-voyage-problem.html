@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, S1, Routing, State, Semantics">
+<meta name="description" content="SPR-046 重写版：用本科可理解的方式说明 Transformer 并不保存所有可能句子，TreeHeap 的假设是用树形语义前缀压缩形成可解码、可迁移的结构状态；并记录 content-aware route、compact state 和 semantic-prefix toy proof 的证据与边界。">
+<meta name="author" content="Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/046-content-route-voyage-problem.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/046-content-route-voyage-problem.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/046-content-route-voyage-problem.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态">
+  <meta property="og:description" content="SPR-046 重写版：用本科可理解的方式说明 Transformer 并不保存所有可能句子，TreeHeap 的假设是用树形语义前缀压缩形成可解码、可迁移的结构状态；并记录 content-aware route、compact state 和 semantic-prefix toy proof 的证据与边界。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-07-06T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-07-06T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态">
+  <meta name="twitter:description" content="SPR-046 重写版：用本科可理解的方式说明 Transformer 并不保存所有可能句子，TreeHeap 的假设是用树形语义前缀压缩形成可解码、可迁移的结构状态；并记录 content-aware route、compact state 和 semantic-prefix toy proof 的证据与边界。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态",
+      "item": "https://www.lostmap.cn/spr/046-content-route-voyage-problem.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态",
+  "name": "[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态",
+  "description": "SPR-046 重写版：用本科可理解的方式说明 Transformer 并不保存所有可能句子，TreeHeap 的假设是用树形语义前缀压缩形成可解码、可迁移的结构状态；并记录 content-aware route、compact state 和 semantic-prefix toy proof 的证据与边界。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "S1", "Routing", "State", "Semantics"
+  ],
+  "articleBody": "TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态 这篇重写 046。\n之前版本把太多中间修正写进正文：查找树、route、content-aware、compact state、H/Q/Theta、霍夫曼类比、语义前缀 proof 混在一起。读起来像沿途事故记录，不像一篇能帮助后续工作的文章。\n现在从基本知识重新讲。\n这篇只回答一个问题：\nTreeHeap 的 root / internal node 如果不是 word bag，那它应该是什么？\n我的当前答案是：\nTreeHeap state 应该是可解码、可压缩、可迁移的语义前缀结构。 也就是说，root 不是把所有词混在一起。\nroot 应该保存一种结构状态，使得模型在给定问题 Q 时，可以从中坍缩出需要的信息。\n第一件事：Transformer 也不是把所有可能性存下来 先拿 Transformer 做参照。\n假设语料里有很多句子：\n我 吃 米饭 我 吃 面条 我 吃 苹果 我 吃 药 我 吃 阿莫西林 我们可能会误以为 Transformer 学到的是一个巨大表：\n吃 -\u003e {米饭, 面条, 苹果, 药, 阿莫西林, ...} 但这不是准确理解。\nTransformer 不会为每个词保存“后面所有可能词的完整集合”。\n它学的是一个条件概率函数：\nP(next token | context) 训练时，模型看到大量上下文和目标 token。\n例如：\ncontext = 我 正在 吃 target = 米饭 模型会生成一个 hidden state：\nh = Transformer(context) 然后输出词表概率：\nlogits = W_vocab h P(token) = softmax(logits) 如果正确答案是“米饭”，loss 会推动参数，让“米饭”的概率更高。\n长期训练后，模型不是记住一张简单共现表，而是在参数矩阵里形成一个分布式函数。\n这个函数会捕捉类似：\n吃 后面常接可摄入对象 可摄入对象包括食物、药品、某些抽象对象 但这些结构通常是隐式的。\n也就是说，Transformer 的强项是：\n用大规模参数矩阵学习 flat context -\u003e probability 的函数。 它不枚举所有可能。\n它学习一个能泛化的概率曲面。\n第二件事：word bag 不够 现在回到 TreeHeap。\n如果一句话是：\nI like small cats 一个 word bag 表示是：\n{I, like, small, cats} 这个表示能回答：\ncats 出现过吗？ 但它不能回答：\n第 1 个词是什么？ small 修饰谁？ small cats 是不是一个 subheap？ I like small cats 和 cats like small I 是否不同？ 所以 word bag 不是 echo 所需的 root state。\nEcho 要求至少能恢复：\ntoken identity 有哪些 token address / path token 在哪个结构位置 composition token 如何组成 subheap / sentence 如果 root 只保存 bag，那顺序和结构已经丢了。\n所以更合理的说法是：\nroot 不是词集合。 root 是一个可解码的结构状态。 给一个 query：\nQ = read position 2 decoder 应该能读出：\nsmall 给另一个 query：\nQ = read subheap containing adjective+noun decoder 应该能读出：\nsmall cats 也就是说，root 的含义不是靠我们肉眼解释出来的。\n它靠读出能力证明：\nDecode(root, Q) -\u003e expected information 第三件事：TreeHeap 的不同假设 Transformer 做的是 flat context function。\nTreeHeap 想做的是 structured heap context function。\n可以写成：\nTransformer: H_flat = sequence hidden states Q = decoder step / attention query Theta = attention + MLP + vocab head parameters output = token probability TreeHeap: H_tree = TreeHeap states Q = read / write / generate intent Theta = TreeHeap kernel parameters output = route / read / token probability 所以 TreeHeap 不是要比 Transformer 更神秘。\n它的假设更具体：\n语言信息本身有层级、前缀、子结构和组合关系。 如果模型的状态空间也显式支持这些结构， 就可能在某些任务上更容易泛化。 这里的重点不是“树比矩阵高级”。\n重点是 TreeHeap 可能提供一种归纳偏置：\naddress path subheap compose decompose prefix compression probabilistic collapse 这些结构在普通 flat 表示里不显式。\n第四件事：语义前缀压缩 现在进入这篇的核心。\nTreeHeap root / internal node 不应该只是频率压缩。\n也不应该只是 word bag 压缩。\n它应该尝试形成语义前缀压缩。\n什么叫语义前缀？\n例如：\n阿莫西林 -\u003e 药品 -\u003e 可摄入对象 -\u003e 物体 米饭 -\u003e 食物 -\u003e 可摄入对象 -\u003e 物体 面条 -\u003e 食物 -\u003e 可摄入对象 -\u003e 物体 苹果 -\u003e 食物 -\u003e 可摄入对象 -\u003e 物体 如果模型只记 pair，它只知道：\n吃 + 米饭 吃 + 面条 吃 + 苹果 如果新组合出现：\n吃 + 阿莫西林 pair memory 没见过，就容易失败。\n但如果模型有语义前缀，它可以做一个演绎迁移：\n阿莫西林 是 药品 药品 是 可摄入对象 吃 接受 可摄入对象 所以 吃 + 阿莫西林 可以成立 这就是 TreeHeap 可能比 word bag 更有意义的地方。\n它不是保存所有句子。\n它保存可复用的中间语义节点。\n这些节点可以支持未见组合的推理。\n第五件事：这和霍夫曼树像在哪里，不像在哪里 霍夫曼树是一种编码树。\n它把高频符号放到短路径，低频符号放到长路径。\n它的目标是压缩长度。\nTreeHeap 的语义前缀树可以借用这个直觉：\n路径是一种编码。 internal node 是一组可以共享前缀的信息。 leaf 是更具体的信息。 但 TreeHeap 不应该只按频率压缩。\n它更应该按可推理性压缩。\n也就是说，internal node 应该回答：\n哪些叶子共享同一种语义规则？ 哪些组合可以通过这个节点迁移？ 哪个前缀能最大化当前任务的信息增益？ 所以它更像：\nHuffman-like semantic prefix tree 而不是普通 Huffman coding。\n第六件事：route 不是查找树，而是信息坍缩 这点也要说清楚。\n以前我把 TreeHeap route 讲成：\n从 root 开始，找 cats，走 left/right/stop。 这个类比太像二叉搜索树。\n二叉搜索树的问题是：\n给定 key 比较大小 往左或往右找 TreeHeap 的目标不是这个。\n更准确地说，TreeHeap route 是：\n在当前问题 Q 下， 从当前 node 的信息分布里， 选择是否停下，或者坍缩到哪个子信息分支。 动作不是“找 key”。\n动作含义应该是：\n动作 含义 stop 当前 node 的信息已经足够回答 Q left 左分支的信息对 Q 更有用 right 右分支的信息对 Q 更有用 所以更准确的名字是：\nInformationCollapseRoute 它输出的是一个概率桶：\nP(stop), P(left), P(right) 如果要硬执行，就坍缩成一个动作。\n如果还不确定，就保留概率容器。\n这和我们之前一直说的“延迟坍缩”是一致的。\n第七件事：H、Q、Theta 的位置 现在把对象定义清楚。\nH = 当前样本形成的 TreeHeap state Q = 当前任务意图 / query / read-write intent Theta = 可学习的参数 TreeHeap 或 kernel 参数 Output = 概率桶 形式上：\nRoute_Theta(H, Q, node=i) -\u003e P(stop), P(left), P(right) 这里 H 不是长期参数。\nH 是输入样本的运行时状态。\n比如：\nH = Encode(\"I like small cats\") Theta 才是训练后保留下来的东西。\n类比线性回归：\ny = w x + b x 是输入 w,b 是参数 TreeHeap 里：\nH 是输入形成的状态 Theta 是模型学到的参数 Q 是这次要解决的问题 P 是输出概率 训练时，loss 会更新 Theta。\n如果 encoder / compose / route / read 都是可学习的，那么可能有多组参数：\nTheta_encode Theta_compose Theta_route Theta_read Theta_decode 但现在不能把这些混在一起。\n否则即使实验成功，我们也不知道到底是谁学会了东西。\n第八件事：当前证据 1，content-aware dense route 先说已经做过的 route proof。\n实验：\nS1-CONTENT-ROUTE-C01 问题是：\nkernel 能不能真的读 arr[i] / arr[left] / arr[right] 的内容， 而不是读几何答案 feature？ dense 版本把每个 subheap 表示成 vocab-count 向量。\n也就是说：\narr[i] = 这个子堆里有哪些 token 的清单 这不是最终语义表示。\n但它可以作为机制尺子：\n如果清单都跑不通，route 机制就有问题。 结果：\n指标 数值 samples 20000 train route steps 352110 OOD route steps 44130 dense feature memory 6191.25 MB OOD step acc 0.9983 OOD route exact 0.9902 flat length-matrix OOD exact 0.0000 pilot pass true 这说明：\ncontent-aware route 可以读 subheap 内容并完成递归 stop/left/right。 边界：\n这不是语义理解。 这不是翻译。 这仍然使用 supervised query token。 这仍然依赖 dense vocab-count state。 第九件事：当前证据 2，compact state 失败在哪里 接着做 compact 版本。\n目标是把 dense vocab-count state 换成小向量。\n做法：\ntoken id -\u003e 固定随机向量 arr[i] -\u003e 子堆 token 向量求和 64D 结果：\n指标 数值 compact memory 324.84 MB dense prior memory 6191.25 MB memory reduction 19.06x OOD step acc 0.9973 OOD route exact 0.9838 pilot pass false 128D 结果：\n指标 数值 compact memory 637.59 MB memory reduction 9.71x OOD step acc 0.9973 OOD route exact 0.9837 pilot pass false 这个结果说明：\n随机 token sum 能大幅省内存， 但会损失路径级 exactness。 而且 128D 没有明显变好。\n所以问题不是简单的维度不够。\n更可能是：\n随机向量求和不是好的 subheap state。 下一步应该学：\nlearned token embedding learned subheap compose learned prefix state 第十件事：当前证据 3，语义前缀 toy proof 为了验证“语义前缀能带来演绎迁移”，我做了一个很小的 toy proof。\n它不是自然语料实验。\n它只测试一个基本机制：\n如果语义前缀结构存在， 它能不能支持未见 pair 的推理？ Toy ontology：\nrice -\u003e entity -\u003e consumable -\u003e food noodle -\u003e entity -\u003e consumable -\u003e food apple -\u003e entity -\u003e consumable -\u003e food amoxicillin -\u003e entity -\u003e consumable -\u003e medicine ibuprofen -\u003e entity -\u003e consumable -\u003e medicine water -\u003e entity -\u003e drinkable -\u003e beverage shirt -\u003e entity -\u003e wearable -\u003e clothing car -\u003e entity -\u003e drivable -\u003e vehicle 谓词规则：\neat accepts consumable take accepts medicine drink accepts drinkable wear accepts wearable drive accepts drivable visit accepts visitable 关键设置：\n训练集不包含 eat + amoxicillin。 但是训练集包含：\neat + rice eat + noodle eat + apple take + amoxicillin 对照组：\npair_memory 只记见过的正例 pair pair_logistic 只用 verb-object pair id token_additive 只用 verb id + object id semantic_prefix 使用 object 的语义前缀 path 结果：\n模型 test acc pair memory 0.4 pair logistic 0.4 token additive 0.6 semantic prefix 1.0 关键 held-out case：\nQuestion: Can eat + amoxicillin be accepted without that pair in training? pair_memory: gold = 1 pred = 0 semantic_prefix: path = [entity, consumable, medicine] gold = 1 prob = 0.7088 pred = 1 这支持一个很窄的 claim：\n有监督的语义前缀结构， 可以支持 pair memory 不具备的演绎迁移。 边界必须写清楚：\nontology 是手工给的； prefix path 是监督的； 这不证明模型能从自然语料自动学出 medicine / consumable； 这不证明 WMT； 这不证明自然语言理解。 当前假设 现在我会把假设写得更干净。\nHypothesis 1: root 不是 word bag TreeHeap root 应该是可解码结构状态。\n它至少要支持：\nread token read path read subheap read semantic prefix 如果只能回答“某词是否出现”，那只是 bag，不够。\nHypothesis 2: internal node 应该承载可迁移前缀 internal node 不只是左右孩子求和。\n它应该尽可能形成：\n可复用的语义类 可组合的短语结构 可迁移的推理前缀 例如：\nmedicine -\u003e consumable food -\u003e consumable 这样新的 leaf 可以继承规则。\nHypothesis 3: route 是信息坍缩 Route 不应该理解成查找树搜索。\n它应该是：\nCollapse(H_i, Q; Theta) -\u003e ProbabilityBucket(stop, left, right) 其中 left/right 代表信息分支，stop 代表当前信息已经足够。\nHypothesis 4: Theta 应该逐步 TreeHeap 化 当前实验里的 Theta 还常常是普通 MLP 或 logistic 权重。\n这只是工程近似。\n更强的目标是：\nTheta_encode Theta_compose Theta_route Theta_read 都逐步变成显式 TreeHeap kernel / parameter heap。\n否则我们只是在普通模型外面套 TreeHeap 词汇。\n下一步怎么走 我建议下一步不是继续写更大口号。\n而是做三个 proof。\nProof A: learned prefix induction 现在 semantic prefix 是手工给的。\n下一步要从数据里学出来。\n例如只给训练事实：\neat rice eat noodle eat apple take amoxicillin take ibuprofen 看模型能否形成隐含前缀：\nfood medicine consumable 这是最关键的一步。\nProof B: prefix state + echo 不仅要判断 pair 是否成立，还要能 echo。\n也就是说：\nroot state -\u003e read position -\u003e read subheap -\u003e read semantic prefix 三件事要同时成立。\n否则语义前缀可能破坏 echo。\nProof C: TreeHeap Theta 把普通 logistic/MLP 参数替换成更明确的参数 TreeHeap。\n目标是证明：\nTheta 本身可以按 root/left/right/prefix slot 组织， 并通过 loss 学会坍缩规则。 这是从工程近似走向 TreeHeap 理论闭包的关键。\n结论 SPR-046 现在的结论是：\nTreeHeap 的核心不应该是 word bag root。 更合理的方向是：\nroot/internal node 形成可解码、可压缩、可迁移的语义前缀结构。 Transformer 学的是：\nflat context -\u003e probability TreeHeap 想学的是：\nstructured heap context -\u003e probability 当前证据支持三个很小的点：\n1. content-aware route 可以读 subheap 内容； 2. random-sum compact state 不够好； 3. supervised semantic prefix 可以支持 toy deductive transfer。 但还没有证明：\nTreeHeap 能从自然语料学出语义前缀； TreeHeap 能翻译； TreeHeap 已经优于 Transformer； Theta 已经是严格参数 TreeHeap。 所以当前航行问题已经变清楚了：\n不要再争 root 是不是 word bag。 它不应该是。 下一步要证明： 语义前缀能不能从数据里学出来， 并且不破坏 echo / route / read。 ARA: claims / experiments / content route evidence / compact evidence / semantic prefix evidence\n",
+  "wordCount" : "1210",
+  "inLanguage": "en",
+  "datePublished": "2026-07-06T00:00:00Z",
+  "dateModified": "2026-07-06T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/046-content-route-voyage-problem.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item active">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态
+    </h1>
+    <div class="post-description">
+      SPR-046 重写版：用本科可理解的方式说明 Transformer 并不保存所有可能句子，TreeHeap 的假设是用树形语义前缀压缩形成可解码、可迁移的结构状态；并记录 content-aware route、compact state 和 semantic-prefix toy proof 的证据与边界。
+    </div>
+    <div class="post-meta"><span title='2026-07-06 00:00:00 +0000 UTC'>July 6, 2026</span>&nbsp;·&nbsp;<span>Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="treeheap-语义前缀压缩从-word-bag-到可迁移的结构状态">TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态<a hidden class="anchor" aria-hidden="true" href="#treeheap-语义前缀压缩从-word-bag-到可迁移的结构状态">#</a></h1>
+<p>这篇重写 046。</p>
+<p>之前版本把太多中间修正写进正文：查找树、route、content-aware、compact state、H/Q/Theta、霍夫曼类比、语义前缀 proof 混在一起。读起来像沿途事故记录，不像一篇能帮助后续工作的文章。</p>
+<p>现在从基本知识重新讲。</p>
+<p>这篇只回答一个问题：</p>
+<blockquote>
+<p>TreeHeap 的 root / internal node 如果不是 word bag，那它应该是什么？</p>
+</blockquote>
+<p>我的当前答案是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap state 应该是可解码、可压缩、可迁移的语义前缀结构。
+</span></span></code></pre></div><p>也就是说，root 不是把所有词混在一起。</p>
+<p>root 应该保存一种结构状态，使得模型在给定问题 <code>Q</code> 时，可以从中坍缩出需要的信息。</p>
+<h2 id="第一件事transformer-也不是把所有可能性存下来">第一件事：Transformer 也不是把所有可能性存下来<a hidden class="anchor" aria-hidden="true" href="#第一件事transformer-也不是把所有可能性存下来">#</a></h2>
+<p>先拿 Transformer 做参照。</p>
+<p>假设语料里有很多句子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>我 吃 米饭
+</span></span><span style="display:flex;"><span>我 吃 面条
+</span></span><span style="display:flex;"><span>我 吃 苹果
+</span></span><span style="display:flex;"><span>我 吃 药
+</span></span><span style="display:flex;"><span>我 吃 阿莫西林
+</span></span></code></pre></div><p>我们可能会误以为 Transformer 学到的是一个巨大表：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>吃 -&gt; {米饭, 面条, 苹果, 药, 阿莫西林, ...}
+</span></span></code></pre></div><p>但这不是准确理解。</p>
+<p>Transformer 不会为每个词保存“后面所有可能词的完整集合”。</p>
+<p>它学的是一个条件概率函数：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P(next token | context)
+</span></span></code></pre></div><p>训练时，模型看到大量上下文和目标 token。</p>
+<p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>context = 我 正在 吃
+</span></span><span style="display:flex;"><span>target  = 米饭
+</span></span></code></pre></div><p>模型会生成一个 hidden state：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>h = Transformer(context)
+</span></span></code></pre></div><p>然后输出词表概率：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>logits = W_vocab h
+</span></span><span style="display:flex;"><span>P(token) = softmax(logits)
+</span></span></code></pre></div><p>如果正确答案是“米饭”，loss 会推动参数，让“米饭”的概率更高。</p>
+<p>长期训练后，模型不是记住一张简单共现表，而是在参数矩阵里形成一个分布式函数。</p>
+<p>这个函数会捕捉类似：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>吃 后面常接可摄入对象
+</span></span><span style="display:flex;"><span>可摄入对象包括食物、药品、某些抽象对象
+</span></span></code></pre></div><p>但这些结构通常是隐式的。</p>
+<p>也就是说，Transformer 的强项是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>用大规模参数矩阵学习 flat context -&gt; probability 的函数。
+</span></span></code></pre></div><p>它不枚举所有可能。</p>
+<p>它学习一个能泛化的概率曲面。</p>
+<h2 id="第二件事word-bag-不够">第二件事：word bag 不够<a hidden class="anchor" aria-hidden="true" href="#第二件事word-bag-不够">#</a></h2>
+<p>现在回到 TreeHeap。</p>
+<p>如果一句话是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>I like small cats
+</span></span></code></pre></div><p>一个 word bag 表示是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>{I, like, small, cats}
+</span></span></code></pre></div><p>这个表示能回答：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cats 出现过吗？
+</span></span></code></pre></div><p>但它不能回答：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>第 1 个词是什么？
+</span></span><span style="display:flex;"><span>small 修饰谁？
+</span></span><span style="display:flex;"><span>small cats 是不是一个 subheap？
+</span></span><span style="display:flex;"><span>I like small cats 和 cats like small I 是否不同？
+</span></span></code></pre></div><p>所以 word bag 不是 echo 所需的 root state。</p>
+<p>Echo 要求至少能恢复：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token identity    有哪些 token
+</span></span><span style="display:flex;"><span>address / path    token 在哪个结构位置
+</span></span><span style="display:flex;"><span>composition       token 如何组成 subheap / sentence
+</span></span></code></pre></div><p>如果 root 只保存 bag，那顺序和结构已经丢了。</p>
+<p>所以更合理的说法是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root 不是词集合。
+</span></span><span style="display:flex;"><span>root 是一个可解码的结构状态。
+</span></span></code></pre></div><p>给一个 query：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Q = read position 2
+</span></span></code></pre></div><p>decoder 应该能读出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>small
+</span></span></code></pre></div><p>给另一个 query：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Q = read subheap containing adjective+noun
+</span></span></code></pre></div><p>decoder 应该能读出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>small cats
+</span></span></code></pre></div><p>也就是说，root 的含义不是靠我们肉眼解释出来的。</p>
+<p>它靠读出能力证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Decode(root, Q) -&gt; expected information
+</span></span></code></pre></div><h2 id="第三件事treeheap-的不同假设">第三件事：TreeHeap 的不同假设<a hidden class="anchor" aria-hidden="true" href="#第三件事treeheap-的不同假设">#</a></h2>
+<p>Transformer 做的是 flat context function。</p>
+<p>TreeHeap 想做的是 structured heap context function。</p>
+<p>可以写成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Transformer:
+</span></span><span style="display:flex;"><span>  H_flat = sequence hidden states
+</span></span><span style="display:flex;"><span>  Q      = decoder step / attention query
+</span></span><span style="display:flex;"><span>  Theta  = attention + MLP + vocab head parameters
+</span></span><span style="display:flex;"><span>  output = token probability
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>TreeHeap:
+</span></span><span style="display:flex;"><span>  H_tree = TreeHeap states
+</span></span><span style="display:flex;"><span>  Q      = read / write / generate intent
+</span></span><span style="display:flex;"><span>  Theta  = TreeHeap kernel parameters
+</span></span><span style="display:flex;"><span>  output = route / read / token probability
+</span></span></code></pre></div><p>所以 TreeHeap 不是要比 Transformer 更神秘。</p>
+<p>它的假设更具体：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>语言信息本身有层级、前缀、子结构和组合关系。
+</span></span><span style="display:flex;"><span>如果模型的状态空间也显式支持这些结构，
+</span></span><span style="display:flex;"><span>就可能在某些任务上更容易泛化。
+</span></span></code></pre></div><p>这里的重点不是“树比矩阵高级”。</p>
+<p>重点是 TreeHeap 可能提供一种归纳偏置：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>address
+</span></span><span style="display:flex;"><span>path
+</span></span><span style="display:flex;"><span>subheap
+</span></span><span style="display:flex;"><span>compose
+</span></span><span style="display:flex;"><span>decompose
+</span></span><span style="display:flex;"><span>prefix compression
+</span></span><span style="display:flex;"><span>probabilistic collapse
+</span></span></code></pre></div><p>这些结构在普通 flat 表示里不显式。</p>
+<h2 id="第四件事语义前缀压缩">第四件事：语义前缀压缩<a hidden class="anchor" aria-hidden="true" href="#第四件事语义前缀压缩">#</a></h2>
+<p>现在进入这篇的核心。</p>
+<p>TreeHeap root / internal node 不应该只是频率压缩。</p>
+<p>也不应该只是 word bag 压缩。</p>
+<p>它应该尝试形成语义前缀压缩。</p>
+<p>什么叫语义前缀？</p>
+<p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>阿莫西林 -&gt; 药品 -&gt; 可摄入对象 -&gt; 物体
+</span></span><span style="display:flex;"><span>米饭     -&gt; 食物 -&gt; 可摄入对象 -&gt; 物体
+</span></span><span style="display:flex;"><span>面条     -&gt; 食物 -&gt; 可摄入对象 -&gt; 物体
+</span></span><span style="display:flex;"><span>苹果     -&gt; 食物 -&gt; 可摄入对象 -&gt; 物体
+</span></span></code></pre></div><p>如果模型只记 pair，它只知道：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>吃 + 米饭
+</span></span><span style="display:flex;"><span>吃 + 面条
+</span></span><span style="display:flex;"><span>吃 + 苹果
+</span></span></code></pre></div><p>如果新组合出现：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>吃 + 阿莫西林
+</span></span></code></pre></div><p>pair memory 没见过，就容易失败。</p>
+<p>但如果模型有语义前缀，它可以做一个演绎迁移：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>阿莫西林 是 药品
+</span></span><span style="display:flex;"><span>药品 是 可摄入对象
+</span></span><span style="display:flex;"><span>吃 接受 可摄入对象
+</span></span><span style="display:flex;"><span>所以 吃 + 阿莫西林 可以成立
+</span></span></code></pre></div><p>这就是 TreeHeap 可能比 word bag 更有意义的地方。</p>
+<p>它不是保存所有句子。</p>
+<p>它保存可复用的中间语义节点。</p>
+<p>这些节点可以支持未见组合的推理。</p>
+<h2 id="第五件事这和霍夫曼树像在哪里不像在哪里">第五件事：这和霍夫曼树像在哪里，不像在哪里<a hidden class="anchor" aria-hidden="true" href="#第五件事这和霍夫曼树像在哪里不像在哪里">#</a></h2>
+<p>霍夫曼树是一种编码树。</p>
+<p>它把高频符号放到短路径，低频符号放到长路径。</p>
+<p>它的目标是压缩长度。</p>
+<p>TreeHeap 的语义前缀树可以借用这个直觉：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>路径是一种编码。
+</span></span><span style="display:flex;"><span>internal node 是一组可以共享前缀的信息。
+</span></span><span style="display:flex;"><span>leaf 是更具体的信息。
+</span></span></code></pre></div><p>但 TreeHeap 不应该只按频率压缩。</p>
+<p>它更应该按可推理性压缩。</p>
+<p>也就是说，internal node 应该回答：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>哪些叶子共享同一种语义规则？
+</span></span><span style="display:flex;"><span>哪些组合可以通过这个节点迁移？
+</span></span><span style="display:flex;"><span>哪个前缀能最大化当前任务的信息增益？
+</span></span></code></pre></div><p>所以它更像：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Huffman-like semantic prefix tree
+</span></span></code></pre></div><p>而不是普通 Huffman coding。</p>
+<h2 id="第六件事route-不是查找树而是信息坍缩">第六件事：route 不是查找树，而是信息坍缩<a hidden class="anchor" aria-hidden="true" href="#第六件事route-不是查找树而是信息坍缩">#</a></h2>
+<p>这点也要说清楚。</p>
+<p>以前我把 TreeHeap route 讲成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>从 root 开始，找 cats，走 left/right/stop。
+</span></span></code></pre></div><p>这个类比太像二叉搜索树。</p>
+<p>二叉搜索树的问题是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>给定 key
+</span></span><span style="display:flex;"><span>比较大小
+</span></span><span style="display:flex;"><span>往左或往右找
+</span></span></code></pre></div><p>TreeHeap 的目标不是这个。</p>
+<p>更准确地说，TreeHeap route 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在当前问题 Q 下，
+</span></span><span style="display:flex;"><span>从当前 node 的信息分布里，
+</span></span><span style="display:flex;"><span>选择是否停下，或者坍缩到哪个子信息分支。
+</span></span></code></pre></div><p>动作不是“找 key”。</p>
+<p>动作含义应该是：</p>
+<table>
+  <thead>
+      <tr>
+          <th>动作</th>
+          <th>含义</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>stop</code></td>
+          <td>当前 node 的信息已经足够回答 Q</td>
+      </tr>
+      <tr>
+          <td><code>left</code></td>
+          <td>左分支的信息对 Q 更有用</td>
+      </tr>
+      <tr>
+          <td><code>right</code></td>
+          <td>右分支的信息对 Q 更有用</td>
+      </tr>
+  </tbody>
+</table>
+<p>所以更准确的名字是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>InformationCollapseRoute
+</span></span></code></pre></div><p>它输出的是一个概率桶：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P(stop), P(left), P(right)
+</span></span></code></pre></div><p>如果要硬执行，就坍缩成一个动作。</p>
+<p>如果还不确定，就保留概率容器。</p>
+<p>这和我们之前一直说的“延迟坍缩”是一致的。</p>
+<h2 id="第七件事hqtheta-的位置">第七件事：H、Q、Theta 的位置<a hidden class="anchor" aria-hidden="true" href="#第七件事hqtheta-的位置">#</a></h2>
+<p>现在把对象定义清楚。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H      = 当前样本形成的 TreeHeap state
+</span></span><span style="display:flex;"><span>Q      = 当前任务意图 / query / read-write intent
+</span></span><span style="display:flex;"><span>Theta  = 可学习的参数 TreeHeap 或 kernel 参数
+</span></span><span style="display:flex;"><span>Output = 概率桶
+</span></span></code></pre></div><p>形式上：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Route_Theta(H, Q, node=i)
+</span></span><span style="display:flex;"><span>  -&gt; P(stop), P(left), P(right)
+</span></span></code></pre></div><p>这里 <code>H</code> 不是长期参数。</p>
+<p><code>H</code> 是输入样本的运行时状态。</p>
+<p>比如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H = Encode(&#34;I like small cats&#34;)
+</span></span></code></pre></div><p><code>Theta</code> 才是训练后保留下来的东西。</p>
+<p>类比线性回归：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>y = w x + b
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>x    是输入
+</span></span><span style="display:flex;"><span>w,b  是参数
+</span></span></code></pre></div><p>TreeHeap 里：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H      是输入形成的状态
+</span></span><span style="display:flex;"><span>Theta  是模型学到的参数
+</span></span><span style="display:flex;"><span>Q      是这次要解决的问题
+</span></span><span style="display:flex;"><span>P      是输出概率
+</span></span></code></pre></div><p>训练时，loss 会更新 <code>Theta</code>。</p>
+<p>如果 encoder / compose / route / read 都是可学习的，那么可能有多组参数：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Theta_encode
+</span></span><span style="display:flex;"><span>Theta_compose
+</span></span><span style="display:flex;"><span>Theta_route
+</span></span><span style="display:flex;"><span>Theta_read
+</span></span><span style="display:flex;"><span>Theta_decode
+</span></span></code></pre></div><p>但现在不能把这些混在一起。</p>
+<p>否则即使实验成功，我们也不知道到底是谁学会了东西。</p>
+<h2 id="第八件事当前证据-1content-aware-dense-route">第八件事：当前证据 1，content-aware dense route<a hidden class="anchor" aria-hidden="true" href="#第八件事当前证据-1content-aware-dense-route">#</a></h2>
+<p>先说已经做过的 route proof。</p>
+<p>实验：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>S1-CONTENT-ROUTE-C01
+</span></span></code></pre></div><p>问题是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 能不能真的读 arr[i] / arr[left] / arr[right] 的内容，
+</span></span><span style="display:flex;"><span>而不是读几何答案 feature？
+</span></span></code></pre></div><p>dense 版本把每个 subheap 表示成 vocab-count 向量。</p>
+<p>也就是说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>arr[i] = 这个子堆里有哪些 token 的清单
+</span></span></code></pre></div><p>这不是最终语义表示。</p>
+<p>但它可以作为机制尺子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果清单都跑不通，route 机制就有问题。
+</span></span></code></pre></div><p>结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">数值</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>samples</td>
+          <td style="text-align: right"><code>20000</code></td>
+      </tr>
+      <tr>
+          <td>train route steps</td>
+          <td style="text-align: right"><code>352110</code></td>
+      </tr>
+      <tr>
+          <td>OOD route steps</td>
+          <td style="text-align: right"><code>44130</code></td>
+      </tr>
+      <tr>
+          <td>dense feature memory</td>
+          <td style="text-align: right"><code>6191.25 MB</code></td>
+      </tr>
+      <tr>
+          <td>OOD step acc</td>
+          <td style="text-align: right"><code>0.9983</code></td>
+      </tr>
+      <tr>
+          <td>OOD route exact</td>
+          <td style="text-align: right"><code>0.9902</code></td>
+      </tr>
+      <tr>
+          <td>flat length-matrix OOD exact</td>
+          <td style="text-align: right"><code>0.0000</code></td>
+      </tr>
+      <tr>
+          <td>pilot pass</td>
+          <td style="text-align: right"><code>true</code></td>
+      </tr>
+  </tbody>
+</table>
+<p>这说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>content-aware route 可以读 subheap 内容并完成递归 stop/left/right。
+</span></span></code></pre></div><p>边界：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这不是语义理解。
+</span></span><span style="display:flex;"><span>这不是翻译。
+</span></span><span style="display:flex;"><span>这仍然使用 supervised query token。
+</span></span><span style="display:flex;"><span>这仍然依赖 dense vocab-count state。
+</span></span></code></pre></div><h2 id="第九件事当前证据-2compact-state-失败在哪里">第九件事：当前证据 2，compact state 失败在哪里<a hidden class="anchor" aria-hidden="true" href="#第九件事当前证据-2compact-state-失败在哪里">#</a></h2>
+<p>接着做 compact 版本。</p>
+<p>目标是把 dense vocab-count state 换成小向量。</p>
+<p>做法：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token id -&gt; 固定随机向量
+</span></span><span style="display:flex;"><span>arr[i]   -&gt; 子堆 token 向量求和
+</span></span></code></pre></div><p>64D 结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">数值</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>compact memory</td>
+          <td style="text-align: right"><code>324.84 MB</code></td>
+      </tr>
+      <tr>
+          <td>dense prior memory</td>
+          <td style="text-align: right"><code>6191.25 MB</code></td>
+      </tr>
+      <tr>
+          <td>memory reduction</td>
+          <td style="text-align: right"><code>19.06x</code></td>
+      </tr>
+      <tr>
+          <td>OOD step acc</td>
+          <td style="text-align: right"><code>0.9973</code></td>
+      </tr>
+      <tr>
+          <td>OOD route exact</td>
+          <td style="text-align: right"><code>0.9838</code></td>
+      </tr>
+      <tr>
+          <td>pilot pass</td>
+          <td style="text-align: right"><code>false</code></td>
+      </tr>
+  </tbody>
+</table>
+<p>128D 结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">数值</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>compact memory</td>
+          <td style="text-align: right"><code>637.59 MB</code></td>
+      </tr>
+      <tr>
+          <td>memory reduction</td>
+          <td style="text-align: right"><code>9.71x</code></td>
+      </tr>
+      <tr>
+          <td>OOD step acc</td>
+          <td style="text-align: right"><code>0.9973</code></td>
+      </tr>
+      <tr>
+          <td>OOD route exact</td>
+          <td style="text-align: right"><code>0.9837</code></td>
+      </tr>
+      <tr>
+          <td>pilot pass</td>
+          <td style="text-align: right"><code>false</code></td>
+      </tr>
+  </tbody>
+</table>
+<p>这个结果说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>随机 token sum 能大幅省内存，
+</span></span><span style="display:flex;"><span>但会损失路径级 exactness。
+</span></span></code></pre></div><p>而且 128D 没有明显变好。</p>
+<p>所以问题不是简单的维度不够。</p>
+<p>更可能是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>随机向量求和不是好的 subheap state。
+</span></span></code></pre></div><p>下一步应该学：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>learned token embedding
+</span></span><span style="display:flex;"><span>learned subheap compose
+</span></span><span style="display:flex;"><span>learned prefix state
+</span></span></code></pre></div><h2 id="第十件事当前证据-3语义前缀-toy-proof">第十件事：当前证据 3，语义前缀 toy proof<a hidden class="anchor" aria-hidden="true" href="#第十件事当前证据-3语义前缀-toy-proof">#</a></h2>
+<p>为了验证“语义前缀能带来演绎迁移”，我做了一个很小的 toy proof。</p>
+<p>它不是自然语料实验。</p>
+<p>它只测试一个基本机制：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果语义前缀结构存在，
+</span></span><span style="display:flex;"><span>它能不能支持未见 pair 的推理？
+</span></span></code></pre></div><p>Toy ontology：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>rice        -&gt; entity -&gt; consumable -&gt; food
+</span></span><span style="display:flex;"><span>noodle      -&gt; entity -&gt; consumable -&gt; food
+</span></span><span style="display:flex;"><span>apple       -&gt; entity -&gt; consumable -&gt; food
+</span></span><span style="display:flex;"><span>amoxicillin -&gt; entity -&gt; consumable -&gt; medicine
+</span></span><span style="display:flex;"><span>ibuprofen   -&gt; entity -&gt; consumable -&gt; medicine
+</span></span><span style="display:flex;"><span>water       -&gt; entity -&gt; drinkable  -&gt; beverage
+</span></span><span style="display:flex;"><span>shirt       -&gt; entity -&gt; wearable   -&gt; clothing
+</span></span><span style="display:flex;"><span>car         -&gt; entity -&gt; drivable   -&gt; vehicle
+</span></span></code></pre></div><p>谓词规则：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>eat   accepts consumable
+</span></span><span style="display:flex;"><span>take  accepts medicine
+</span></span><span style="display:flex;"><span>drink accepts drinkable
+</span></span><span style="display:flex;"><span>wear  accepts wearable
+</span></span><span style="display:flex;"><span>drive accepts drivable
+</span></span><span style="display:flex;"><span>visit accepts visitable
+</span></span></code></pre></div><p>关键设置：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>训练集不包含 eat + amoxicillin。
+</span></span></code></pre></div><p>但是训练集包含：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>eat + rice
+</span></span><span style="display:flex;"><span>eat + noodle
+</span></span><span style="display:flex;"><span>eat + apple
+</span></span><span style="display:flex;"><span>take + amoxicillin
+</span></span></code></pre></div><p>对照组：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>pair_memory       只记见过的正例 pair
+</span></span><span style="display:flex;"><span>pair_logistic     只用 verb-object pair id
+</span></span><span style="display:flex;"><span>token_additive    只用 verb id + object id
+</span></span><span style="display:flex;"><span>semantic_prefix   使用 object 的语义前缀 path
+</span></span></code></pre></div><p>结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>模型</th>
+          <th style="text-align: right">test acc</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>pair memory</td>
+          <td style="text-align: right"><code>0.4</code></td>
+      </tr>
+      <tr>
+          <td>pair logistic</td>
+          <td style="text-align: right"><code>0.4</code></td>
+      </tr>
+      <tr>
+          <td>token additive</td>
+          <td style="text-align: right"><code>0.6</code></td>
+      </tr>
+      <tr>
+          <td>semantic prefix</td>
+          <td style="text-align: right"><code>1.0</code></td>
+      </tr>
+  </tbody>
+</table>
+<p>关键 held-out case：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Question:
+</span></span><span style="display:flex;"><span>  Can eat + amoxicillin be accepted without that pair in training?
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>pair_memory:
+</span></span><span style="display:flex;"><span>  gold = 1
+</span></span><span style="display:flex;"><span>  pred = 0
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>semantic_prefix:
+</span></span><span style="display:flex;"><span>  path = [entity, consumable, medicine]
+</span></span><span style="display:flex;"><span>  gold = 1
+</span></span><span style="display:flex;"><span>  prob = 0.7088
+</span></span><span style="display:flex;"><span>  pred = 1
+</span></span></code></pre></div><p>这支持一个很窄的 claim：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>有监督的语义前缀结构，
+</span></span><span style="display:flex;"><span>可以支持 pair memory 不具备的演绎迁移。
+</span></span></code></pre></div><p>边界必须写清楚：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ontology 是手工给的；
+</span></span><span style="display:flex;"><span>prefix path 是监督的；
+</span></span><span style="display:flex;"><span>这不证明模型能从自然语料自动学出 medicine / consumable；
+</span></span><span style="display:flex;"><span>这不证明 WMT；
+</span></span><span style="display:flex;"><span>这不证明自然语言理解。
+</span></span></code></pre></div><h2 id="当前假设">当前假设<a hidden class="anchor" aria-hidden="true" href="#当前假设">#</a></h2>
+<p>现在我会把假设写得更干净。</p>
+<h3 id="hypothesis-1-root-不是-word-bag">Hypothesis 1: root 不是 word bag<a hidden class="anchor" aria-hidden="true" href="#hypothesis-1-root-不是-word-bag">#</a></h3>
+<p>TreeHeap root 应该是可解码结构状态。</p>
+<p>它至少要支持：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>read token
+</span></span><span style="display:flex;"><span>read path
+</span></span><span style="display:flex;"><span>read subheap
+</span></span><span style="display:flex;"><span>read semantic prefix
+</span></span></code></pre></div><p>如果只能回答“某词是否出现”，那只是 bag，不够。</p>
+<h3 id="hypothesis-2-internal-node-应该承载可迁移前缀">Hypothesis 2: internal node 应该承载可迁移前缀<a hidden class="anchor" aria-hidden="true" href="#hypothesis-2-internal-node-应该承载可迁移前缀">#</a></h3>
+<p>internal node 不只是左右孩子求和。</p>
+<p>它应该尽可能形成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>可复用的语义类
+</span></span><span style="display:flex;"><span>可组合的短语结构
+</span></span><span style="display:flex;"><span>可迁移的推理前缀
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>medicine -&gt; consumable
+</span></span><span style="display:flex;"><span>food -&gt; consumable
+</span></span></code></pre></div><p>这样新的 leaf 可以继承规则。</p>
+<h3 id="hypothesis-3-route-是信息坍缩">Hypothesis 3: route 是信息坍缩<a hidden class="anchor" aria-hidden="true" href="#hypothesis-3-route-是信息坍缩">#</a></h3>
+<p>Route 不应该理解成查找树搜索。</p>
+<p>它应该是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Collapse(H_i, Q; Theta) -&gt; ProbabilityBucket(stop, left, right)
+</span></span></code></pre></div><p>其中 left/right 代表信息分支，stop 代表当前信息已经足够。</p>
+<h3 id="hypothesis-4-theta-应该逐步-treeheap-化">Hypothesis 4: Theta 应该逐步 TreeHeap 化<a hidden class="anchor" aria-hidden="true" href="#hypothesis-4-theta-应该逐步-treeheap-化">#</a></h3>
+<p>当前实验里的 <code>Theta</code> 还常常是普通 MLP 或 logistic 权重。</p>
+<p>这只是工程近似。</p>
+<p>更强的目标是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Theta_encode
+</span></span><span style="display:flex;"><span>Theta_compose
+</span></span><span style="display:flex;"><span>Theta_route
+</span></span><span style="display:flex;"><span>Theta_read
+</span></span></code></pre></div><p>都逐步变成显式 TreeHeap kernel / parameter heap。</p>
+<p>否则我们只是在普通模型外面套 TreeHeap 词汇。</p>
+<h2 id="下一步怎么走">下一步怎么走<a hidden class="anchor" aria-hidden="true" href="#下一步怎么走">#</a></h2>
+<p>我建议下一步不是继续写更大口号。</p>
+<p>而是做三个 proof。</p>
+<h3 id="proof-a-learned-prefix-induction">Proof A: learned prefix induction<a hidden class="anchor" aria-hidden="true" href="#proof-a-learned-prefix-induction">#</a></h3>
+<p>现在 semantic prefix 是手工给的。</p>
+<p>下一步要从数据里学出来。</p>
+<p>例如只给训练事实：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>eat rice
+</span></span><span style="display:flex;"><span>eat noodle
+</span></span><span style="display:flex;"><span>eat apple
+</span></span><span style="display:flex;"><span>take amoxicillin
+</span></span><span style="display:flex;"><span>take ibuprofen
+</span></span></code></pre></div><p>看模型能否形成隐含前缀：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>food
+</span></span><span style="display:flex;"><span>medicine
+</span></span><span style="display:flex;"><span>consumable
+</span></span></code></pre></div><p>这是最关键的一步。</p>
+<h3 id="proof-b-prefix-state--echo">Proof B: prefix state + echo<a hidden class="anchor" aria-hidden="true" href="#proof-b-prefix-state--echo">#</a></h3>
+<p>不仅要判断 pair 是否成立，还要能 echo。</p>
+<p>也就是说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root state
+</span></span><span style="display:flex;"><span>  -&gt; read position
+</span></span><span style="display:flex;"><span>  -&gt; read subheap
+</span></span><span style="display:flex;"><span>  -&gt; read semantic prefix
+</span></span></code></pre></div><p>三件事要同时成立。</p>
+<p>否则语义前缀可能破坏 echo。</p>
+<h3 id="proof-c-treeheap-theta">Proof C: TreeHeap Theta<a hidden class="anchor" aria-hidden="true" href="#proof-c-treeheap-theta">#</a></h3>
+<p>把普通 logistic/MLP 参数替换成更明确的参数 TreeHeap。</p>
+<p>目标是证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Theta 本身可以按 root/left/right/prefix slot 组织，
+</span></span><span style="display:flex;"><span>并通过 loss 学会坍缩规则。
+</span></span></code></pre></div><p>这是从工程近似走向 TreeHeap 理论闭包的关键。</p>
+<h2 id="结论">结论<a hidden class="anchor" aria-hidden="true" href="#结论">#</a></h2>
+<p>SPR-046 现在的结论是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的核心不应该是 word bag root。
+</span></span></code></pre></div><p>更合理的方向是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root/internal node 形成可解码、可压缩、可迁移的语义前缀结构。
+</span></span></code></pre></div><p>Transformer 学的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>flat context -&gt; probability
+</span></span></code></pre></div><p>TreeHeap 想学的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>structured heap context -&gt; probability
+</span></span></code></pre></div><p>当前证据支持三个很小的点：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1. content-aware route 可以读 subheap 内容；
+</span></span><span style="display:flex;"><span>2. random-sum compact state 不够好；
+</span></span><span style="display:flex;"><span>3. supervised semantic prefix 可以支持 toy deductive transfer。
+</span></span></code></pre></div><p>但还没有证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 能从自然语料学出语义前缀；
+</span></span><span style="display:flex;"><span>TreeHeap 能翻译；
+</span></span><span style="display:flex;"><span>TreeHeap 已经优于 Transformer；
+</span></span><span style="display:flex;"><span>Theta 已经是严格参数 TreeHeap。
+</span></span></code></pre></div><p>所以当前航行问题已经变清楚了：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>不要再争 root 是不是 word bag。
+</span></span><span style="display:flex;"><span>它不应该是。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>下一步要证明：
+</span></span><span style="display:flex;"><span>语义前缀能不能从数据里学出来，
+</span></span><span style="display:flex;"><span>并且不破坏 echo / route / read。
+</span></span></code></pre></div><blockquote>
+<p>ARA: <a href="https://github.com/houming818/sametime/blob/main/ara/s1-echo/logic/claims.md">claims</a> / <a href="https://github.com/houming818/sametime/blob/main/ara/s1-echo/logic/experiments.md">experiments</a> / <a href="https://github.com/houming818/sametime/tree/main/ara/s1-echo/evidence/s1_content_treeheap_route_probe_20k_e5">content route evidence</a> / <a href="https://github.com/houming818/sametime/tree/main/ara/s1-echo/evidence/s1_compact_content_treeheap_route_probe_20k_e5">compact evidence</a> / <a href="https://github.com/houming818/sametime/tree/main/ara/s1-echo/evidence/s1_semantic_prefix_compression_probe">semantic prefix evidence</a></p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

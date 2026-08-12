@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示 | LostMap</title>
+<meta name="keywords" content="Machine, Learning,, Fourier, Transform,, Probability,, Spectral, Analysis,, Characteristic, Function">
+<meta name="description" content="把三色球的概率向量做傅里叶变换，频率成分为何恰好编码了&#34;分布不均匀度&#34;？这不是巧合，是特征函数理论的一个特例。附带 FFT vs Attention 的启发式类比。">
+<meta name="author" content="nio (Houming818) &amp; opencode (First Mate)">
+<link rel="canonical" href="https://www.lostmap.cn/watermelon/006-fft-probability-spectrum.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/watermelon/006-fft-probability-spectrum.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/watermelon/006-fft-probability-spectrum.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示">
+  <meta property="og:description" content="把三色球的概率向量做傅里叶变换，频率成分为何恰好编码了&#34;分布不均匀度&#34;？这不是巧合，是特征函数理论的一个特例。附带 FFT vs Attention 的启发式类比。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="watermelon">
+    <meta property="article:published_time" content="2026-05-09T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-05-09T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示">
+  <meta name="twitter:description" content="把三色球的概率向量做傅里叶变换，频率成分为何恰好编码了&#34;分布不均匀度&#34;？这不是巧合，是特征函数理论的一个特例。附带 FFT vs Attention 的启发式类比。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示",
+      "item": "https://www.lostmap.cn/watermelon/006-fft-probability-spectrum.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示",
+  "name": "[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示",
+  "description": "把三色球的概率向量做傅里叶变换，频率成分为何恰好编码了\"分布不均匀度\"？这不是巧合，是特征函数理论的一个特例。附带 FFT vs Attention 的启发式类比。",
+  "keywords": [
+    "Machine", "Learning,", "Fourier", "Transform,", "Probability,", "Spectral", "Analysis,", "Characteristic", "Function"
+  ],
+  "articleBody": "概率向量的频谱——FFT 作为特征表示 004 用三色球实验把概率单纯形变成了 log-ratio 平面。但还有另一种视角：对概率向量本身做傅里叶变换。DC = 总概率。高频 = 非均匀度。这背后的数学不是巧合。\n从三色球到 FFT 三色球分布 $\n$p = [0.6, 0.3, 0.1]$$：\nimport numpy as np p = np.array([0.6, 0.3, 0.1]) F = np.fft.fft(p) # 概率 → 频谱 p_recovered = np.fft.ifft(F).real # 频谱 → 概率 表1 偏斜分布 p=[0.6, 0.3, 0.1] 的 FFT：\n频率分量 值 含义 F[0] = 1.0 DC 分量 总概率=1，守恒量 F[1] = 0.40 − 0.17j 基频 分布不均匀的证据 F[2] = 0.40 + 0.17j 倍频 F[1] 的共轭，源自概率的实值性 表2 均匀分布 p=[1/3, 1/3, 1/3] 的 FFT：\n频率分量 值 含义 F[0] = 1.0 DC 分量 总概率=1 F[1] = 0 基频 零能量 ← 均匀分布 F[2] = 0 倍频 零能量 均匀分布的频谱只有 DC 分量——和常数信号在 DFT 中只产生 DC 是完全一致的。概率分布的非均匀度编码在非零频率分量的幅度里。\n为什么 FFT 对概率有意义？ FFT 能捕捉到 “分布均匀与否”，有数学基础：\nDC 分量 = 总概率和：$\n$F[0] = \\sum p_i = 1$$，天然守恒。\n实值性 = 共轭对称：概率都是实数，所以 $\n$F[k] = \\overline{F[N-k]}$$。\n非零高频 = 非均匀分布：如果分布\"偏斜\"（某些类比其他类更可能），FFT 的高频能量不为零。\n这些性质背后是概率论的特征函数理论：\n$\n$\\varphi(t) = \\mathbb{E}[e^{itX}] = \\sum_k p_k e^{itk}$$\n当 t 取离散等间距点时，$\n$\\varphi(t)$$ 恰是 FFT 在那些频率上的取值。FFT 就是特征函数在单位根上的采样。\n类别顺序的重要性：一个限制 FFT 对概率向量施加了一个隐含假设：类别的排列有顺序（甚至是循环结构）。\n对于三色球 [黑, 白, 灰]，排列成 [黑, 灰, 白] 会产生不同的频谱。在离散分类任务中，类别通常没有自然顺序（不像时间序列）。这意味着：\nDFT 频率的\"高低频\"解释依赖于类别排列的选择。它不是物理频率，而是在选定排列基底下的代数表示。\n在使用 FFT/DFT 分析类别分布时，必须说明排列方式。通常采用默认的自然顺序（如词汇表索引），并接受这种解释是工具性的而非绝对物理含义。\nFFT 和 Softmax：两个域的桥梁 FFT Softmax 本质 线性变换 非线性（指数+归一化） 复杂度 O(N log N) O(N) 逆 IFFT（精确） log-ratio（到平移等价类） 从 离散信号 logits 到 复频谱 概率分布 代表 特征函数采样 玻尔兹曼分布 两者都把一个\"测度\"变换到另一个空间去观察。FFT 提供频率结构，softmax 提供概率结构。它们互补而不互斥。\n信号与概率：一个启发式类比 信号处理里，FFT 告诉我们信号包含哪些频率成分——但不知道它们何时出现。短时傅里叶变换（STFT）为解决这个问题引入时间窗口。\nNLP 里，词袋模型告诉我们哪些词常出现——但不知道它们怎么排列。Transformer 的 Self-Attention 可以类比为 STFT：每个 token 通过 $\n$QK^T$$ 在局部窗口内选择要关注的上下文。\n信号 → STFT: 窗口1→低频强 | 窗口2→高频强 | 窗口3→中频强 序列 → Attention: 位置1关注k | 位置2关注v | 位置3关注q 但必须强调：Attention 数学上不是傅里叶变换。它做的是基于相似度的加权求和，不产生正交频率基。这个类比只在\"动态、局部的加权视图\"这个意象上成立。\n结论 观察 结论 FFT 的 DC = 总概率 概率性守恒律在频域里变成 DC FFT 高频 = 非均匀度 分布的偏斜程度可由频谱幅度度量 均匀分布只有 DC 类似常数信号的 DFT FFT = 特征函数的离散采样 离散特征函数即 DFT（单位根采样） 概率的 FFT 不是一个巧合，而是概率论和信号处理共享的同一个数学框架——谱分解——在两个领域里的各自浮现。\nMay the Code be with us.\nLicense: GPLv3\n本文《Watermelon》系列采用 GNU 通用公共许可证第三版 (GNU General Public License v3.0) 协议进行开源发布与分发。\n",
+  "wordCount" : "272",
+  "inLanguage": "en",
+  "datePublished": "2026-05-09T00:00:00Z",
+  "dateModified": "2026-05-09T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 opencode (First Mate)"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/watermelon/006-fft-probability-spectrum.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item active">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [WATERMELON-006] 概率向量的频谱——FFT 作为特征表示
+    </h1>
+    <div class="post-description">
+      把三色球的概率向量做傅里叶变换，频率成分为何恰好编码了&#34;分布不均匀度&#34;？这不是巧合，是特征函数理论的一个特例。附带 FFT vs Attention 的启发式类比。
+    </div>
+    <div class="post-meta"><span title='2026-05-09 00:00:00 +0000 UTC'>May 9, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; opencode (First Mate)</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="概率向量的频谱fft-作为特征表示">概率向量的频谱——FFT 作为特征表示<a hidden class="anchor" aria-hidden="true" href="#概率向量的频谱fft-作为特征表示">#</a></h1>
+<blockquote>
+<p>004 用三色球实验把概率单纯形变成了 log-ratio 平面。但还有另一种视角：<strong>对概率向量本身做傅里叶变换</strong>。DC = 总概率。高频 = 非均匀度。这背后的数学不是巧合。</p>
+</blockquote>
+<h2 id="从三色球到-fft">从三色球到 FFT<a hidden class="anchor" aria-hidden="true" href="#从三色球到-fft">#</a></h2>
+<p>三色球分布 $</p>
+$p = [0.6, 0.3, 0.1]$<p>$：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> numpy <span style="color:#66d9ef">as</span> np
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>p <span style="color:#f92672">=</span> np<span style="color:#f92672">.</span>array([<span style="color:#ae81ff">0.6</span>, <span style="color:#ae81ff">0.3</span>, <span style="color:#ae81ff">0.1</span>])
+</span></span><span style="display:flex;"><span>F <span style="color:#f92672">=</span> np<span style="color:#f92672">.</span>fft<span style="color:#f92672">.</span>fft(p)      <span style="color:#75715e"># 概率 → 频谱</span>
+</span></span><span style="display:flex;"><span>p_recovered <span style="color:#f92672">=</span> np<span style="color:#f92672">.</span>fft<span style="color:#f92672">.</span>ifft(F)<span style="color:#f92672">.</span>real  <span style="color:#75715e"># 频谱 → 概率</span>
+</span></span></code></pre></div><p><strong>表1</strong> 偏斜分布 p=[0.6, 0.3, 0.1] 的 FFT：</p>
+<table>
+  <thead>
+      <tr>
+          <th>频率分量</th>
+          <th>值</th>
+          <th>含义</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>F[0] = 1.0</td>
+          <td>DC 分量</td>
+          <td><strong>总概率=1</strong>，守恒量</td>
+      </tr>
+      <tr>
+          <td>F[1] = 0.40 − 0.17j</td>
+          <td>基频</td>
+          <td>分布不均匀的证据</td>
+      </tr>
+      <tr>
+          <td>F[2] = 0.40 + 0.17j</td>
+          <td>倍频</td>
+          <td>F[1] 的共轭，源自概率的实值性</td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>表2</strong> 均匀分布 p=[1/3, 1/3, 1/3] 的 FFT：</p>
+<table>
+  <thead>
+      <tr>
+          <th>频率分量</th>
+          <th>值</th>
+          <th>含义</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>F[0] = 1.0</td>
+          <td>DC 分量</td>
+          <td>总概率=1</td>
+      </tr>
+      <tr>
+          <td>F[1] = 0</td>
+          <td>基频</td>
+          <td>零能量 ← 均匀分布</td>
+      </tr>
+      <tr>
+          <td>F[2] = 0</td>
+          <td>倍频</td>
+          <td>零能量</td>
+      </tr>
+  </tbody>
+</table>
+<p>均匀分布的频谱只有 DC 分量——和<strong>常数信号</strong>在 DFT 中只产生 DC 是完全一致的。概率分布的非均匀度编码在非零频率分量的幅度里。</p>
+<h2 id="为什么-fft-对概率有意义">为什么 FFT 对概率有意义？<a hidden class="anchor" aria-hidden="true" href="#为什么-fft-对概率有意义">#</a></h2>
+<p>FFT 能捕捉到 &ldquo;分布均匀与否&rdquo;，有数学基础：</p>
+<ol>
+<li>
+<p><strong>DC 分量 = 总概率和</strong>：$</p>
+$F[0] = \sum p_i = 1$<p>$，天然守恒。</p>
+</li>
+<li>
+<p><strong>实值性 = 共轭对称</strong>：概率都是实数，所以 $</p>
+$F[k] = \overline{F[N-k]}$<p>$。</p>
+</li>
+<li>
+<p><strong>非零高频 = 非均匀分布</strong>：如果分布&quot;偏斜&quot;（某些类比其他类更可能），FFT 的高频能量不为零。</p>
+</li>
+</ol>
+<p>这些性质背后是概率论的<strong>特征函数</strong>理论：</p>
+<p>$</p>
+$\varphi(t) = \mathbb{E}[e^{itX}] = \sum_k p_k e^{itk}$<p>$</p>
+<p>当 t 取离散等间距点时，$</p>
+$\varphi(t)$<p>$ 恰是 FFT 在那些频率上的取值。FFT 就是特征函数在单位根上的采样。</p>
+<h2 id="类别顺序的重要性一个限制">类别顺序的重要性：一个限制<a hidden class="anchor" aria-hidden="true" href="#类别顺序的重要性一个限制">#</a></h2>
+<p>FFT 对概率向量施加了一个隐含假设：<strong>类别的排列有顺序</strong>（甚至是循环结构）。</p>
+<p>对于三色球 <code>[黑, 白, 灰]</code>，排列成 <code>[黑, 灰, 白]</code> 会产生不同的频谱。在离散分类任务中，类别通常没有自然顺序（不像时间序列）。这意味着：</p>
+<blockquote>
+<p>DFT 频率的&quot;高低频&quot;解释依赖于类别排列的选择。它不是物理频率，而是在选定排列基底下的代数表示。</p>
+</blockquote>
+<p>在使用 FFT/DFT 分析类别分布时，必须说明排列方式。通常采用默认的自然顺序（如词汇表索引），并接受这种解释是工具性的而非绝对物理含义。</p>
+<h2 id="fft-和-softmax两个域的桥梁">FFT 和 Softmax：两个域的桥梁<a hidden class="anchor" aria-hidden="true" href="#fft-和-softmax两个域的桥梁">#</a></h2>
+<table>
+  <thead>
+      <tr>
+          <th></th>
+          <th>FFT</th>
+          <th>Softmax</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>本质</td>
+          <td>线性变换</td>
+          <td>非线性（指数+归一化）</td>
+      </tr>
+      <tr>
+          <td>复杂度</td>
+          <td>O(N log N)</td>
+          <td>O(N)</td>
+      </tr>
+      <tr>
+          <td>逆</td>
+          <td>IFFT（精确）</td>
+          <td>log-ratio（到平移等价类）</td>
+      </tr>
+      <tr>
+          <td>从</td>
+          <td>离散信号</td>
+          <td>logits</td>
+      </tr>
+      <tr>
+          <td>到</td>
+          <td>复频谱</td>
+          <td>概率分布</td>
+      </tr>
+      <tr>
+          <td>代表</td>
+          <td>特征函数采样</td>
+          <td>玻尔兹曼分布</td>
+      </tr>
+  </tbody>
+</table>
+<p>两者都把一个&quot;测度&quot;变换到另一个空间去观察。FFT 提供频率结构，softmax 提供概率结构。它们互补而不互斥。</p>
+<h2 id="信号与概率一个启发式类比">信号与概率：一个启发式类比<a hidden class="anchor" aria-hidden="true" href="#信号与概率一个启发式类比">#</a></h2>
+<p>信号处理里，FFT 告诉我们信号包含哪些频率成分——但不知道它们何时出现。短时傅里叶变换（STFT）为解决这个问题引入时间窗口。</p>
+<p>NLP 里，词袋模型告诉我们哪些词常出现——但不知道它们怎么排列。Transformer 的 Self-Attention 可以类比为 STFT：每个 token 通过 $</p>
+$QK^T$<p>$ 在局部窗口内选择要关注的上下文。</p>
+<pre tabindex="0"><code>信号 → STFT: 窗口1→低频强 | 窗口2→高频强 | 窗口3→中频强
+序列 → Attention: 位置1关注k | 位置2关注v | 位置3关注q
+</code></pre><p>但必须强调：<strong>Attention 数学上不是傅里叶变换</strong>。它做的是基于相似度的加权求和，不产生正交频率基。这个类比只在&quot;动态、局部的加权视图&quot;这个意象上成立。</p>
+<h2 id="结论">结论<a hidden class="anchor" aria-hidden="true" href="#结论">#</a></h2>
+<table>
+  <thead>
+      <tr>
+          <th>观察</th>
+          <th>结论</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>FFT 的 DC = 总概率</td>
+          <td>概率性守恒律在频域里变成 DC</td>
+      </tr>
+      <tr>
+          <td>FFT 高频 = 非均匀度</td>
+          <td>分布的偏斜程度可由频谱幅度度量</td>
+      </tr>
+      <tr>
+          <td>均匀分布只有 DC</td>
+          <td>类似常数信号的 DFT</td>
+      </tr>
+      <tr>
+          <td>FFT = 特征函数的离散采样</td>
+          <td>离散特征函数即 DFT（单位根采样）</td>
+      </tr>
+  </tbody>
+</table>
+<p>概率的 FFT 不是一个巧合，而是概率论和信号处理共享的同一个数学框架——<strong>谱分解</strong>——在两个领域里的各自浮现。</p>
+<hr>
+<p><em>May the Code be with us.</em></p>
+<hr>
+<blockquote>
+<p><strong>License: GPLv3</strong><br>
+本文《Watermelon》系列采用 GNU 通用公共许可证第三版 (GNU General Public License v3.0) 协议进行开源发布与分发。</p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, Mathematics, Kernel">
+<meta name="description" content="把 SPR-011 到 SPR-021 的 TreeHeap 代数设计放回已有数学框架：BCK/MKW rooted-tree Hopf algebra、operad、decomposition space、tree kernel，以及它们对 TreeHeap kernel 的意义。">
+<meta name="author" content="nio (Houming818) &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/022-treeheap-math-foundation.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/022-treeheap-math-foundation.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/022-treeheap-math-foundation.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel">
+  <meta property="og:description" content="把 SPR-011 到 SPR-021 的 TreeHeap 代数设计放回已有数学框架：BCK/MKW rooted-tree Hopf algebra、operad、decomposition space、tree kernel，以及它们对 TreeHeap kernel 的意义。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-06-23T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-06-23T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel">
+  <meta name="twitter:description" content="把 SPR-011 到 SPR-021 的 TreeHeap 代数设计放回已有数学框架：BCK/MKW rooted-tree Hopf algebra、operad、decomposition space、tree kernel，以及它们对 TreeHeap kernel 的意义。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel",
+      "item": "https://www.lostmap.cn/spr/022-treeheap-math-foundation.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel",
+  "name": "[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel",
+  "description": "把 SPR-011 到 SPR-021 的 TreeHeap 代数设计放回已有数学框架：BCK/MKW rooted-tree Hopf algebra、operad、decomposition space、tree kernel，以及它们对 TreeHeap kernel 的意义。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "Mathematics", "Kernel"
+  ],
+  "articleBody": "TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel 这篇不是新的实验报告。\n它要解决一个更基础的问题：\nTreeHeap 的数学设计，是不是我们凭空造出来的？ 还是已经有成熟数学领域能承接它？ 现在我的判断是：\nTreeHeap 不是凭空出现的。 它很接近两个已有数学框架在工程上的合流： 1. 有根树上的 Hopf 代数 2. Operad，也就是多输入、单输出的组合算子理论 这件事很重要。\n因为从 SPR-011 到 SPR-021，我们一直在手工搭建：\ncompose decompose plus inverse / transpose subheap kernel probability container soft collapse 现在看，这些不是孤立发明。 它们可以放回已有数学框架中解释。\n先给一句人话版结论 如果用本科能理解的语言说：\nTreeHeap 是一种把“树形结构”当成计算对象的模型。 它不是只存一个向量。 它还存： 地址 路径 父子关系 子树 如何合成 如何分解 在数学上，这类对象早就被研究过。\n有根树 Hopf 代数研究的是：\n树怎么组合？ 树怎么切开？ 切开以后剩下什么？ 这些操作能不能形成一个封闭的代数系统？ Operad 研究的是：\n多个输入如何组合成一个输出？ 组合过程如何再组合？ 不同组合顺序是否一致？ TreeHeap 正好站在这两个问题的交叉处。\n为什么是有根树 Hopf 代数 TreeHeap 的核心对象是有根树：\nroot / \\ left right 在工程里，我们把它实现成堆数组：\nA[0] = root A[1] = left(root) A[2] = right(root) A[3] = left(A[1]) ... 但是数学上，它仍然是有根树。\n有根树上的 Hopf 代数，典型来源包括 Butcher 的数值分析树、Connes-Kreimer 的重整化树，以及后续 Munthe-Kaas-Wright Hopf algebra。\n可以参考：\nA Survey on the Munthe-Kaas-Wright Hopf Algebra, arXiv:2306.04381 这类数学关心的不是自然语言，而是：\n树结构本身能不能做代数计算？ 这和我们前面问的问题很像。\nTreeHeap 与 BCK/MKW 代数的对应 先看一个对应表。\nTreeHeap 里的说法 有根树 Hopf 代数里的说法 直觉解释 TreeHeap 对象 rooted tree 一个带根的树对象 compose / plus product / grafting 把树接到另一棵树上 decompose coproduct / admissible cuts 按合法方式把树切开 inverse-like / inverse_transpose antipode 类似“反向还原”的递归操作 subheap rooted subtree / pattern 从树里取局部结构 非交换性 non-commutative structure 左右顺序、接入位置会改变结果 primitive primitive element 不能再从乘积里拆出的基础生成元 所以，当我们在 SPR-013 里实验：\nnoncomm_margin = 0.7117 它不是一个很孤立的发现。\n它对应的是：\n树的嫁接、组合、路径顺序，本来就可以是非交换的。 也就是说：\nH1 plus H2 和：\nH2 plus H1 可以不是同一个东西。\n这和整数加法不同。 但它和矩阵乘法、函数复合、树嫁接更接近。\ncompose 与 decompose TreeHeap 里最核心的一对操作是：\ncompose: children -\u003e parent decompose: parent -\u003e possible children 用公式写：\n$\n$ \\operatorname{compose}(H_1, H_2, \\ldots, H_n) = H $$\n意思是：\n多个子堆合成一个父堆。 反过来：\n$\n$ \\operatorname{decompose}(H) = \\sum_c P_c(H) \\otimes R_c(H) $$\n这里的 \\(c\\) 可以理解成一次合法切割。\n翻译成人话：\n一棵树不一定只有一种拆法。 每一种合法切法，都得到一部分被切下来的树，以及剩下的树。 这就是 Hopf 代数里 coproduct 的味道。\n注意，这里有一个很重要的点：\ndecompose 不是 compose 的唯一反函数。 也就是说：\n父结构 -\u003e 子结构 通常不是唯一答案。\n这正好对应我们一直说的：\nProbability Container 信息不足时，不要过早坍缩成一个答案。 应该保留多个候选分解。\n为什么还需要 Operad Hopf 代数解释了：\n树怎么合成、怎么切开、怎么反向递归。 但 TreeHeap 还有另一个核心：\n多个输入合成一个输出。 例如：\ncat + run -\u003e [cat run] ball + foot -\u003e football root + left + right -\u003e subheap 这类结构正是 operad 擅长表达的。\nOperad 的基本思想是：\n一个算子可以吃多个输入，吐出一个输出。 这些算子本身还可以继续组合。 可以参考：\nOperads for compositional reasoning in LLMs, arXiv:2606.13634 这篇论文把 operad 用到 LLM 的多步问题分解上。 它把复杂问题拆成子问题，再把子答案组合回来。\n它的核心观点可以和 TreeHeap 对齐：\n问题分解树上的局部回答，必须和整体回答保持一致。 这和我们的 TreeHeap consistency 很像：\nsoft TreeHeap 经过局部坍缩之后， 应该能回到合法的 hard TreeHeap。 TreeHeap Operad 怎么定义 我们可以暂时这样定义一个 TreeHeap operad：\nT = TreeHeap operations 其中每个 operation 是：\n多棵子树 -\u003e 一棵父树 数学上：\n$\n$ \\omega : (H_1, H_2, \\ldots, H_n) \\to H $$\n其中 \\(\\omega\\) 可以是：\nplus compose fold merge slot fill kernel-guided write 如果一个模型能解释这些操作，我们就可以说它是：\nan algebra over the TreeHeap operad 翻译成人话：\n这个模型知道 TreeHeap 的算子该怎么作用到具体数据上。 这给了我们一个更正式的说法：\n可学习的 TreeHeap 模型 不是“一个 MLP 外面套树壳”。 它应该是 TreeHeap operad 上的一个 algebra。 Kernel 在这里是什么 上一轮我们把 kernel 定义成：\nTreeHeap 上可重复滑动使用的局部推理算子。 现在可以把它放到 operad 语境里：\nkernel 是 TreeHeap operad 上的局部 algebra action。 不用被这个说法吓到。\n它的意思很简单：\nkernel 不是凭空看一个向量。 它是在 TreeHeap 的局部子结构上执行一个算子。 例如一跳 kernel 看：\nS_i = root(i) -\u003e [left(i), right(i)] 也就是：\n$\n$ S_i = \\big(A_i, A_{L(i)}, A_{R(i)}\\big) $$\n然后：\n$\n$ K_\\theta(q, S_i, W) \\to y_i $$\n其中：\n符号 含义 \\(q\\) query，当前要查找或写入的目标 \\(S_i\\) 第 \\(i\\) 个局部子堆 \\(W\\) world model，也就是背景参考系 \\(\\theta\\) kernel 的可学习参数 \\(y_i\\) 匹配、路由、写入或合并输出 输出不一定是硬答案。 更合理的是概率容器：\n{stop: 0.1, left: 0.8, right: 0.1} {match: 0.7, no_match: 0.3} {write_here: 0.6, write_elsewhere: 0.4} 这就是 TreeHeap 和 Probability Container 的接口。\nTreeHeap 操作本质上是卷积 kernel 的组合 这里需要补一层更重要的理解。\n前面说：\nkernel 是 TreeHeap 上可重复滑动使用的局部推理算子。 但这句话还不够强。\n更准确地说：\nTreeHeap 的多数操作，都应该被理解成卷积 kernel 的组合。 也就是说，TreeHeap 不是先有一个普通数组，然后偶尔拿 kernel 扫一下。\n它更像是：\n一个高维结构空间 + 一组可组合的局部卷积算子 为什么说 TreeHeap 至少是 3D 结构 普通一维序列只有：\nindex -\u003e value 二维矩阵有：\n(row, col) -\u003e value TreeHeap 至少同时有三类坐标：\n1. value: 节点里存的向量或符号 2. address: 节点的路径，比如 LLR、RLL 3. topology: 父子关系、子堆、祖先、兄弟节点 所以一个 TreeHeap 节点不只是：\nA[i] 而更像：\n$\n$ H_i = \\big(v_i, a_i, \\tau_i\\big) $$\n其中：\n符号 含义 \\(v_i\\) value，节点向量 \\(a_i\\) address/path，节点地址 \\(\\tau_i\\) topology，局部拓扑关系 这就是我现在说的：\nTreeHeap 至少是 3D 的结构对象。 它不是简单的：\n一维数组 + 一点树形解释 而是：\n值空间 × 地址空间 × 拓扑空间 卷积 kernel 定义可能的局部操作 在 CNN 里，不同卷积核可以检测不同模式：\n横线 竖线 边缘 角点 纹理 在 TreeHeap 里，不同 kernel 也可以定义不同局部操作：\n查找 kernel: 这个子堆像不像 query？ 路由 kernel: 下一步 stop / left / right？ 写入 kernel: 信息应该写到哪个地址？ 合并 kernel: 子堆能不能 fold 成父堆？ 分解 kernel: 父堆有哪些可能切法？ 对齐 kernel: 两个子堆是不是同构或近似同构？ 翻转 kernel: 当前结构能不能镜像成另一侧结构？ 因此，TreeHeap 的 plus、compose、decompose、fold、match_subheap 不应该被看成互不相关的函数。\n更统一的看法是：\n它们都是不同 kernel 或 kernel composition 的结果。 写成抽象形式：\n$\n$ \\operatorname{Op}(H) = K_m \\circ K_{m-1} \\circ \\cdots \\circ K_1(H) $$\n其中每个 \\(K_j\\) 都是一个局部 TreeHeap kernel。\n共轭 kernel 与镜像翻转 Houming818 提到的“共轭操作”很重要。\n如果 TreeHeap 的地址空间里有左右路径：\nL, R 那么镜像变换可以定义成：\nL \u003c-\u003e R 例如：\nLLR -\u003e RRL 把这个路径镜像记为：\n$\n$ \\sigma(a) $$\n对整棵 TreeHeap 的镜像可以写成：\n$\n$ \\sigma(H)_i = H_{\\sigma(i)} $$\n更直观地说：\n原树： root / \\ A B 镜像： root / \\ B A 那么一个 kernel \\(K\\) 的共轭 kernel 可以定义为：\n$\n$ K^\\sigma = \\sigma^{-1} \\circ K \\circ \\sigma $$\n这句话翻译成人话：\n先把 TreeHeap 镜像过去； 在镜像空间里执行同一个 kernel； 再镜像回来。 如果这个等式成立，说明：\nTreeHeap kernel 可以在左右翻转后的结构上复用。 这和 CNN 里对称、旋转、平移相关的卷积思想很接近。\n只不过 CNN 通常处理二维图像变换； TreeHeap 处理的是：\n路径变换 子堆变换 拓扑变换 这对 TreeHeap 的意义 这件事给了我们一个更清楚的 claim：\nTreeHeap 的优势不只是“它是树”。 TreeHeap 的优势应该来自： 1. 高维结构坐标：value × address × topology 2. kernel 在这些坐标上的局部卷积 3. kernel composition 形成复杂推理 4. 共轭 kernel 允许镜像、翻转、对偶结构复用 如果这个方向成立，TreeHeap 的实验就不应该只测：\n能不能分类？ 而应该测：\n同一个 kernel 能不能在不同路径上复用？ 同一个 kernel 能不能在镜像结构上复用？ kernel composition 能不能形成多跳推理？ 共轭 kernel 是否能减少训练样本？ 这会成为后续 C05/C06 实验的重要设计点。\nquery 从哪里来 前面公式里有 \\(q\\)，它不能凭空出现。\n在 TreeHeap 管线里，\\(q\\) 可以来自三类地方：\ninput token -\u003e encoder -\u003e q 当前上下文 -\u003e context encoder -\u003e q 上一层 kernel 输出 -\u003e next query 更完整地写：\ntoken / phrase / task ↓ encoder ↓ q context window / memory / world model ↓ context encoder ↓ W q + W + local subheap ↓ TreeHeap kernel ↓ route / write / merge / collapse 所以 \\(q\\) 不是一个固定词向量。 它是当前推理任务发出的“查询意图”。\n例如：\nq = 找 ball + foot 的组合 kernel 扫到：\nS_i = ball -\u003e [foot, hand] 如果世界模型知道：\nball + foot -\u003e football ball + hand -\u003e basketball 那么 kernel 应该能给出：\nfootball 方向的高匹配 kernel 的滑动与感受野 CNN 的卷积核会在图像上滑动。 TreeHeap kernel 也可以在树上滑动。\n这里的滑动不是二维平移，而是：\n对所有内部节点 i，取它的局部子堆 S_i，然后执行 K(q, S_i, W)。 可以写成：\n$\n$ \\operatorname{ScoreMap}(H, q) = \\{K_\\theta(q, S_i, W) \\mid i \\in \\operatorname{Internal}(H)\\} $$\n遍历顺序可以是 BFS、DFS，也可以并行。 数学上重点不是遍历顺序，而是：\n同一个 kernel 在不同地址复用。 这就是 TreeHeap 的结构归纳偏置。\n一跳、二跳、k 跳 如果一跳 kernel 看：\nroot + left + right 它的感受野是 3 个节点。\n二跳 kernel 看：\nroot ├── left subtree └── right subtree 如果每个子树也看一跳，总共是：\n1 + 2 + 4 = 7 个节点 一般地，二叉树深度 \\(k\\) 的局部感受野大小是：\n$\n$ 2^{k+1} - 1 $$\n这解释了为什么 SPR-021 的实验只是一个起点。 它只测试了一跳子堆：\nroot -\u003e left, right 还没有测试多层 kernel 堆叠。\nkernel 的组合就是 operadic composition CNN 可以多层堆叠：\nconv1 -\u003e conv2 -\u003e conv3 TreeHeap kernel 也可以堆叠：\nK1 看局部 3 节点 K2 看 K1 的输出和父层子堆 K3 再看更高层 写成公式：\n$\n$ K_2 \\circ K_1(q, S_i) = K_2\\big(K_1(q, S_i), S_{\\operatorname{parent}(i)}\\big) $$\n这就是 operad 语言里的组合：\n一个局部操作的输出， 可以成为另一个局部操作的输入。 所以 TreeHeap kernel 不是一个孤立分类器。 它应该是一组可组合的局部算子。\n为什么线性 kernel 不够 GLM 的多 pattern 消融指出了一个关键问题：\n线性 kernel 不会真正比较 query 和 patch。 如果 kernel 是：\n$\n$ K(q, S) = w^\\top [q, S] + b $$\n它只能分别给 \\(q\\) 和 \\(S\\) 加权求和。\n它天然不会形成：\n$\n$ q - S $$\n更不会自然形成：\n$\n$ \\lVert q - S\\rVert^2 $$\n除非我们手工把这些差分特征喂进去。\n所以，如果任务要求：\n判断这个子堆是不是和 query 匹配 那么纯线性 kernel 通常不够。\n更合理的是：\n$\n$ K_\\theta(q, S, W) = \\operatorname{MLP}_\\theta([q, \\phi(S), W]) $$\n或者显式给出交互项：\n$\n$ K(q, S) = -\\lVert q - \\phi(S)\\rVert^2 $$\n这里 \\(\\phi(S)\\) 是子堆编码。\n这不是实现小细节。 这是数学约束：\n结构比较需要交互项。 没有交互项，kernel 很容易退化成地址分类器。 Attention 对比 Transformer attention 也可以看成一种 kernel：\n$\n$ \\operatorname{score}(i,j) = Q_i K_j^\\top $$\n它的特点是：\nflat all-to-all 通过点积比较 token TreeHeap kernel 的特点是：\nstructural local subheap path-aware 可递归堆叠 可以输出概率容器 对比一下：\n项目 Transformer Attention TreeHeap Kernel 基本对象 token 序列 有根树 / 堆 比较单位 token-token query-subheap 连接方式 全连接 局部结构滑动 地址 位置编码 路径 / 子堆地址 归纳偏置 序列与全局相关性 子结构迁移与递归组合 输出 attention weights route/write/merge/collapse 容器 所以 TreeHeap 不是要说：\nattention 错了。 更准确的说法是：\nTreeHeap kernel 想给 attention 缺少的树形地址、子结构复用、延迟坍缩提供结构约束。 与传统 Tree Kernel 的关系 NLP 里早就有 tree kernel。\n经典方向包括 Collins-Duffy tree kernel、Moschitti 的 syntactic tree kernel。 它们常用于 SVM 或句法树分类。\n它们大致做的是：\n两棵句法树之间有多少公共子树？ 公共子树越多，相似度越高。 TreeHeap kernel 和它们有亲缘关系，但不是同一个东西。\n项目 传统 tree kernel TreeHeap kernel 主要用途 树相似度 / 分类 路由、写入、合并、坍缩 是否可学习 多数是固定相似度 可以固定，也可以可学习 数据结构 句法树 可寻址 TreeHeap 输出 similarity score probability container / action 是否改写结构 通常不写入 可以指导 soft plus 写入 所以我们不是第一个想到“树上 kernel”的项目。 真正的新问题是：\n能不能把 tree kernel 从固定相似度函数， 推进成可微、可写入、可组合的 TreeHeap 局部推理算子？ Morphosyntax 与语言结构 TreeHeap 最终要回到语言任务。 这里也已经有相关数学方向。\n例如：\nThe Algebraic Structure of Morphosyntax, arXiv:2507.00244 这类工作把词法、句法的树结构放到 operad / algebra 的框架里讨论。\n对我们来说，它至少说明一件事：\n用 operad 描述语言结构组合，不是离谱方向。 但是我们必须谨慎：\n这不等于 TreeHeap 已经能做 WMT。 它只是说明：\n语言结构上层可以站在代数结构底座上。 中间还缺：\n真实语料 encoder 真实句法 micro benchmark S1b baseline battle S2 graph assembly S3 generation Decomposition Space 与概率容器 还有一个相关方向是 decomposition space：\nDecomposition spaces in Combinatorics, arXiv:1612.09225 它关心的是：\n组合与分解如何形成一致的数学结构。 这对 TreeHeap 的启发是：\n如果 decompose 有多个合法结果， 那么模型不应该立刻 argmax。 它应该保留：\nParent candidates Route candidates Graph candidates Decomposition candidates 也就是：\nProbability Container 这能把 TreeHeap 的设计从：\n每一步强行选一个答案 推进到：\n信息不足时保留多个合法分解， 等更强上下文再坍缩。 这和我们最早的 L0/L1/L2 叠加态想法是一致的。\n这篇文章修正了什么 它修正了一个重要叙述：\nTreeHeap 不应该被说成“我们发明了一套全新的数学”。 更专业、更可靠的说法是：\nTreeHeap 是把 rooted-tree Hopf algebra、operad、tree kernel、 probabilistic soft lifting 这些思想，工程化到可学习结构内存中的尝试。 这让项目更稳。\n因为我们不需要自己证明所有基础性质。 很多东西已有成熟数学支持：\n树可以组合。 树可以切割。 多输入单输出算子可以组合。 局部树模式可以匹配。 结构分解可以不是唯一的。 我们真正要证明的是工程问题：\n这些数学对象能不能变成有效的机器学习结构？ 能不能比 flat MLP / 普通 Transformer 在某些任务上更省样本、更稳外推、更低计算？ 当前 Claim 应该怎么更新 我建议把核心 claim 重新表述成：\nClaim: TreeHeap 的数学底座可以由 rooted-tree Hopf algebra 与 operad 承接。 因此 compose/decompose/plus/subheap/kernel 不需要作为孤立发明来理解。 真正需要实验验证的是： 可学习 kernel 是否能利用这个结构底座，获得 flat 模型没有的归纳偏置。 对应 predict：\nPredict: 在需要地址、子结构迁移、前缀复用、延迟坍缩的问题上， TreeHeap kernel 应该比 flat MLP 更少样本、更稳 OOD 外推。 对应 falsification：\n如果足够宽的 flat MLP / 普通 Transformer， 在相同参数量、相同训练数据下， 稳定匹配 TreeHeap kernel 的 OOD 地址外推、子结构迁移和延迟坍缩能力， 那么 TreeHeap kernel 没有显示出额外归纳偏置。 这很重要。\nTreeHeap 不能靠“看起来更优美”成立。 它必须靠：\n更明确的数学对象 更清楚的可证伪预测 更干净的对照实验 成立。\n下一步怎么接实验 这篇文章之后，我不建议继续只做纯文字推理。\n下一步应该接两个实验。\n实验 1：非线性 kernel 是否能学会 query-subheap 比较 目标：\n不用手工 diff 特征。 只给 raw query 和 raw subheap。 看 MLP kernel 能不能学会比较。 对照：\nlinear_raw mlp_raw linear_with_diff treeheap_kernel 如果结果是：\nlinear_raw 失败 mlp_raw 成功 说明：\nkernel 的非线性交互是必要的。 实验 2：真实小句法树 micro benchmark 目标：\n不要直接跳 WMT BLEU。 先拿 100 到 1000 句真实句法树， 测试 TreeHeap kernel 能否迁移局部依存结构。 例如：\nhead -\u003e subject/object/modifier 不是先证明翻译质量，而是先证明：\nTreeHeap kernel 在真实语言树上确实能读到结构信号。 这才是从 M0 到 S1/S2 的桥。\n最终结论 这篇的结论很简单：\nTreeHeap 的数学底座并不孤单。 它可以站在 rooted-tree Hopf algebra、operad、decomposition space 和 tree kernel 的已有传统上。 但这不是胜利宣言。\n它只是把问题从：\n我们是不是在乱造数学？ 推进到：\n我们能不能把这些成熟数学对象，训练成有效机器学习系统？ 这一步反而更严格。\n因为以后我们不能只说：\nTreeHeap 很像树，很像代数。 我们必须证明：\nTreeHeap kernel 在具体任务上，利用了树的地址、路径、子结构、组合和分解。 并且这种利用带来了可测量的收益。 这就是下一阶段实验的方向。\n",
+  "wordCount" : "1477",
+  "inLanguage": "en",
+  "datePublished": "2026-06-23T00:00:00Z",
+  "dateModified": "2026-06-23T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/022-treeheap-math-foundation.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item active">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel
+    </h1>
+    <div class="post-description">
+      把 SPR-011 到 SPR-021 的 TreeHeap 代数设计放回已有数学框架：BCK/MKW rooted-tree Hopf algebra、operad、decomposition space、tree kernel，以及它们对 TreeHeap kernel 的意义。
+    </div>
+    <div class="post-meta"><span title='2026-06-23 00:00:00 +0000 UTC'>June 23, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="treeheap-的数学底座有根树-hopf-代数operad-与-kernel">TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel<a hidden class="anchor" aria-hidden="true" href="#treeheap-的数学底座有根树-hopf-代数operad-与-kernel">#</a></h1>
+<p>这篇不是新的实验报告。</p>
+<p>它要解决一个更基础的问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的数学设计，是不是我们凭空造出来的？
+</span></span><span style="display:flex;"><span>还是已经有成熟数学领域能承接它？
+</span></span></code></pre></div><p>现在我的判断是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 不是凭空出现的。
+</span></span><span style="display:flex;"><span>它很接近两个已有数学框架在工程上的合流：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>1. 有根树上的 Hopf 代数
+</span></span><span style="display:flex;"><span>2. Operad，也就是多输入、单输出的组合算子理论
+</span></span></code></pre></div><p>这件事很重要。</p>
+<p>因为从 <code>SPR-011</code> 到 <code>SPR-021</code>，我们一直在手工搭建：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>compose
+</span></span><span style="display:flex;"><span>decompose
+</span></span><span style="display:flex;"><span>plus
+</span></span><span style="display:flex;"><span>inverse / transpose
+</span></span><span style="display:flex;"><span>subheap
+</span></span><span style="display:flex;"><span>kernel
+</span></span><span style="display:flex;"><span>probability container
+</span></span><span style="display:flex;"><span>soft collapse
+</span></span></code></pre></div><p>现在看，这些不是孤立发明。
+它们可以放回已有数学框架中解释。</p>
+<h2 id="先给一句人话版结论">先给一句人话版结论<a hidden class="anchor" aria-hidden="true" href="#先给一句人话版结论">#</a></h2>
+<p>如果用本科能理解的语言说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 是一种把“树形结构”当成计算对象的模型。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>它不是只存一个向量。
+</span></span><span style="display:flex;"><span>它还存：
+</span></span><span style="display:flex;"><span>  地址
+</span></span><span style="display:flex;"><span>  路径
+</span></span><span style="display:flex;"><span>  父子关系
+</span></span><span style="display:flex;"><span>  子树
+</span></span><span style="display:flex;"><span>  如何合成
+</span></span><span style="display:flex;"><span>  如何分解
+</span></span></code></pre></div><p>在数学上，这类对象早就被研究过。</p>
+<p>有根树 Hopf 代数研究的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>树怎么组合？
+</span></span><span style="display:flex;"><span>树怎么切开？
+</span></span><span style="display:flex;"><span>切开以后剩下什么？
+</span></span><span style="display:flex;"><span>这些操作能不能形成一个封闭的代数系统？
+</span></span></code></pre></div><p>Operad 研究的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>多个输入如何组合成一个输出？
+</span></span><span style="display:flex;"><span>组合过程如何再组合？
+</span></span><span style="display:flex;"><span>不同组合顺序是否一致？
+</span></span></code></pre></div><p>TreeHeap 正好站在这两个问题的交叉处。</p>
+<h2 id="为什么是有根树-hopf-代数">为什么是有根树 Hopf 代数<a hidden class="anchor" aria-hidden="true" href="#为什么是有根树-hopf-代数">#</a></h2>
+<p>TreeHeap 的核心对象是有根树：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>        root
+</span></span><span style="display:flex;"><span>       /    \
+</span></span><span style="display:flex;"><span>   left    right
+</span></span></code></pre></div><p>在工程里，我们把它实现成堆数组：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A[0] = root
+</span></span><span style="display:flex;"><span>A[1] = left(root)
+</span></span><span style="display:flex;"><span>A[2] = right(root)
+</span></span><span style="display:flex;"><span>A[3] = left(A[1])
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>但是数学上，它仍然是有根树。</p>
+<p>有根树上的 Hopf 代数，典型来源包括 Butcher 的数值分析树、Connes-Kreimer 的重整化树，以及后续 Munthe-Kaas-Wright Hopf algebra。</p>
+<p>可以参考：</p>
+<ul>
+<li><a href="https://arxiv.org/abs/2306.04381">A Survey on the Munthe-Kaas-Wright Hopf Algebra, arXiv:2306.04381</a></li>
+</ul>
+<p>这类数学关心的不是自然语言，而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>树结构本身能不能做代数计算？
+</span></span></code></pre></div><p>这和我们前面问的问题很像。</p>
+<h2 id="treeheap-与-bckmkw-代数的对应">TreeHeap 与 BCK/MKW 代数的对应<a hidden class="anchor" aria-hidden="true" href="#treeheap-与-bckmkw-代数的对应">#</a></h2>
+<p>先看一个对应表。</p>
+<table>
+  <thead>
+      <tr>
+          <th>TreeHeap 里的说法</th>
+          <th>有根树 Hopf 代数里的说法</th>
+          <th>直觉解释</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>TreeHeap 对象</td>
+          <td>rooted tree</td>
+          <td>一个带根的树对象</td>
+      </tr>
+      <tr>
+          <td>compose / plus</td>
+          <td>product / grafting</td>
+          <td>把树接到另一棵树上</td>
+      </tr>
+      <tr>
+          <td>decompose</td>
+          <td>coproduct / admissible cuts</td>
+          <td>按合法方式把树切开</td>
+      </tr>
+      <tr>
+          <td>inverse-like / inverse_transpose</td>
+          <td>antipode</td>
+          <td>类似“反向还原”的递归操作</td>
+      </tr>
+      <tr>
+          <td>subheap</td>
+          <td>rooted subtree / pattern</td>
+          <td>从树里取局部结构</td>
+      </tr>
+      <tr>
+          <td>非交换性</td>
+          <td>non-commutative structure</td>
+          <td>左右顺序、接入位置会改变结果</td>
+      </tr>
+      <tr>
+          <td>primitive</td>
+          <td>primitive element</td>
+          <td>不能再从乘积里拆出的基础生成元</td>
+      </tr>
+  </tbody>
+</table>
+<p>所以，当我们在 <code>SPR-013</code> 里实验：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>noncomm_margin = 0.7117
+</span></span></code></pre></div><p>它不是一个很孤立的发现。</p>
+<p>它对应的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>树的嫁接、组合、路径顺序，本来就可以是非交换的。
+</span></span></code></pre></div><p>也就是说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H1 plus H2
+</span></span></code></pre></div><p>和：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H2 plus H1
+</span></span></code></pre></div><p>可以不是同一个东西。</p>
+<p>这和整数加法不同。
+但它和矩阵乘法、函数复合、树嫁接更接近。</p>
+<h2 id="compose-与-decompose">compose 与 decompose<a hidden class="anchor" aria-hidden="true" href="#compose-与-decompose">#</a></h2>
+<p>TreeHeap 里最核心的一对操作是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>compose:    children -&gt; parent
+</span></span><span style="display:flex;"><span>decompose:  parent -&gt; possible children
+</span></span></code></pre></div><p>用公式写：</p>
+<p>$</p>
+$ \operatorname{compose}(H_1, H_2, \ldots, H_n) = H $<p>$</p>
+<p>意思是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>多个子堆合成一个父堆。
+</span></span></code></pre></div><p>反过来：</p>
+<p>$</p>
+$ \operatorname{decompose}(H) = \sum_c P_c(H) \otimes R_c(H) $<p>$</p>
+<p>这里的 \(c\) 可以理解成一次合法切割。</p>
+<p>翻译成人话：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一棵树不一定只有一种拆法。
+</span></span><span style="display:flex;"><span>每一种合法切法，都得到一部分被切下来的树，以及剩下的树。
+</span></span></code></pre></div><p>这就是 Hopf 代数里 coproduct 的味道。</p>
+<p>注意，这里有一个很重要的点：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>decompose 不是 compose 的唯一反函数。
+</span></span></code></pre></div><p>也就是说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>父结构 -&gt; 子结构
+</span></span></code></pre></div><p>通常不是唯一答案。</p>
+<p>这正好对应我们一直说的：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Probability Container
+</span></span></code></pre></div><p>信息不足时，不要过早坍缩成一个答案。
+应该保留多个候选分解。</p>
+<h2 id="为什么还需要-operad">为什么还需要 Operad<a hidden class="anchor" aria-hidden="true" href="#为什么还需要-operad">#</a></h2>
+<p>Hopf 代数解释了：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>树怎么合成、怎么切开、怎么反向递归。
+</span></span></code></pre></div><p>但 TreeHeap 还有另一个核心：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>多个输入合成一个输出。
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cat + run       -&gt; [cat run]
+</span></span><span style="display:flex;"><span>ball + foot     -&gt; football
+</span></span><span style="display:flex;"><span>root + left + right -&gt; subheap
+</span></span></code></pre></div><p>这类结构正是 operad 擅长表达的。</p>
+<p>Operad 的基本思想是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个算子可以吃多个输入，吐出一个输出。
+</span></span><span style="display:flex;"><span>这些算子本身还可以继续组合。
+</span></span></code></pre></div><p>可以参考：</p>
+<ul>
+<li><a href="https://arxiv.org/abs/2606.13634">Operads for compositional reasoning in LLMs, arXiv:2606.13634</a></li>
+</ul>
+<p>这篇论文把 operad 用到 LLM 的多步问题分解上。
+它把复杂问题拆成子问题，再把子答案组合回来。</p>
+<p>它的核心观点可以和 TreeHeap 对齐：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>问题分解树上的局部回答，必须和整体回答保持一致。
+</span></span></code></pre></div><p>这和我们的 TreeHeap consistency 很像：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>soft TreeHeap 经过局部坍缩之后，
+</span></span><span style="display:flex;"><span>应该能回到合法的 hard TreeHeap。
+</span></span></code></pre></div><h2 id="treeheap-operad-怎么定义">TreeHeap Operad 怎么定义<a hidden class="anchor" aria-hidden="true" href="#treeheap-operad-怎么定义">#</a></h2>
+<p>我们可以暂时这样定义一个 TreeHeap operad：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>T = TreeHeap operations
+</span></span></code></pre></div><p>其中每个 operation 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>多棵子树 -&gt; 一棵父树
+</span></span></code></pre></div><p>数学上：</p>
+<p>$</p>
+$ \omega : (H_1, H_2, \ldots, H_n) \to H $<p>$</p>
+<p>其中 \(\omega\) 可以是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>plus
+</span></span><span style="display:flex;"><span>compose
+</span></span><span style="display:flex;"><span>fold
+</span></span><span style="display:flex;"><span>merge
+</span></span><span style="display:flex;"><span>slot fill
+</span></span><span style="display:flex;"><span>kernel-guided write
+</span></span></code></pre></div><p>如果一个模型能解释这些操作，我们就可以说它是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>an algebra over the TreeHeap operad
+</span></span></code></pre></div><p>翻译成人话：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这个模型知道 TreeHeap 的算子该怎么作用到具体数据上。
+</span></span></code></pre></div><p>这给了我们一个更正式的说法：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>可学习的 TreeHeap 模型
+</span></span><span style="display:flex;"><span>不是“一个 MLP 外面套树壳”。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>它应该是 TreeHeap operad 上的一个 algebra。
+</span></span></code></pre></div><h2 id="kernel-在这里是什么">Kernel 在这里是什么<a hidden class="anchor" aria-hidden="true" href="#kernel-在这里是什么">#</a></h2>
+<p>上一轮我们把 kernel 定义成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 上可重复滑动使用的局部推理算子。
+</span></span></code></pre></div><p>现在可以把它放到 operad 语境里：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 是 TreeHeap operad 上的局部 algebra action。
+</span></span></code></pre></div><p>不用被这个说法吓到。</p>
+<p>它的意思很简单：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 不是凭空看一个向量。
+</span></span><span style="display:flex;"><span>它是在 TreeHeap 的局部子结构上执行一个算子。
+</span></span></code></pre></div><p>例如一跳 kernel 看：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>S_i = root(i) -&gt; [left(i), right(i)]
+</span></span></code></pre></div><p>也就是：</p>
+<p>$</p>
+$ S_i = \big(A_i, A_{L(i)}, A_{R(i)}\big) $<p>$</p>
+<p>然后：</p>
+<p>$</p>
+$ K_\theta(q, S_i, W) \to y_i $<p>$</p>
+<p>其中：</p>
+<table>
+  <thead>
+      <tr>
+          <th>符号</th>
+          <th>含义</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>\(q\)</td>
+          <td>query，当前要查找或写入的目标</td>
+      </tr>
+      <tr>
+          <td>\(S_i\)</td>
+          <td>第 \(i\) 个局部子堆</td>
+      </tr>
+      <tr>
+          <td>\(W\)</td>
+          <td>world model，也就是背景参考系</td>
+      </tr>
+      <tr>
+          <td>\(\theta\)</td>
+          <td>kernel 的可学习参数</td>
+      </tr>
+      <tr>
+          <td>\(y_i\)</td>
+          <td>匹配、路由、写入或合并输出</td>
+      </tr>
+  </tbody>
+</table>
+<p>输出不一定是硬答案。
+更合理的是概率容器：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>{stop: 0.1, left: 0.8, right: 0.1}
+</span></span><span style="display:flex;"><span>{match: 0.7, no_match: 0.3}
+</span></span><span style="display:flex;"><span>{write_here: 0.6, write_elsewhere: 0.4}
+</span></span></code></pre></div><p>这就是 TreeHeap 和 Probability Container 的接口。</p>
+<h2 id="treeheap-操作本质上是卷积-kernel-的组合">TreeHeap 操作本质上是卷积 kernel 的组合<a hidden class="anchor" aria-hidden="true" href="#treeheap-操作本质上是卷积-kernel-的组合">#</a></h2>
+<p>这里需要补一层更重要的理解。</p>
+<p>前面说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 是 TreeHeap 上可重复滑动使用的局部推理算子。
+</span></span></code></pre></div><p>但这句话还不够强。</p>
+<p>更准确地说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的多数操作，都应该被理解成卷积 kernel 的组合。
+</span></span></code></pre></div><p>也就是说，TreeHeap 不是先有一个普通数组，然后偶尔拿 kernel 扫一下。</p>
+<p>它更像是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个高维结构空间
+</span></span><span style="display:flex;"><span>        +
+</span></span><span style="display:flex;"><span>一组可组合的局部卷积算子
+</span></span></code></pre></div><h3 id="为什么说-treeheap-至少是-3d-结构">为什么说 TreeHeap 至少是 3D 结构<a hidden class="anchor" aria-hidden="true" href="#为什么说-treeheap-至少是-3d-结构">#</a></h3>
+<p>普通一维序列只有：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>index -&gt; value
+</span></span></code></pre></div><p>二维矩阵有：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>(row, col) -&gt; value
+</span></span></code></pre></div><p>TreeHeap 至少同时有三类坐标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1. value:    节点里存的向量或符号
+</span></span><span style="display:flex;"><span>2. address:  节点的路径，比如 LLR、RLL
+</span></span><span style="display:flex;"><span>3. topology: 父子关系、子堆、祖先、兄弟节点
+</span></span></code></pre></div><p>所以一个 TreeHeap 节点不只是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A[i]
+</span></span></code></pre></div><p>而更像：</p>
+<p>$</p>
+$ H_i = \big(v_i, a_i, \tau_i\big) $<p>$</p>
+<p>其中：</p>
+<table>
+  <thead>
+      <tr>
+          <th>符号</th>
+          <th>含义</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>\(v_i\)</td>
+          <td>value，节点向量</td>
+      </tr>
+      <tr>
+          <td>\(a_i\)</td>
+          <td>address/path，节点地址</td>
+      </tr>
+      <tr>
+          <td>\(\tau_i\)</td>
+          <td>topology，局部拓扑关系</td>
+      </tr>
+  </tbody>
+</table>
+<p>这就是我现在说的：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 至少是 3D 的结构对象。
+</span></span></code></pre></div><p>它不是简单的：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一维数组 + 一点树形解释
+</span></span></code></pre></div><p>而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>值空间 × 地址空间 × 拓扑空间
+</span></span></code></pre></div><h3 id="卷积-kernel-定义可能的局部操作">卷积 kernel 定义可能的局部操作<a hidden class="anchor" aria-hidden="true" href="#卷积-kernel-定义可能的局部操作">#</a></h3>
+<p>在 CNN 里，不同卷积核可以检测不同模式：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>横线
+</span></span><span style="display:flex;"><span>竖线
+</span></span><span style="display:flex;"><span>边缘
+</span></span><span style="display:flex;"><span>角点
+</span></span><span style="display:flex;"><span>纹理
+</span></span></code></pre></div><p>在 TreeHeap 里，不同 kernel 也可以定义不同局部操作：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>查找 kernel:     这个子堆像不像 query？
+</span></span><span style="display:flex;"><span>路由 kernel:     下一步 stop / left / right？
+</span></span><span style="display:flex;"><span>写入 kernel:     信息应该写到哪个地址？
+</span></span><span style="display:flex;"><span>合并 kernel:     子堆能不能 fold 成父堆？
+</span></span><span style="display:flex;"><span>分解 kernel:     父堆有哪些可能切法？
+</span></span><span style="display:flex;"><span>对齐 kernel:     两个子堆是不是同构或近似同构？
+</span></span><span style="display:flex;"><span>翻转 kernel:     当前结构能不能镜像成另一侧结构？
+</span></span></code></pre></div><p>因此，TreeHeap 的 <code>plus</code>、<code>compose</code>、<code>decompose</code>、<code>fold</code>、<code>match_subheap</code> 不应该被看成互不相关的函数。</p>
+<p>更统一的看法是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>它们都是不同 kernel 或 kernel composition 的结果。
+</span></span></code></pre></div><p>写成抽象形式：</p>
+<p>$</p>
+$ \operatorname{Op}(H) = K_m \circ K_{m-1} \circ \cdots \circ K_1(H) $<p>$</p>
+<p>其中每个 \(K_j\) 都是一个局部 TreeHeap kernel。</p>
+<h3 id="共轭-kernel-与镜像翻转">共轭 kernel 与镜像翻转<a hidden class="anchor" aria-hidden="true" href="#共轭-kernel-与镜像翻转">#</a></h3>
+<p>Houming818 提到的“共轭操作”很重要。</p>
+<p>如果 TreeHeap 的地址空间里有左右路径：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>L, R
+</span></span></code></pre></div><p>那么镜像变换可以定义成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>L &lt;-&gt; R
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>LLR -&gt; RRL
+</span></span></code></pre></div><p>把这个路径镜像记为：</p>
+<p>$</p>
+$ \sigma(a) $<p>$</p>
+<p>对整棵 TreeHeap 的镜像可以写成：</p>
+<p>$</p>
+$ \sigma(H)_i = H_{\sigma(i)} $<p>$</p>
+<p>更直观地说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>原树：
+</span></span><span style="display:flex;"><span>        root
+</span></span><span style="display:flex;"><span>       /    \
+</span></span><span style="display:flex;"><span>      A      B
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>镜像：
+</span></span><span style="display:flex;"><span>        root
+</span></span><span style="display:flex;"><span>       /    \
+</span></span><span style="display:flex;"><span>      B      A
+</span></span></code></pre></div><p>那么一个 kernel \(K\) 的共轭 kernel 可以定义为：</p>
+<p>$</p>
+$ K^\sigma = \sigma^{-1} \circ K \circ \sigma $<p>$</p>
+<p>这句话翻译成人话：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>先把 TreeHeap 镜像过去；
+</span></span><span style="display:flex;"><span>在镜像空间里执行同一个 kernel；
+</span></span><span style="display:flex;"><span>再镜像回来。
+</span></span></code></pre></div><p>如果这个等式成立，说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap kernel 可以在左右翻转后的结构上复用。
+</span></span></code></pre></div><p>这和 CNN 里对称、旋转、平移相关的卷积思想很接近。</p>
+<p>只不过 CNN 通常处理二维图像变换；
+TreeHeap 处理的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>路径变换
+</span></span><span style="display:flex;"><span>子堆变换
+</span></span><span style="display:flex;"><span>拓扑变换
+</span></span></code></pre></div><h3 id="这对-treeheap-的意义">这对 TreeHeap 的意义<a hidden class="anchor" aria-hidden="true" href="#这对-treeheap-的意义">#</a></h3>
+<p>这件事给了我们一个更清楚的 claim：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的优势不只是“它是树”。
+</span></span><span style="display:flex;"><span>TreeHeap 的优势应该来自：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>1. 高维结构坐标：value × address × topology
+</span></span><span style="display:flex;"><span>2. kernel 在这些坐标上的局部卷积
+</span></span><span style="display:flex;"><span>3. kernel composition 形成复杂推理
+</span></span><span style="display:flex;"><span>4. 共轭 kernel 允许镜像、翻转、对偶结构复用
+</span></span></code></pre></div><p>如果这个方向成立，TreeHeap 的实验就不应该只测：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>能不能分类？
+</span></span></code></pre></div><p>而应该测：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>同一个 kernel 能不能在不同路径上复用？
+</span></span><span style="display:flex;"><span>同一个 kernel 能不能在镜像结构上复用？
+</span></span><span style="display:flex;"><span>kernel composition 能不能形成多跳推理？
+</span></span><span style="display:flex;"><span>共轭 kernel 是否能减少训练样本？
+</span></span></code></pre></div><p>这会成为后续 C05/C06 实验的重要设计点。</p>
+<h2 id="query-从哪里来">query 从哪里来<a hidden class="anchor" aria-hidden="true" href="#query-从哪里来">#</a></h2>
+<p>前面公式里有 \(q\)，它不能凭空出现。</p>
+<p>在 TreeHeap 管线里，\(q\) 可以来自三类地方：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>input token -&gt; encoder -&gt; q
+</span></span><span style="display:flex;"><span>当前上下文 -&gt; context encoder -&gt; q
+</span></span><span style="display:flex;"><span>上一层 kernel 输出 -&gt; next query
+</span></span></code></pre></div><p>更完整地写：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token / phrase / task
+</span></span><span style="display:flex;"><span>        ↓
+</span></span><span style="display:flex;"><span>encoder
+</span></span><span style="display:flex;"><span>        ↓
+</span></span><span style="display:flex;"><span>q
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>context window / memory / world model
+</span></span><span style="display:flex;"><span>        ↓
+</span></span><span style="display:flex;"><span>context encoder
+</span></span><span style="display:flex;"><span>        ↓
+</span></span><span style="display:flex;"><span>W
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>q + W + local subheap
+</span></span><span style="display:flex;"><span>        ↓
+</span></span><span style="display:flex;"><span>TreeHeap kernel
+</span></span><span style="display:flex;"><span>        ↓
+</span></span><span style="display:flex;"><span>route / write / merge / collapse
+</span></span></code></pre></div><p>所以 \(q\) 不是一个固定词向量。
+它是当前推理任务发出的“查询意图”。</p>
+<p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>q = 找 ball + foot 的组合
+</span></span></code></pre></div><p>kernel 扫到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>S_i = ball -&gt; [foot, hand]
+</span></span></code></pre></div><p>如果世界模型知道：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ball + foot -&gt; football
+</span></span><span style="display:flex;"><span>ball + hand -&gt; basketball
+</span></span></code></pre></div><p>那么 kernel 应该能给出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>football 方向的高匹配
+</span></span></code></pre></div><h2 id="kernel-的滑动与感受野">kernel 的滑动与感受野<a hidden class="anchor" aria-hidden="true" href="#kernel-的滑动与感受野">#</a></h2>
+<p>CNN 的卷积核会在图像上滑动。
+TreeHeap kernel 也可以在树上滑动。</p>
+<p>这里的滑动不是二维平移，而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>对所有内部节点 i，取它的局部子堆 S_i，然后执行 K(q, S_i, W)。
+</span></span></code></pre></div><p>可以写成：</p>
+<p>$</p>
+$ \operatorname{ScoreMap}(H, q) = \{K_\theta(q, S_i, W) \mid i \in \operatorname{Internal}(H)\} $<p>$</p>
+<p>遍历顺序可以是 BFS、DFS，也可以并行。
+数学上重点不是遍历顺序，而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>同一个 kernel 在不同地址复用。
+</span></span></code></pre></div><p>这就是 TreeHeap 的结构归纳偏置。</p>
+<h3 id="一跳二跳k-跳">一跳、二跳、k 跳<a hidden class="anchor" aria-hidden="true" href="#一跳二跳k-跳">#</a></h3>
+<p>如果一跳 kernel 看：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root + left + right
+</span></span></code></pre></div><p>它的感受野是 3 个节点。</p>
+<p>二跳 kernel 看：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root
+</span></span><span style="display:flex;"><span>├── left subtree
+</span></span><span style="display:flex;"><span>└── right subtree
+</span></span></code></pre></div><p>如果每个子树也看一跳，总共是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1 + 2 + 4 = 7 个节点
+</span></span></code></pre></div><p>一般地，二叉树深度 \(k\) 的局部感受野大小是：</p>
+<p>$</p>
+$ 2^{k+1} - 1 $<p>$</p>
+<p>这解释了为什么 <code>SPR-021</code> 的实验只是一个起点。
+它只测试了一跳子堆：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root -&gt; left, right
+</span></span></code></pre></div><p>还没有测试多层 kernel 堆叠。</p>
+<h2 id="kernel-的组合就是-operadic-composition">kernel 的组合就是 operadic composition<a hidden class="anchor" aria-hidden="true" href="#kernel-的组合就是-operadic-composition">#</a></h2>
+<p>CNN 可以多层堆叠：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>conv1 -&gt; conv2 -&gt; conv3
+</span></span></code></pre></div><p>TreeHeap kernel 也可以堆叠：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>K1 看局部 3 节点
+</span></span><span style="display:flex;"><span>K2 看 K1 的输出和父层子堆
+</span></span><span style="display:flex;"><span>K3 再看更高层
+</span></span></code></pre></div><p>写成公式：</p>
+<p>$</p>
+$ K_2 \circ K_1(q, S_i) = K_2\big(K_1(q, S_i), S_{\operatorname{parent}(i)}\big) $<p>$</p>
+<p>这就是 operad 语言里的组合：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个局部操作的输出，
+</span></span><span style="display:flex;"><span>可以成为另一个局部操作的输入。
+</span></span></code></pre></div><p>所以 TreeHeap kernel 不是一个孤立分类器。
+它应该是一组可组合的局部算子。</p>
+<h2 id="为什么线性-kernel-不够">为什么线性 kernel 不够<a hidden class="anchor" aria-hidden="true" href="#为什么线性-kernel-不够">#</a></h2>
+<p>GLM 的多 pattern 消融指出了一个关键问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>线性 kernel 不会真正比较 query 和 patch。
+</span></span></code></pre></div><p>如果 kernel 是：</p>
+<p>$</p>
+$ K(q, S) = w^\top [q, S] + b $<p>$</p>
+<p>它只能分别给 \(q\) 和 \(S\) 加权求和。</p>
+<p>它天然不会形成：</p>
+<p>$</p>
+$ q - S $<p>$</p>
+<p>更不会自然形成：</p>
+<p>$</p>
+$ \lVert q - S\rVert^2 $<p>$</p>
+<p>除非我们手工把这些差分特征喂进去。</p>
+<p>所以，如果任务要求：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>判断这个子堆是不是和 query 匹配
+</span></span></code></pre></div><p>那么纯线性 kernel 通常不够。</p>
+<p>更合理的是：</p>
+<p>$</p>
+$ K_\theta(q, S, W) = \operatorname{MLP}_\theta([q, \phi(S), W]) $<p>$</p>
+<p>或者显式给出交互项：</p>
+<p>$</p>
+$ K(q, S) = -\lVert q - \phi(S)\rVert^2 $<p>$</p>
+<p>这里 \(\phi(S)\) 是子堆编码。</p>
+<p>这不是实现小细节。
+这是数学约束：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>结构比较需要交互项。
+</span></span><span style="display:flex;"><span>没有交互项，kernel 很容易退化成地址分类器。
+</span></span></code></pre></div><h2 id="attention-对比">Attention 对比<a hidden class="anchor" aria-hidden="true" href="#attention-对比">#</a></h2>
+<p>Transformer attention 也可以看成一种 kernel：</p>
+<p>$</p>
+$ \operatorname{score}(i,j) = Q_i K_j^\top $<p>$</p>
+<p>它的特点是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>flat
+</span></span><span style="display:flex;"><span>all-to-all
+</span></span><span style="display:flex;"><span>通过点积比较 token
+</span></span></code></pre></div><p>TreeHeap kernel 的特点是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>structural
+</span></span><span style="display:flex;"><span>local subheap
+</span></span><span style="display:flex;"><span>path-aware
+</span></span><span style="display:flex;"><span>可递归堆叠
+</span></span><span style="display:flex;"><span>可以输出概率容器
+</span></span></code></pre></div><p>对比一下：</p>
+<table>
+  <thead>
+      <tr>
+          <th>项目</th>
+          <th>Transformer Attention</th>
+          <th>TreeHeap Kernel</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>基本对象</td>
+          <td>token 序列</td>
+          <td>有根树 / 堆</td>
+      </tr>
+      <tr>
+          <td>比较单位</td>
+          <td>token-token</td>
+          <td>query-subheap</td>
+      </tr>
+      <tr>
+          <td>连接方式</td>
+          <td>全连接</td>
+          <td>局部结构滑动</td>
+      </tr>
+      <tr>
+          <td>地址</td>
+          <td>位置编码</td>
+          <td>路径 / 子堆地址</td>
+      </tr>
+      <tr>
+          <td>归纳偏置</td>
+          <td>序列与全局相关性</td>
+          <td>子结构迁移与递归组合</td>
+      </tr>
+      <tr>
+          <td>输出</td>
+          <td>attention weights</td>
+          <td>route/write/merge/collapse 容器</td>
+      </tr>
+  </tbody>
+</table>
+<p>所以 TreeHeap 不是要说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>attention 错了。
+</span></span></code></pre></div><p>更准确的说法是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap kernel 想给 attention 缺少的树形地址、子结构复用、延迟坍缩提供结构约束。
+</span></span></code></pre></div><h2 id="与传统-tree-kernel-的关系">与传统 Tree Kernel 的关系<a hidden class="anchor" aria-hidden="true" href="#与传统-tree-kernel-的关系">#</a></h2>
+<p>NLP 里早就有 tree kernel。</p>
+<p>经典方向包括 Collins-Duffy tree kernel、Moschitti 的 syntactic tree kernel。
+它们常用于 SVM 或句法树分类。</p>
+<p>它们大致做的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>两棵句法树之间有多少公共子树？
+</span></span><span style="display:flex;"><span>公共子树越多，相似度越高。
+</span></span></code></pre></div><p>TreeHeap kernel 和它们有亲缘关系，但不是同一个东西。</p>
+<table>
+  <thead>
+      <tr>
+          <th>项目</th>
+          <th>传统 tree kernel</th>
+          <th>TreeHeap kernel</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>主要用途</td>
+          <td>树相似度 / 分类</td>
+          <td>路由、写入、合并、坍缩</td>
+      </tr>
+      <tr>
+          <td>是否可学习</td>
+          <td>多数是固定相似度</td>
+          <td>可以固定，也可以可学习</td>
+      </tr>
+      <tr>
+          <td>数据结构</td>
+          <td>句法树</td>
+          <td>可寻址 TreeHeap</td>
+      </tr>
+      <tr>
+          <td>输出</td>
+          <td>similarity score</td>
+          <td>probability container / action</td>
+      </tr>
+      <tr>
+          <td>是否改写结构</td>
+          <td>通常不写入</td>
+          <td>可以指导 soft plus 写入</td>
+      </tr>
+  </tbody>
+</table>
+<p>所以我们不是第一个想到“树上 kernel”的项目。
+真正的新问题是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>能不能把 tree kernel 从固定相似度函数，
+</span></span><span style="display:flex;"><span>推进成可微、可写入、可组合的 TreeHeap 局部推理算子？
+</span></span></code></pre></div><h2 id="morphosyntax-与语言结构">Morphosyntax 与语言结构<a hidden class="anchor" aria-hidden="true" href="#morphosyntax-与语言结构">#</a></h2>
+<p>TreeHeap 最终要回到语言任务。
+这里也已经有相关数学方向。</p>
+<p>例如：</p>
+<ul>
+<li><a href="https://arxiv.org/abs/2507.00244">The Algebraic Structure of Morphosyntax, arXiv:2507.00244</a></li>
+</ul>
+<p>这类工作把词法、句法的树结构放到 operad / algebra 的框架里讨论。</p>
+<p>对我们来说，它至少说明一件事：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>用 operad 描述语言结构组合，不是离谱方向。
+</span></span></code></pre></div><p>但是我们必须谨慎：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这不等于 TreeHeap 已经能做 WMT。
+</span></span></code></pre></div><p>它只是说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>语言结构上层可以站在代数结构底座上。
+</span></span></code></pre></div><p>中间还缺：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>真实语料 encoder
+</span></span><span style="display:flex;"><span>真实句法 micro benchmark
+</span></span><span style="display:flex;"><span>S1b baseline battle
+</span></span><span style="display:flex;"><span>S2 graph assembly
+</span></span><span style="display:flex;"><span>S3 generation
+</span></span></code></pre></div><h2 id="decomposition-space-与概率容器">Decomposition Space 与概率容器<a hidden class="anchor" aria-hidden="true" href="#decomposition-space-与概率容器">#</a></h2>
+<p>还有一个相关方向是 decomposition space：</p>
+<ul>
+<li><a href="https://arxiv.org/abs/1612.09225">Decomposition spaces in Combinatorics, arXiv:1612.09225</a></li>
+</ul>
+<p>它关心的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>组合与分解如何形成一致的数学结构。
+</span></span></code></pre></div><p>这对 TreeHeap 的启发是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果 decompose 有多个合法结果，
+</span></span><span style="display:flex;"><span>那么模型不应该立刻 argmax。
+</span></span></code></pre></div><p>它应该保留：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Parent candidates
+</span></span><span style="display:flex;"><span>Route candidates
+</span></span><span style="display:flex;"><span>Graph candidates
+</span></span><span style="display:flex;"><span>Decomposition candidates
+</span></span></code></pre></div><p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Probability Container
+</span></span></code></pre></div><p>这能把 TreeHeap 的设计从：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>每一步强行选一个答案
+</span></span></code></pre></div><p>推进到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>信息不足时保留多个合法分解，
+</span></span><span style="display:flex;"><span>等更强上下文再坍缩。
+</span></span></code></pre></div><p>这和我们最早的 L0/L1/L2 叠加态想法是一致的。</p>
+<h2 id="这篇文章修正了什么">这篇文章修正了什么<a hidden class="anchor" aria-hidden="true" href="#这篇文章修正了什么">#</a></h2>
+<p>它修正了一个重要叙述：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 不应该被说成“我们发明了一套全新的数学”。
+</span></span></code></pre></div><p>更专业、更可靠的说法是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 是把 rooted-tree Hopf algebra、operad、tree kernel、
+</span></span><span style="display:flex;"><span>probabilistic soft lifting 这些思想，工程化到可学习结构内存中的尝试。
+</span></span></code></pre></div><p>这让项目更稳。</p>
+<p>因为我们不需要自己证明所有基础性质。
+很多东西已有成熟数学支持：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>树可以组合。
+</span></span><span style="display:flex;"><span>树可以切割。
+</span></span><span style="display:flex;"><span>多输入单输出算子可以组合。
+</span></span><span style="display:flex;"><span>局部树模式可以匹配。
+</span></span><span style="display:flex;"><span>结构分解可以不是唯一的。
+</span></span></code></pre></div><p>我们真正要证明的是工程问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这些数学对象能不能变成有效的机器学习结构？
+</span></span><span style="display:flex;"><span>能不能比 flat MLP / 普通 Transformer 在某些任务上更省样本、更稳外推、更低计算？
+</span></span></code></pre></div><h2 id="当前-claim-应该怎么更新">当前 Claim 应该怎么更新<a hidden class="anchor" aria-hidden="true" href="#当前-claim-应该怎么更新">#</a></h2>
+<p>我建议把核心 claim 重新表述成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Claim:
+</span></span><span style="display:flex;"><span>TreeHeap 的数学底座可以由 rooted-tree Hopf algebra 与 operad 承接。
+</span></span><span style="display:flex;"><span>因此 compose/decompose/plus/subheap/kernel 不需要作为孤立发明来理解。
+</span></span><span style="display:flex;"><span>真正需要实验验证的是：
+</span></span><span style="display:flex;"><span>可学习 kernel 是否能利用这个结构底座，获得 flat 模型没有的归纳偏置。
+</span></span></code></pre></div><p>对应 predict：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Predict:
+</span></span><span style="display:flex;"><span>在需要地址、子结构迁移、前缀复用、延迟坍缩的问题上，
+</span></span><span style="display:flex;"><span>TreeHeap kernel 应该比 flat MLP 更少样本、更稳 OOD 外推。
+</span></span></code></pre></div><p>对应 falsification：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果足够宽的 flat MLP / 普通 Transformer，
+</span></span><span style="display:flex;"><span>在相同参数量、相同训练数据下，
+</span></span><span style="display:flex;"><span>稳定匹配 TreeHeap kernel 的 OOD 地址外推、子结构迁移和延迟坍缩能力，
+</span></span><span style="display:flex;"><span>那么 TreeHeap kernel 没有显示出额外归纳偏置。
+</span></span></code></pre></div><p>这很重要。</p>
+<p>TreeHeap 不能靠“看起来更优美”成立。
+它必须靠：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>更明确的数学对象
+</span></span><span style="display:flex;"><span>更清楚的可证伪预测
+</span></span><span style="display:flex;"><span>更干净的对照实验
+</span></span></code></pre></div><p>成立。</p>
+<h2 id="下一步怎么接实验">下一步怎么接实验<a hidden class="anchor" aria-hidden="true" href="#下一步怎么接实验">#</a></h2>
+<p>这篇文章之后，我不建议继续只做纯文字推理。</p>
+<p>下一步应该接两个实验。</p>
+<h3 id="实验-1非线性-kernel-是否能学会-query-subheap-比较">实验 1：非线性 kernel 是否能学会 query-subheap 比较<a hidden class="anchor" aria-hidden="true" href="#实验-1非线性-kernel-是否能学会-query-subheap-比较">#</a></h3>
+<p>目标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>不用手工 diff 特征。
+</span></span><span style="display:flex;"><span>只给 raw query 和 raw subheap。
+</span></span><span style="display:flex;"><span>看 MLP kernel 能不能学会比较。
+</span></span></code></pre></div><p>对照：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>linear_raw
+</span></span><span style="display:flex;"><span>mlp_raw
+</span></span><span style="display:flex;"><span>linear_with_diff
+</span></span><span style="display:flex;"><span>treeheap_kernel
+</span></span></code></pre></div><p>如果结果是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>linear_raw 失败
+</span></span><span style="display:flex;"><span>mlp_raw 成功
+</span></span></code></pre></div><p>说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 的非线性交互是必要的。
+</span></span></code></pre></div><h3 id="实验-2真实小句法树-micro-benchmark">实验 2：真实小句法树 micro benchmark<a hidden class="anchor" aria-hidden="true" href="#实验-2真实小句法树-micro-benchmark">#</a></h3>
+<p>目标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>不要直接跳 WMT BLEU。
+</span></span><span style="display:flex;"><span>先拿 100 到 1000 句真实句法树，
+</span></span><span style="display:flex;"><span>测试 TreeHeap kernel 能否迁移局部依存结构。
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>head -&gt; subject/object/modifier
+</span></span></code></pre></div><p>不是先证明翻译质量，而是先证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap kernel 在真实语言树上确实能读到结构信号。
+</span></span></code></pre></div><p>这才是从 M0 到 S1/S2 的桥。</p>
+<h2 id="最终结论">最终结论<a hidden class="anchor" aria-hidden="true" href="#最终结论">#</a></h2>
+<p>这篇的结论很简单：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的数学底座并不孤单。
+</span></span><span style="display:flex;"><span>它可以站在 rooted-tree Hopf algebra、operad、decomposition space 和 tree kernel 的已有传统上。
+</span></span></code></pre></div><p>但这不是胜利宣言。</p>
+<p>它只是把问题从：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>我们是不是在乱造数学？
+</span></span></code></pre></div><p>推进到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>我们能不能把这些成熟数学对象，训练成有效机器学习系统？
+</span></span></code></pre></div><p>这一步反而更严格。</p>
+<p>因为以后我们不能只说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 很像树，很像代数。
+</span></span></code></pre></div><p>我们必须证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap kernel 在具体任务上，利用了树的地址、路径、子结构、组合和分解。
+</span></span><span style="display:flex;"><span>并且这种利用带来了可测量的收益。
+</span></span></code></pre></div><p>这就是下一阶段实验的方向。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

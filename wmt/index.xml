@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>SameTime WMT 专题 on LostMap</title>
+    <link>https://www.lostmap.cn/wmt/index.html</link>
+    <description>Recent content in SameTime WMT 专题 on LostMap</description>
+    <generator>Hugo</generator>
+    <language>zh-CN</language>
+    <lastBuildDate>Sat, 09 May 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://www.lostmap.cn/wmt/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</title>
+      <link>https://www.lostmap.cn/wmt/008-wmt-phase6-transformer.html</link>
+      <pubDate>Tue, 05 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/wmt/008-wmt-phase6-transformer.html</guid>
+      <description>Attention 天花板 3.77，Transformer 词级 11.49，BPE 小模型 10.66。下一步：BPE d512 大模型追学术基线 20-25。</description>
+    </item>
+    <item>
+      <title>[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</title>
+      <link>https://www.lostmap.cn/wmt/010-wmt-linear-hash.html</link>
+      <pubDate>Sat, 09 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/wmt/010-wmt-linear-hash.html</guid>
+      <description>NMT 的输出 Linear 层不只是投影——它是 hidden space 到 vocab space 的 Hash 函数。碰撞发生在这里，K_lang 控制碰撞程度，梯度从碰撞桶里提取信息。</description>
+    </item>
+    <item>
+      <title>[WMT-007] Attention——从时序链到全连接邻接图</title>
+      <link>https://www.lostmap.cn/wmt/007-wmt-phase2-attention.html</link>
+      <pubDate>Mon, 04 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/wmt/007-wmt-phase2-attention.html</guid>
+      <description>RNN 用单条时间链关押所有词的关系——Attention 把每个词放进独立桶，用邻接矩阵保留全连接图。SoftBLEU 的下一个瓶颈：vocab 稀释梯度。</description>
+    </item>
+    <item>
+      <title>[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</title>
+      <link>https://www.lostmap.cn/wmt/009-wmt-expr-overview.html</link>
+      <pubDate>Mon, 04 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/wmt/009-wmt-expr-overview.html</guid>
+      <description>Phase 1 RNN 和 Phase 2 Attention 的全部实验编号与最佳 BLEU 总结。</description>
+    </item>
+    <item>
+      <title>[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</title>
+      <link>https://www.lostmap.cn/wmt/006-wmt-softbleu-cost.html</link>
+      <pubDate>Sun, 03 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/wmt/006-wmt-softbleu-cost.html</guid>
+      <description>SoftBLEU 理论是对的——但在 GPU 上跑 Python 循环不属于这份正确。</description>
+    </item>
+    <item>
+      <title>[WMT-005] 梯度函数决定学习规律</title>
+      <link>https://www.lostmap.cn/wmt/005-wmt-gradient-theory.html</link>
+      <pubDate>Sat, 02 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/wmt/005-wmt-gradient-theory.html</guid>
+      <description>从 sin(0.76) 到 tanh(3.06) 的距离，不是函数好坏——是梯度方向的自洽性决定了一个模型能走多远。</description>
+    </item>
+    <item>
+      <title>[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</title>
+      <link>https://www.lostmap.cn/wmt/004-wmt-phase1.html</link>
+      <pubDate>Mon, 27 Apr 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/wmt/004-wmt-phase1.html</guid>
+      <description>SameTime WMT Phase 1 学习记录——拆分为 1.0 vanilla RNN（理解记忆原理）和 1.1 LSTM（解决梯度消失），逐级对比。</description>
+    </item>
+    <item>
+      <title>[WMT-003] Phase 0 实验底座骨架</title>
+      <link>https://www.lostmap.cn/wmt/003-wmt-phase0.html</link>
+      <pubDate>Sun, 26 Apr 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/wmt/003-wmt-phase0.html</guid>
+      <description>开启 SameTime 的 WMT 学习专题，聚焦 benchmark/wmt/phase0 的骨架实验与翻译管线构建。</description>
+    </item>
+  </channel>
+</rss>

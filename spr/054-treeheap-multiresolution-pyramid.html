@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, S3, Multiresolution, Compression, Rate Distortion, Original Research">
+<meta name="description" content="三 seed、每 seed 100 万真实文本 block 的实验表明：冻结 TreeHeap root 后，带地址的低维 detail code 可形成稳定的渐进恢复曲线；同时记录 flat 对照失败尾部与尚未完成的验证。">
+<meta name="author" content="Houming818 &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/054-treeheap-multiresolution-pyramid.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/054-treeheap-multiresolution-pyramid.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/054-treeheap-multiresolution-pyramid.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节">
+  <meta property="og:description" content="三 seed、每 seed 100 万真实文本 block 的实验表明：冻结 TreeHeap root 后，带地址的低维 detail code 可形成稳定的渐进恢复曲线；同时记录 flat 对照失败尾部与尚未完成的验证。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-07-14T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-07-14T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节">
+  <meta name="twitter:description" content="三 seed、每 seed 100 万真实文本 block 的实验表明：冻结 TreeHeap root 后，带地址的低维 detail code 可形成稳定的渐进恢复曲线；同时记录 flat 对照失败尾部与尚未完成的验证。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节",
+      "item": "https://www.lostmap.cn/spr/054-treeheap-multiresolution-pyramid.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节",
+  "name": "[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节",
+  "description": "三 seed、每 seed 100 万真实文本 block 的实验表明：冻结 TreeHeap root 后，带地址的低维 detail code 可形成稳定的渐进恢复曲线；同时记录 flat 对照失败尾部与尚未完成的验证。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "S3", "Multiresolution", "Compression", "Rate Distortion", "Original Research"
+  ],
+  "articleBody": "TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节 先说这篇文章提出的新假设：\nTreeHeap 不应该强迫一个 root 无损背下整句话。更合理的设计是：root 保存全局轮廓，各层 subheap 保存逐步补回细节所需的低维编码。\n这与缩小一张图片很像。\n一张 1024 x 1024 的照片缩成 64 x 64 后，不可能保留每一根头发，但我们仍然可能看出：\n画面里有没有人； 人站在哪里； 背景是房间还是街道； 整体颜色和轮廓是什么。 丢失的主要是细小纹理。\n对于语言，TreeHeap 的叶子可以看成高分辨率数据，内部节点是中等分辨率，root 是最低分辨率的全局摘要：\ntoken leaves 原始高分辨率 local subheaps 局部短语与关系 upper subheaps 更大范围的组合 root 全局低分辨率表示 但这仍然只是类比。它是否真的成立，必须变成一个可以失败的实验。\n1. 为什么现在提出这个问题 上一轮实验已经用完整中文语料训练了一个 TreeHeap root compressor。\n输入是64个 token：\nx1, x2, ..., x64 TreeHeap 反复用共享的三槽 kernel 折叠相邻节点：\n[root, left, right] 最后只留下一个192维 root，由 decoder 预测下一个 token。\n这次全量训练处理了：\n文档数 7,564,966 训练 block 数 38,251,247 news block 28,052,019 wiki block 4,375,165 web block 5,824,063 训练时间 7.94 小时 最终可用模型是四头无残差 TreeHeap：\n指标 结果 验证 NLL，越低越好 6.2365 Top-1 11.96% Top-5 23.29% root variance 0.05843 更重要的是，破坏左右地址配对后，NLL 增加了 2.6252。\n这说明 root 不是普通词袋。它确实依赖 TreeHeap 的递归地址和左右配对，保存了某些有助于预测的全局信息。\n但它没有回答另一个问题：\nroot 丢掉了哪些细节？能否用少量、分层的补充信息把这些细节找回来？\n2. 不要让 root 背诵整句话 假设每个 token 是192维，64个 token 一共需要：\n$\n$ 64 \\times 192 = 12288 $$\n个浮点数。\n如果把它们压成一个192维 root，容量只剩原来的：\n$\n$ \\frac{192}{12288}=1.56\\% $$\n这显然是强压缩。\n强压缩不等于错误。问题在于任务需要什么。\n如果任务只是判断“大致在说吃饭还是旅行”，root 也许已经够用；如果任务是逐词 echo、翻译人名或还原数字，root 就可能丢失关键细节。\n因此我们不再要求：\n一个 root = 完整句子 而改成：\n一个 root = 全局摘要 多层 detail code = 折叠时丢失的局部细节 3. 新的数据结构长什么样 对于左右两个子节点：\n$\n$ L,\\;R \\in \\mathbb{R}^{192} $$\n已经训练好的 TreeHeap fold kernel 生成父节点：\n$\n$ P=D_\\theta(L,R) $$\n这里的 $D_\\theta$ 是上一轮完整训练得到的模型。新实验会冻结它，不允许它继续变化。\n然后增加一个细节编码器：\n$\n$ d=Q_\\phi(L,R,P),\\qquad d\\in\\mathbb{R}^{k} $$\n其中 $k$ 比192小很多，例如8、16、32或64。\n解码器读取父节点和细节：\n$\n$ (\\hat L,\\hat R)=U_\\psi(P,d) $$\n如果 $\\hat L$ 和 $\\hat R$ 接近原来的 $L$、\n$R$，说明：\n父节点 P 保存了公共、粗粒度信息 细节向量 d 保存了区分左右孩子所需的信息 完整节点可以写成：\nPyramidNode { coarse_state P detail_code d left_address right_address } 解码从 root 开始：\nroot + 顶层 detail -\u003e 两个较粗子节点 每个子节点 + 下一层 detail -\u003e 四个更细节点 不断递归 -\u003e 尽可能恢复64个叶子 这就是 TreeHeap 多分辨率金字塔。\n4. 这和普通残差有什么不同 普通残差通常写成：\n$\n$ H_{t+1}=H_t+\\Delta H_t $$\n它主要用于让旧状态和梯度穿过深层网络。\n本文的 detail code 不直接加回同一个状态。它回答的是另一个问题：\n把两个高分辨率孩子压成一个低分辨率父节点以后，重建孩子还缺少什么信息？\n所以这里更接近图像的拉普拉斯金字塔或小波中的“低频摘要 + 高频细节”：\ncoarse state 负责大轮廓 detail code 负责缺失差异 上一轮四头残差模型在 step 62,400 发生 NaN，已经否定了当时那个“无约束全局残差尺度”的实现。\n新方案不会复用那个失败公式。它冻结成功的无残差 root encoder，只训练独立的 detail encoder 和 decoder。\n5. 它真的压缩了吗 一棵64叶子的完全二叉树有63个内部节点。\n如果只保存一个192维 root，并为每个内部节点保存 $k$ 维 detail，那么总容量是：\n$\n$ R(k)=192+63k $$\ndetail宽度 $k$ 总浮点数 原始容量占比 0 192 1.56% 8 696 5.66% 16 1,200 9.77% 32 2,208 17.97% 64 4,224 34.38% 原始叶子 12,288 100% 例如 k=32 时，只使用原始激活量的约18%。\n如果它已经能恢复大部分 token 和顺序，就出现了有价值的压缩；如果必须把 k 增加到接近192才能恢复，那么它虽然能编码，却没有明显压缩优势。\n这里说的只是“浮点数数量”，还不是严格的比特压缩。只有完成量化、熵编码和实际文件大小测量后，才能讨论真正的 bit rate。\n6. 新 Claim 新声明编号：\nS3-TREEHEAP-PYRAMID-C01 正式内容是：\n一个冻结的 TreeHeap root compressor 可以扩展为多分辨率 codec：root 保存粗粒度、与任务相关的状态；每个内部地址保存有界的 detail code。随着 detail 容量增加，真实语料的重建质量应单调提高，同时冻结 root 的下一词预测能力保持不变。\n当前状态：\nsupported mechanism / three-seed 1M-block proof 它已经得到三 seed 实验支持，但结论仅限于本文实现的激活空间 codec，不能外推为通用压缩或架构优越性。\n7. Predict：成立时我们应该看到什么 P1：root 的旧能力必须完全保留 完整语料 checkpoint 原来的验证 NLL 是：\n6.236525 正式实验另取固定 audit 子集，在训练 detail codec 前后各测一次。新模块不能偷偷改写 root：\n$\n$ |NLL_{after}-NLL_{before}|\u003c10^{-5} $$\n如果变化，说明代码存在旁路或错误。\nP2：细节越多，恢复应该越好 我们预测：\n$\n$ E_{root}\u003eE_8\u003eE_{16}\u003eE_{32}\u003eE_{64} $$\n其中 $E$ 是叶子状态的重建误差。\n对应的 token Top-1、Top-5和顺序恢复率应该反向单调上升。\nP3：形成清楚的率失真曲线 横轴是存储容量，纵轴是重建误差：\n容量小 --------------------\u003e 容量大 误差大 --------------------\u003e 误差小 detail容量与重建质量的 Spearman 相关性应至少达到 0.9。\nP4：有限容量必须带来明显收益 k=64 必须让 root-only 的重建 MSE 至少下降50%。\n如果增加了大量细节却只改善一点点，说明当前 fold 已经过早破坏了信息。\nP5：TreeHeap 地址必须有用 打乱左右地址以后，至少满足一个条件：\n重建 MSE 增加 \u003e= 10% 或 token accuracy 下降 \u003e= 5 个百分点 P6：不能只打败自己 在相同存储容量下，它还要比较：\n固定平均池化金字塔； 固定 Haar 式平均/差分； flat autoencoder； 随机左右配对树。 只有 TreeHeap 在至少一个有效容量上击败这些对照，才能提出“TreeHeap具有更好率失真归纳偏置”的后续声明。\n8. 实验怎样执行 第一轮不直接再跑八小时。\n真实语料 block 1,000,000 上下文长度 64 token 冻结 root encoder 四头无残差 checkpoint detail k 0 / 8 / 16 / 32 / 64 随机种子 3 训练过程：\n读取冻结 TreeHeap； 保存每层的 left、right、parent 状态； 只训练 $Q_\\phi$和 $U_\\psi$； 在未见过的 block 上递归重建； 输出每个容量的率失真曲线； 做地址破坏和逐层 detail 消融。 指标分开报告，不能只给一个“大锅 loss”：\n指标 检查什么 root next-token NLL 全局预测能力是否被破坏 leaf embedding MSE 连续状态恢复 token Top-1/Top-5 词面恢复 sequence token accuracy 整句恢复 edit similarity 顺序接近程度 bag overlap 内容是否回来 position accuracy 地址与次序是否回来 floats/token 付出了多少容量 9. 实验结果：金字塔成立了吗 正式实验在 io 的 RTX 3090 上完成。三个随机种子分别是：\n71401 / 71402 / 71403 每个 seed 读取 1,000,000 个真实中文文本 block，并在 8,192 个 held-out block 上评估。训练期间，原 TreeHeap root encoder 和 next-token decoder 完全冻结。\n先给一张“体检报告”。指标方向如下：\nMSE 越低越好 存储比例 越低越省容量 Token Top-1 越高越好 Sequence Exact 越高越好，要求64个位置全部恢复正确 detail $k$ TreeHeap存储 Flat存储 TreeHeap MSE Flat MSE Haar MSE Token Top-1 64-token整段Exact 0 192 192 1.9334 1.9104 1.9110 6.50% 0.00% 8 696 768 0.8803 1.8416 1.8232 51.05% 0.00% 16 1,200 1,344 0.7622 1.7459 1.7471 76.84% 0.00% 32 2,208 2,304 0.6516 1.7047 1.5979 95.01% 5.99% 64 4,224 4,224 0.5526 1.6042 1.2881 99.64% 82.68% 这张表可以分三步理解。\n9.1 只有 root 时，TreeHeap 没有神奇优势 k=0 时只保存一个192维 root。TreeHeap MSE 是 1.9334，反而略差于 flat 和 Haar 的约 1.91。\n这很重要：实验没有证明“只要叫 TreeHeap 就一定更好”。一个只占原始容量 1.56% 的 root 主要保存预测下一个 token 所需的粗粒度信息，不能无损背下64个叶状态。\n9.2 加入带地址 detail 后，误差稳定下降 三个 seed 都得到严格单调曲线：\n$\n$ 1.9334 \u003e 0.8803 \u003e 0.7622 \u003e 0.6516 \u003e 0.5526 $$\ndetail 宽度与恢复质量的 Spearman 相关系数在三个 seed 中都约为 1.0。k=64 只使用原始激活量的 34.38%，MSE 已降到 root-only 的 28.6%，超过了预注册的“至少减半”门槛。\n这里的 token 指标，是把重建叶向量放回冻结 encoder 的 embedding 坐标系，寻找最近 token。k=64 的平均 token Top-1 是 99.64%，64个位置全部正确的整段恢复率是 82.68%。\n9.3 地址不是装饰 把已经学好的 detail code 循环移动到错误地址，k=64 的 MSE 从：\n0.5526 -\u003e 3.3147 它不只是变差一点，而是比 root-only 还差。这说明 decoder 依赖“哪段细节属于哪个内部地址”。detail 是带地址的局部信息，不是可以随便交换的附加向量袋。\n9.4 stronger flat baseline 仍有失败尾部 最初 smoke 使用固定 256D 隐层的 flat autoencoder。我们发现这会人为卡住大码率模型，于是在正式实验前主动中止，并改成拥有 1/4/7/12/22 个192维 latent 的 flat attention codec。它在多数档位还获得了比 TreeHeap略多的存储预算。\n正式 flat k=64 的三个 seed MSE 是：\n1.5245 / 1.3767 / 1.9113 TreeHeap 对应为：\n0.5526 / 0.5499 / 0.5554 TreeHeap 在本次对照中不仅均值更低，而且 seed 更稳定。但 flat 的第三个 seed 明显发生了 latent 学习失败，所以本文只能说：\n当前 TreeHeap pyramid 击败了本实验实现的同码率 flat attention codec 和固定 Haar codec。\n不能说：\nTreeHeap 已经击败所有 autoencoder、Transformer 或所有可能的压缩算法。\n9.5 Predict 判定 Predict 结果 判定 P1 root NLL不变 audit NLL 6.2997973263 -\u003e 6.2997973263，参数指纹相同 通过 P2 MSE随容量单调下降 三个 seed 全部严格单调 通过 P3 Spearman至少0.9 三个 seed 均约1.0 通过 P4 k=64至少减半MSE 降至root-only的28.6% 通过 P5 地址破坏明显伤害 MSE增加约500% 通过 P6 击败已实现同码率对照 k=8到64均优于flat/Haar 有界通过 因此，Claim S3-TREEHEAP-PYRAMID-C01 从 experiment pending 更新为：\nsupported mechanism / three-seed 1M-block proof 仍未完成的部分包括：独立 random-pairing 训练、逐层 detail 消融、量化、熵编码以及更强的 flat/Transformer codec。尤其在逐层消融完成前，不能声称高层一定学习“全局语义”、低层一定学习“词面细节”。\n10. Toy：为什么逐层细节有意义 考虑一句短句：\nthe cat is eating rice 最低分辨率 root 可能只能表达：\n某个主体正在进行进食活动 加入顶层 detail 后，可能恢复：\n主体部分 | 动作与对象部分 继续加入更低层 detail：\nthe cat | is eating rice 最后才恢复具体词面：\nthe | cat | is | eating | rice 这不是说模型一定会形成这些人类语法标签。实验只检查一个更基础的事实：\n不同层级是否真的以越来越大的容量，逐渐补回越来越细的信息。\n如果没有这种渐进关系，“金字塔”就只是一个漂亮名字。\n11. 什么结果会否定它 以下任一情况都会让 Claim 被拒绝或缩小：\n增加 detail 后，重建误差不单调下降； 必须接近原始容量才能恢复； 随机树和真实地址表现相同； 平均池化或 flat autoencoder 在同容量下全面更好； root NLL发生变化，说明实验偷偷改写了旧模型； 所有层的 detail 完全可以互换，没有尺度分工。 失败不是“调参不够”。这些失败会直接告诉我们：\n当前 TreeHeap fold 不是合适的降采样核 或 语言信息不适合按当前地址形成多尺度编码 12. 哪些部分是我们的原创 为了避免把已有数学重新命名为自己的发明，这里明确划界。\n已有公共理论包括：\n多分辨率分析； 高斯与拉普拉斯图像金字塔； 小波与平均/差分分解； autoencoder； 信息论中的率失真理论。 我们不声称这些理论由 SameTime 发明。\n本文的原创研究贡献是：\n把已经测得地址因果性的 TreeHeap root compressor 定义为冻结降采样核； 设计“一个 root + 每个内部地址一个低维 detail code”的语言 TreeHeap codec； 给出固定容量公式 $R(k)=192+63k$； 设计 root 不回归、渐进恢复、地址破坏、同容量基线和层级消融； 登记可证伪 Claim S3-TREEHEAP-PYRAMID-C01 及其数值门槛。 这是 SameTime 项目在现有数学基础上的原创架构假设与实验协议。本文报告的三 seed 结果支持其有限机制 Claim，但不构成“世界首创”、专利新颖性或通用架构优越性结论。\n13. ARA 与可复核材料 正式 ARA：\nMultiresolution TreeHeap Pyramid S3 Claims Registry 上一轮全量实验分析 本次实验结果分析 本次原始汇总数据 任何后续文章都必须同时报告通过和失败的 Predict，不允许只展示最好的一条曲线。\n版权、原创与许可证 Copyright (C) 2026 Houming818 and SameTime contributors.\n本文由 Houming818 提出核心类比与研究方向，Codex Review 参与数学整理、ARA声明和实验协议编写。正文与伪代码为本项目原创表达，没有复制第三方论文正文、代码或插图；已有理论已在上一节明确列为公共学术背景。\nSPDX-License-Identifier: GPL-3.0-only\nLicense: GNU General Public License v3.0 only\n本文允许复制、修改和分发，但衍生版本必须继续遵守 GNU GPL v3，并保留版权、许可证、修改说明及来源声明。完整许可证文本见本站 /LICENSE。\n本文按“原样”提供，不附带任何明示或暗示担保。数学思想和事实本身不受版权垄断；本许可证适用于本文的原创文字、结构、表格、伪代码及其他可受版权保护的表达。\n",
+  "wordCount" : "960",
+  "inLanguage": "en",
+  "datePublished": "2026-07-14T00:00:00Z",
+  "dateModified": "2026-07-14T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Houming818 \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/054-treeheap-multiresolution-pyramid.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item active">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节
+    </h1>
+    <div class="post-description">
+      三 seed、每 seed 100 万真实文本 block 的实验表明：冻结 TreeHeap root 后，带地址的低维 detail code 可形成稳定的渐进恢复曲线；同时记录 flat 对照失败尾部与尚未完成的验证。
+    </div>
+    <div class="post-meta"><span title='2026-07-14 00:00:00 +0000 UTC'>July 14, 2026</span>&nbsp;·&nbsp;<span>Houming818 &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="treeheap-多分辨率金字塔root-看全局子堆保存细节">TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节<a hidden class="anchor" aria-hidden="true" href="#treeheap-多分辨率金字塔root-看全局子堆保存细节">#</a></h1>
+<p>先说这篇文章提出的新假设：</p>
+<blockquote>
+<p>TreeHeap 不应该强迫一个 root 无损背下整句话。更合理的设计是：root 保存全局轮廓，各层 subheap 保存逐步补回细节所需的低维编码。</p>
+</blockquote>
+<p>这与缩小一张图片很像。</p>
+<p>一张 <code>1024 x 1024</code> 的照片缩成 <code>64 x 64</code> 后，不可能保留每一根头发，但我们仍然可能看出：</p>
+<ul>
+<li>画面里有没有人；</li>
+<li>人站在哪里；</li>
+<li>背景是房间还是街道；</li>
+<li>整体颜色和轮廓是什么。</li>
+</ul>
+<p>丢失的主要是细小纹理。</p>
+<p>对于语言，TreeHeap 的叶子可以看成高分辨率数据，内部节点是中等分辨率，root 是最低分辨率的全局摘要：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token leaves       原始高分辨率
+</span></span><span style="display:flex;"><span>local subheaps     局部短语与关系
+</span></span><span style="display:flex;"><span>upper subheaps     更大范围的组合
+</span></span><span style="display:flex;"><span>root               全局低分辨率表示
+</span></span></code></pre></div><p>但这仍然只是类比。它是否真的成立，必须变成一个可以失败的实验。</p>
+<hr>
+<h2 id="1-为什么现在提出这个问题">1. 为什么现在提出这个问题<a hidden class="anchor" aria-hidden="true" href="#1-为什么现在提出这个问题">#</a></h2>
+<p>上一轮实验已经用完整中文语料训练了一个 TreeHeap root compressor。</p>
+<p>输入是64个 token：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x1, x2, ..., x64
+</span></span></code></pre></div><p>TreeHeap 反复用共享的三槽 kernel 折叠相邻节点：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[root, left, right]
+</span></span></code></pre></div><p>最后只留下一个192维 root，由 decoder 预测下一个 token。</p>
+<p>这次全量训练处理了：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>文档数             7,564,966
+</span></span><span style="display:flex;"><span>训练 block 数      38,251,247
+</span></span><span style="display:flex;"><span>news block        28,052,019
+</span></span><span style="display:flex;"><span>wiki block         4,375,165
+</span></span><span style="display:flex;"><span>web block          5,824,063
+</span></span><span style="display:flex;"><span>训练时间            7.94 小时
+</span></span></code></pre></div><p>最终可用模型是四头无残差 TreeHeap：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">结果</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>验证 NLL，越低越好</td>
+          <td style="text-align: right">6.2365</td>
+      </tr>
+      <tr>
+          <td>Top-1</td>
+          <td style="text-align: right">11.96%</td>
+      </tr>
+      <tr>
+          <td>Top-5</td>
+          <td style="text-align: right">23.29%</td>
+      </tr>
+      <tr>
+          <td>root variance</td>
+          <td style="text-align: right">0.05843</td>
+      </tr>
+  </tbody>
+</table>
+<p>更重要的是，破坏左右地址配对后，NLL 增加了 <code>2.6252</code>。</p>
+<p>这说明 root 不是普通词袋。它确实依赖 TreeHeap 的递归地址和左右配对，保存了某些有助于预测的全局信息。</p>
+<p>但它没有回答另一个问题：</p>
+<blockquote>
+<p>root 丢掉了哪些细节？能否用少量、分层的补充信息把这些细节找回来？</p>
+</blockquote>
+<hr>
+<h2 id="2-不要让-root-背诵整句话">2. 不要让 root 背诵整句话<a hidden class="anchor" aria-hidden="true" href="#2-不要让-root-背诵整句话">#</a></h2>
+<p>假设每个 token 是192维，64个 token 一共需要：</p>
+<p>$</p>
+$ 64 \times 192 = 12288 $<p>$</p>
+<p>个浮点数。</p>
+<p>如果把它们压成一个192维 root，容量只剩原来的：</p>
+<p>$</p>
+$ \frac{192}{12288}=1.56\% $<p>$</p>
+<p>这显然是强压缩。</p>
+<p>强压缩不等于错误。问题在于任务需要什么。</p>
+<p>如果任务只是判断“大致在说吃饭还是旅行”，root 也许已经够用；如果任务是逐词 echo、翻译人名或还原数字，root 就可能丢失关键细节。</p>
+<p>因此我们不再要求：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个 root = 完整句子
+</span></span></code></pre></div><p>而改成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个 root        = 全局摘要
+</span></span><span style="display:flex;"><span>多层 detail code = 折叠时丢失的局部细节
+</span></span></code></pre></div><hr>
+<h2 id="3-新的数据结构长什么样">3. 新的数据结构长什么样<a hidden class="anchor" aria-hidden="true" href="#3-新的数据结构长什么样">#</a></h2>
+<p>对于左右两个子节点：</p>
+<p>$</p>
+$ L,\;R \in \mathbb{R}^{192} $<p>$</p>
+<p>已经训练好的 TreeHeap fold kernel 生成父节点：</p>
+<p>$</p>
+$ P=D_\theta(L,R) $<p>$</p>
+<p>这里的 </p>
+$D_\theta$<p> 是上一轮完整训练得到的模型。新实验会冻结它，不允许它继续变化。</p>
+<p>然后增加一个细节编码器：</p>
+<p>$</p>
+$ d=Q_\phi(L,R,P),\qquad d\in\mathbb{R}^{k} $<p>$</p>
+<p>其中 </p>
+$k$<p> 比192小很多，例如8、16、32或64。</p>
+<p>解码器读取父节点和细节：</p>
+<p>$</p>
+$ (\hat L,\hat R)=U_\psi(P,d) $<p>$</p>
+<p>如果 </p>
+$\hat L$<p> 和 </p>
+$\hat R$<p> 接近原来的 </p>
+$L$<p>、</p>
+$R$<p>，说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>父节点 P          保存了公共、粗粒度信息
+</span></span><span style="display:flex;"><span>细节向量 d         保存了区分左右孩子所需的信息
+</span></span></code></pre></div><p>完整节点可以写成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>PyramidNode {
+</span></span><span style="display:flex;"><span>    coarse_state P
+</span></span><span style="display:flex;"><span>    detail_code  d
+</span></span><span style="display:flex;"><span>    left_address
+</span></span><span style="display:flex;"><span>    right_address
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>解码从 root 开始：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root + 顶层 detail
+</span></span><span style="display:flex;"><span>  -&gt; 两个较粗子节点
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>每个子节点 + 下一层 detail
+</span></span><span style="display:flex;"><span>  -&gt; 四个更细节点
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>不断递归
+</span></span><span style="display:flex;"><span>  -&gt; 尽可能恢复64个叶子
+</span></span></code></pre></div><p>这就是 TreeHeap 多分辨率金字塔。</p>
+<hr>
+<h2 id="4-这和普通残差有什么不同">4. 这和普通残差有什么不同<a hidden class="anchor" aria-hidden="true" href="#4-这和普通残差有什么不同">#</a></h2>
+<p>普通残差通常写成：</p>
+<p>$</p>
+$ H_{t+1}=H_t+\Delta H_t $<p>$</p>
+<p>它主要用于让旧状态和梯度穿过深层网络。</p>
+<p>本文的 detail code 不直接加回同一个状态。它回答的是另一个问题：</p>
+<blockquote>
+<p>把两个高分辨率孩子压成一个低分辨率父节点以后，重建孩子还缺少什么信息？</p>
+</blockquote>
+<p>所以这里更接近图像的拉普拉斯金字塔或小波中的“低频摘要 + 高频细节”：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>coarse state   负责大轮廓
+</span></span><span style="display:flex;"><span>detail code    负责缺失差异
+</span></span></code></pre></div><p>上一轮四头残差模型在 <code>step 62,400</code> 发生 NaN，已经否定了当时那个“无约束全局残差尺度”的实现。</p>
+<p>新方案不会复用那个失败公式。它冻结成功的无残差 root encoder，只训练独立的 detail encoder 和 decoder。</p>
+<hr>
+<h2 id="5-它真的压缩了吗">5. 它真的压缩了吗<a hidden class="anchor" aria-hidden="true" href="#5-它真的压缩了吗">#</a></h2>
+<p>一棵64叶子的完全二叉树有63个内部节点。</p>
+<p>如果只保存一个192维 root，并为每个内部节点保存 </p>
+$k$<p> 维 detail，那么总容量是：</p>
+<p>$</p>
+$ R(k)=192+63k $<p>$</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">detail宽度 $k$</th>
+          <th style="text-align: right">总浮点数</th>
+          <th style="text-align: right">原始容量占比</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">0</td>
+          <td style="text-align: right">192</td>
+          <td style="text-align: right">1.56%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">8</td>
+          <td style="text-align: right">696</td>
+          <td style="text-align: right">5.66%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">16</td>
+          <td style="text-align: right">1,200</td>
+          <td style="text-align: right">9.77%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">32</td>
+          <td style="text-align: right">2,208</td>
+          <td style="text-align: right">17.97%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">64</td>
+          <td style="text-align: right">4,224</td>
+          <td style="text-align: right">34.38%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">原始叶子</td>
+          <td style="text-align: right">12,288</td>
+          <td style="text-align: right">100%</td>
+      </tr>
+  </tbody>
+</table>
+<p>例如 <code>k=32</code> 时，只使用原始激活量的约18%。</p>
+<p>如果它已经能恢复大部分 token 和顺序，就出现了有价值的压缩；如果必须把 <code>k</code> 增加到接近192才能恢复，那么它虽然能编码，却没有明显压缩优势。</p>
+<p>这里说的只是“浮点数数量”，还不是严格的比特压缩。只有完成量化、熵编码和实际文件大小测量后，才能讨论真正的 bit rate。</p>
+<hr>
+<h2 id="6-新-claim">6. 新 Claim<a hidden class="anchor" aria-hidden="true" href="#6-新-claim">#</a></h2>
+<p>新声明编号：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>S3-TREEHEAP-PYRAMID-C01
+</span></span></code></pre></div><p>正式内容是：</p>
+<blockquote>
+<p>一个冻结的 TreeHeap root compressor 可以扩展为多分辨率 codec：root 保存粗粒度、与任务相关的状态；每个内部地址保存有界的 detail code。随着 detail 容量增加，真实语料的重建质量应单调提高，同时冻结 root 的下一词预测能力保持不变。</p>
+</blockquote>
+<p>当前状态：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>supported mechanism / three-seed 1M-block proof
+</span></span></code></pre></div><p>它已经得到三 seed 实验支持，但结论仅限于本文实现的激活空间 codec，不能外推为通用压缩或架构优越性。</p>
+<hr>
+<h2 id="7-predict成立时我们应该看到什么">7. Predict：成立时我们应该看到什么<a hidden class="anchor" aria-hidden="true" href="#7-predict成立时我们应该看到什么">#</a></h2>
+<h3 id="p1root-的旧能力必须完全保留">P1：root 的旧能力必须完全保留<a hidden class="anchor" aria-hidden="true" href="#p1root-的旧能力必须完全保留">#</a></h3>
+<p>完整语料 checkpoint 原来的验证 NLL 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>6.236525
+</span></span></code></pre></div><p>正式实验另取固定 audit 子集，在训练 detail codec 前后各测一次。新模块不能偷偷改写 root：</p>
+<p>$</p>
+$ |NLL_{after}-NLL_{before}|<10^{-5} $<p>$</p>
+<p>如果变化，说明代码存在旁路或错误。</p>
+<h3 id="p2细节越多恢复应该越好">P2：细节越多，恢复应该越好<a hidden class="anchor" aria-hidden="true" href="#p2细节越多恢复应该越好">#</a></h3>
+<p>我们预测：</p>
+<p>$</p>
+$ E_{root}>E_8>E_{16}>E_{32}>E_{64} $<p>$</p>
+<p>其中 </p>
+$E$<p> 是叶子状态的重建误差。</p>
+<p>对应的 token Top-1、Top-5和顺序恢复率应该反向单调上升。</p>
+<h3 id="p3形成清楚的率失真曲线">P3：形成清楚的率失真曲线<a hidden class="anchor" aria-hidden="true" href="#p3形成清楚的率失真曲线">#</a></h3>
+<p>横轴是存储容量，纵轴是重建误差：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>容量小 --------------------&gt; 容量大
+</span></span><span style="display:flex;"><span>误差大 --------------------&gt; 误差小
+</span></span></code></pre></div><p>detail容量与重建质量的 Spearman 相关性应至少达到 <code>0.9</code>。</p>
+<h3 id="p4有限容量必须带来明显收益">P4：有限容量必须带来明显收益<a hidden class="anchor" aria-hidden="true" href="#p4有限容量必须带来明显收益">#</a></h3>
+<p><code>k=64</code> 必须让 root-only 的重建 MSE 至少下降50%。</p>
+<p>如果增加了大量细节却只改善一点点，说明当前 fold 已经过早破坏了信息。</p>
+<h3 id="p5treeheap-地址必须有用">P5：TreeHeap 地址必须有用<a hidden class="anchor" aria-hidden="true" href="#p5treeheap-地址必须有用">#</a></h3>
+<p>打乱左右地址以后，至少满足一个条件：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>重建 MSE 增加 &gt;= 10%
+</span></span><span style="display:flex;"><span>或
+</span></span><span style="display:flex;"><span>token accuracy 下降 &gt;= 5 个百分点
+</span></span></code></pre></div><h3 id="p6不能只打败自己">P6：不能只打败自己<a hidden class="anchor" aria-hidden="true" href="#p6不能只打败自己">#</a></h3>
+<p>在相同存储容量下，它还要比较：</p>
+<ul>
+<li>固定平均池化金字塔；</li>
+<li>固定 Haar 式平均/差分；</li>
+<li>flat autoencoder；</li>
+<li>随机左右配对树。</li>
+</ul>
+<p>只有 TreeHeap 在至少一个有效容量上击败这些对照，才能提出“TreeHeap具有更好率失真归纳偏置”的后续声明。</p>
+<hr>
+<h2 id="8-实验怎样执行">8. 实验怎样执行<a hidden class="anchor" aria-hidden="true" href="#8-实验怎样执行">#</a></h2>
+<p>第一轮不直接再跑八小时。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>真实语料 block       1,000,000
+</span></span><span style="display:flex;"><span>上下文长度            64 token
+</span></span><span style="display:flex;"><span>冻结 root encoder      四头无残差 checkpoint
+</span></span><span style="display:flex;"><span>detail k              0 / 8 / 16 / 32 / 64
+</span></span><span style="display:flex;"><span>随机种子               3
+</span></span></code></pre></div><p>训练过程：</p>
+<ol>
+<li>读取冻结 TreeHeap；</li>
+<li>保存每层的 left、right、parent 状态；</li>
+<li>只训练
+$Q_\phi$和
+$U_\psi$；</li>
+<li>在未见过的 block 上递归重建；</li>
+<li>输出每个容量的率失真曲线；</li>
+<li>做地址破坏和逐层 detail 消融。</li>
+</ol>
+<p>指标分开报告，不能只给一个“大锅 loss”：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th>检查什么</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>root next-token NLL</td>
+          <td>全局预测能力是否被破坏</td>
+      </tr>
+      <tr>
+          <td>leaf embedding MSE</td>
+          <td>连续状态恢复</td>
+      </tr>
+      <tr>
+          <td>token Top-1/Top-5</td>
+          <td>词面恢复</td>
+      </tr>
+      <tr>
+          <td>sequence token accuracy</td>
+          <td>整句恢复</td>
+      </tr>
+      <tr>
+          <td>edit similarity</td>
+          <td>顺序接近程度</td>
+      </tr>
+      <tr>
+          <td>bag overlap</td>
+          <td>内容是否回来</td>
+      </tr>
+      <tr>
+          <td>position accuracy</td>
+          <td>地址与次序是否回来</td>
+      </tr>
+      <tr>
+          <td>floats/token</td>
+          <td>付出了多少容量</td>
+      </tr>
+  </tbody>
+</table>
+<hr>
+<h2 id="9-实验结果金字塔成立了吗">9. 实验结果：金字塔成立了吗<a hidden class="anchor" aria-hidden="true" href="#9-实验结果金字塔成立了吗">#</a></h2>
+<p>正式实验在 <code>io</code> 的 RTX 3090 上完成。三个随机种子分别是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>71401 / 71402 / 71403
+</span></span></code></pre></div><p>每个 seed 读取 <code>1,000,000</code> 个真实中文文本 block，并在 <code>8,192</code> 个 held-out block 上评估。训练期间，原 TreeHeap root encoder 和 next-token decoder 完全冻结。</p>
+<p>先给一张“体检报告”。指标方向如下：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>MSE             越低越好
+</span></span><span style="display:flex;"><span>存储比例         越低越省容量
+</span></span><span style="display:flex;"><span>Token Top-1     越高越好
+</span></span><span style="display:flex;"><span>Sequence Exact  越高越好，要求64个位置全部恢复正确
+</span></span></code></pre></div><table>
+  <thead>
+      <tr>
+          <th style="text-align: right">detail $k$</th>
+          <th style="text-align: right">TreeHeap存储</th>
+          <th style="text-align: right">Flat存储</th>
+          <th style="text-align: right">TreeHeap MSE</th>
+          <th style="text-align: right">Flat MSE</th>
+          <th style="text-align: right">Haar MSE</th>
+          <th style="text-align: right">Token Top-1</th>
+          <th style="text-align: right">64-token整段Exact</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">0</td>
+          <td style="text-align: right">192</td>
+          <td style="text-align: right">192</td>
+          <td style="text-align: right">1.9334</td>
+          <td style="text-align: right"><strong>1.9104</strong></td>
+          <td style="text-align: right">1.9110</td>
+          <td style="text-align: right">6.50%</td>
+          <td style="text-align: right">0.00%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">8</td>
+          <td style="text-align: right">696</td>
+          <td style="text-align: right">768</td>
+          <td style="text-align: right"><strong>0.8803</strong></td>
+          <td style="text-align: right">1.8416</td>
+          <td style="text-align: right">1.8232</td>
+          <td style="text-align: right">51.05%</td>
+          <td style="text-align: right">0.00%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">16</td>
+          <td style="text-align: right">1,200</td>
+          <td style="text-align: right">1,344</td>
+          <td style="text-align: right"><strong>0.7622</strong></td>
+          <td style="text-align: right">1.7459</td>
+          <td style="text-align: right">1.7471</td>
+          <td style="text-align: right">76.84%</td>
+          <td style="text-align: right">0.00%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">32</td>
+          <td style="text-align: right">2,208</td>
+          <td style="text-align: right">2,304</td>
+          <td style="text-align: right"><strong>0.6516</strong></td>
+          <td style="text-align: right">1.7047</td>
+          <td style="text-align: right">1.5979</td>
+          <td style="text-align: right">95.01%</td>
+          <td style="text-align: right">5.99%</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">64</td>
+          <td style="text-align: right">4,224</td>
+          <td style="text-align: right">4,224</td>
+          <td style="text-align: right"><strong>0.5526</strong></td>
+          <td style="text-align: right">1.6042</td>
+          <td style="text-align: right">1.2881</td>
+          <td style="text-align: right">99.64%</td>
+          <td style="text-align: right">82.68%</td>
+      </tr>
+  </tbody>
+</table>
+<p>这张表可以分三步理解。</p>
+<h3 id="91-只有-root-时treeheap-没有神奇优势">9.1 只有 root 时，TreeHeap 没有神奇优势<a hidden class="anchor" aria-hidden="true" href="#91-只有-root-时treeheap-没有神奇优势">#</a></h3>
+<p><code>k=0</code> 时只保存一个192维 root。TreeHeap MSE 是 <code>1.9334</code>，反而略差于 flat 和 Haar 的约 <code>1.91</code>。</p>
+<p>这很重要：实验没有证明“只要叫 TreeHeap 就一定更好”。一个只占原始容量 <code>1.56%</code> 的 root 主要保存预测下一个 token 所需的粗粒度信息，不能无损背下64个叶状态。</p>
+<h3 id="92-加入带地址-detail-后误差稳定下降">9.2 加入带地址 detail 后，误差稳定下降<a hidden class="anchor" aria-hidden="true" href="#92-加入带地址-detail-后误差稳定下降">#</a></h3>
+<p>三个 seed 都得到严格单调曲线：</p>
+<p>$</p>
+$ 1.9334 > 0.8803 > 0.7622 > 0.6516 > 0.5526 $<p>$</p>
+<p>detail 宽度与恢复质量的 Spearman 相关系数在三个 seed 中都约为 <code>1.0</code>。<code>k=64</code> 只使用原始激活量的 <code>34.38%</code>，MSE 已降到 root-only 的 <code>28.6%</code>，超过了预注册的“至少减半”门槛。</p>
+<p>这里的 token 指标，是把重建叶向量放回冻结 encoder 的 embedding 坐标系，寻找最近 token。<code>k=64</code> 的平均 token Top-1 是 <code>99.64%</code>，64个位置全部正确的整段恢复率是 <code>82.68%</code>。</p>
+<h3 id="93-地址不是装饰">9.3 地址不是装饰<a hidden class="anchor" aria-hidden="true" href="#93-地址不是装饰">#</a></h3>
+<p>把已经学好的 detail code 循环移动到错误地址，<code>k=64</code> 的 MSE 从：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>0.5526 -&gt; 3.3147
+</span></span></code></pre></div><p>它不只是变差一点，而是比 root-only 还差。这说明 decoder 依赖“哪段细节属于哪个内部地址”。detail 是带地址的局部信息，不是可以随便交换的附加向量袋。</p>
+<h3 id="94-stronger-flat-baseline-仍有失败尾部">9.4 stronger flat baseline 仍有失败尾部<a hidden class="anchor" aria-hidden="true" href="#94-stronger-flat-baseline-仍有失败尾部">#</a></h3>
+<p>最初 smoke 使用固定 <code>256D</code> 隐层的 flat autoencoder。我们发现这会人为卡住大码率模型，于是在正式实验前主动中止，并改成拥有 <code>1/4/7/12/22</code> 个192维 latent 的 flat attention codec。它在多数档位还获得了比 TreeHeap略多的存储预算。</p>
+<p>正式 flat <code>k=64</code> 的三个 seed MSE 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1.5245 / 1.3767 / 1.9113
+</span></span></code></pre></div><p>TreeHeap 对应为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>0.5526 / 0.5499 / 0.5554
+</span></span></code></pre></div><p>TreeHeap 在本次对照中不仅均值更低，而且 seed 更稳定。但 flat 的第三个 seed 明显发生了 latent 学习失败，所以本文只能说：</p>
+<blockquote>
+<p>当前 TreeHeap pyramid 击败了本实验实现的同码率 flat attention codec 和固定 Haar codec。</p>
+</blockquote>
+<p>不能说：</p>
+<blockquote>
+<p>TreeHeap 已经击败所有 autoencoder、Transformer 或所有可能的压缩算法。</p>
+</blockquote>
+<h3 id="95-predict-判定">9.5 Predict 判定<a hidden class="anchor" aria-hidden="true" href="#95-predict-判定">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>Predict</th>
+          <th style="text-align: right">结果</th>
+          <th>判定</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>P1 root NLL不变</td>
+          <td style="text-align: right">audit NLL <code>6.2997973263 -&gt; 6.2997973263</code>，参数指纹相同</td>
+          <td>通过</td>
+      </tr>
+      <tr>
+          <td>P2 MSE随容量单调下降</td>
+          <td style="text-align: right">三个 seed 全部严格单调</td>
+          <td>通过</td>
+      </tr>
+      <tr>
+          <td>P3 Spearman至少0.9</td>
+          <td style="text-align: right">三个 seed 均约1.0</td>
+          <td>通过</td>
+      </tr>
+      <tr>
+          <td>P4 k=64至少减半MSE</td>
+          <td style="text-align: right">降至root-only的28.6%</td>
+          <td>通过</td>
+      </tr>
+      <tr>
+          <td>P5 地址破坏明显伤害</td>
+          <td style="text-align: right">MSE增加约500%</td>
+          <td>通过</td>
+      </tr>
+      <tr>
+          <td>P6 击败已实现同码率对照</td>
+          <td style="text-align: right">k=8到64均优于flat/Haar</td>
+          <td>有界通过</td>
+      </tr>
+  </tbody>
+</table>
+<p>因此，Claim <code>S3-TREEHEAP-PYRAMID-C01</code> 从 <code>experiment pending</code> 更新为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>supported mechanism / three-seed 1M-block proof
+</span></span></code></pre></div><p>仍未完成的部分包括：独立 random-pairing 训练、逐层 detail 消融、量化、熵编码以及更强的 flat/Transformer codec。尤其在逐层消融完成前，不能声称高层一定学习“全局语义”、低层一定学习“词面细节”。</p>
+<hr>
+<h2 id="10-toy为什么逐层细节有意义">10. Toy：为什么逐层细节有意义<a hidden class="anchor" aria-hidden="true" href="#10-toy为什么逐层细节有意义">#</a></h2>
+<p>考虑一句短句：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>the cat is eating rice
+</span></span></code></pre></div><p>最低分辨率 root 可能只能表达：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>某个主体正在进行进食活动
+</span></span></code></pre></div><p>加入顶层 detail 后，可能恢复：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>主体部分 | 动作与对象部分
+</span></span></code></pre></div><p>继续加入更低层 detail：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>the cat | is eating rice
+</span></span></code></pre></div><p>最后才恢复具体词面：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>the | cat | is | eating | rice
+</span></span></code></pre></div><p>这不是说模型一定会形成这些人类语法标签。实验只检查一个更基础的事实：</p>
+<blockquote>
+<p>不同层级是否真的以越来越大的容量，逐渐补回越来越细的信息。</p>
+</blockquote>
+<p>如果没有这种渐进关系，“金字塔”就只是一个漂亮名字。</p>
+<hr>
+<h2 id="11-什么结果会否定它">11. 什么结果会否定它<a hidden class="anchor" aria-hidden="true" href="#11-什么结果会否定它">#</a></h2>
+<p>以下任一情况都会让 Claim 被拒绝或缩小：</p>
+<ol>
+<li>增加 detail 后，重建误差不单调下降；</li>
+<li>必须接近原始容量才能恢复；</li>
+<li>随机树和真实地址表现相同；</li>
+<li>平均池化或 flat autoencoder 在同容量下全面更好；</li>
+<li>root NLL发生变化，说明实验偷偷改写了旧模型；</li>
+<li>所有层的 detail 完全可以互换，没有尺度分工。</li>
+</ol>
+<p>失败不是“调参不够”。这些失败会直接告诉我们：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>当前 TreeHeap fold 不是合适的降采样核
+</span></span><span style="display:flex;"><span>或
+</span></span><span style="display:flex;"><span>语言信息不适合按当前地址形成多尺度编码
+</span></span></code></pre></div><hr>
+<h2 id="12-哪些部分是我们的原创">12. 哪些部分是我们的原创<a hidden class="anchor" aria-hidden="true" href="#12-哪些部分是我们的原创">#</a></h2>
+<p>为了避免把已有数学重新命名为自己的发明，这里明确划界。</p>
+<p>已有公共理论包括：</p>
+<ul>
+<li>多分辨率分析；</li>
+<li>高斯与拉普拉斯图像金字塔；</li>
+<li>小波与平均/差分分解；</li>
+<li>autoencoder；</li>
+<li>信息论中的率失真理论。</li>
+</ul>
+<p>我们不声称这些理论由 SameTime 发明。</p>
+<p>本文的原创研究贡献是：</p>
+<ol>
+<li>把已经测得地址因果性的 TreeHeap root compressor 定义为冻结降采样核；</li>
+<li>设计“一个 root + 每个内部地址一个低维 detail code”的语言 TreeHeap codec；</li>
+<li>给出固定容量公式
+$R(k)=192+63k$；</li>
+<li>设计 root 不回归、渐进恢复、地址破坏、同容量基线和层级消融；</li>
+<li>登记可证伪 Claim <code>S3-TREEHEAP-PYRAMID-C01</code> 及其数值门槛。</li>
+</ol>
+<p>这是 SameTime 项目在现有数学基础上的原创架构假设与实验协议。本文报告的三 seed 结果支持其有限机制 Claim，但不构成“世界首创”、专利新颖性或通用架构优越性结论。</p>
+<hr>
+<h2 id="13-ara-与可复核材料">13. ARA 与可复核材料<a hidden class="anchor" aria-hidden="true" href="#13-ara-与可复核材料">#</a></h2>
+<p>正式 ARA：</p>
+<ul>
+<li><a href="https://github.com/houming818/sametime/blob/main/ara/s3-generation/logic/multiresolution_treeheap_pyramid.md">Multiresolution TreeHeap Pyramid</a></li>
+<li><a href="https://github.com/houming818/sametime/blob/main/ara/s3-generation/logic/claims.md">S3 Claims Registry</a></li>
+<li><a href="https://github.com/houming818/sametime/blob/main/ara/s3-generation/evidence/s3_residual_treeheap_forest/result_analysis.md">上一轮全量实验分析</a></li>
+<li><a href="https://github.com/houming818/sametime/blob/main/ara/s3-generation/evidence/s3_multiresolution_treeheap_pyramid/main_v2/result_analysis.md">本次实验结果分析</a></li>
+<li><a href="https://github.com/houming818/sametime/blob/main/ara/s3-generation/evidence/s3_multiresolution_treeheap_pyramid/main_v2/summary.json">本次原始汇总数据</a></li>
+</ul>
+<p>任何后续文章都必须同时报告通过和失败的 Predict，不允许只展示最好的一条曲线。</p>
+<hr>
+<h2 id="版权原创与许可证">版权、原创与许可证<a hidden class="anchor" aria-hidden="true" href="#版权原创与许可证">#</a></h2>
+<p>Copyright (C) 2026 Houming818 and SameTime contributors.</p>
+<p>本文由 Houming818 提出核心类比与研究方向，Codex Review 参与数学整理、ARA声明和实验协议编写。正文与伪代码为本项目原创表达，没有复制第三方论文正文、代码或插图；已有理论已在上一节明确列为公共学术背景。</p>
+<blockquote>
+<p><strong>SPDX-License-Identifier: GPL-3.0-only</strong><br>
+<strong>License: GNU General Public License v3.0 only</strong></p>
+</blockquote>
+<p>本文允许复制、修改和分发，但衍生版本必须继续遵守 GNU GPL v3，并保留版权、许可证、修改说明及来源声明。完整许可证文本见本站 <a href="/LICENSE">/LICENSE</a>。</p>
+<p>本文按“原样”提供，不附带任何明示或暗示担保。数学思想和事实本身不受版权垄断；本许可证适用于本文的原创文字、结构、表格、伪代码及其他可受版权保护的表达。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

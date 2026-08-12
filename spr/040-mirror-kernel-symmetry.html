@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, Kernel, Convolution, Mirror">
+<meta name="description" content="SPR-040 proof：证明 TreeHeap 局部卷积在左右 mirror 下可以由堆地址置换和 kernel 槽位置换实现，并且 mirrored kernel 可以从数据中学回。">
+<meta name="author" content="nio (Houming818) &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/040-mirror-kernel-symmetry.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/040-mirror-kernel-symmetry.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/040-mirror-kernel-symmetry.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换">
+  <meta property="og:description" content="SPR-040 proof：证明 TreeHeap 局部卷积在左右 mirror 下可以由堆地址置换和 kernel 槽位置换实现，并且 mirrored kernel 可以从数据中学回。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-07-01T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-07-01T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换">
+  <meta name="twitter:description" content="SPR-040 proof：证明 TreeHeap 局部卷积在左右 mirror 下可以由堆地址置换和 kernel 槽位置换实现，并且 mirrored kernel 可以从数据中学回。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换",
+      "item": "https://www.lostmap.cn/spr/040-mirror-kernel-symmetry.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换",
+  "name": "[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换",
+  "description": "SPR-040 proof：证明 TreeHeap 局部卷积在左右 mirror 下可以由堆地址置换和 kernel 槽位置换实现，并且 mirrored kernel 可以从数据中学回。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "Kernel", "Convolution", "Mirror"
+  ],
+  "articleBody": "TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换 先统一术语。\n之前草稿里用了“共轭”这个词。这个词容易让人想到复数共轭、矩阵共轭、群表示里的 conjugation。SPR-040 现在不再这样叫。\n这里讨论的是：\nmirror / chiral flip / 左右镜像翻转 也就是把一棵 TreeHeap 的 left 和 right 对换。\n这篇文章要证明一件很具体的事：\n几何上的左右翻转， 可以在代数层面变成两个置换： 1. 堆地址置换 2. kernel 槽位置换 这不是语言理解 proof，也不是 WMT proof。它是 TreeHeap kernel 工具箱里的一个基础 proof。\n这次收束以后，SPR-040 也不准备升级成旋转、3D fold 或平面投影 proof。我们先只托付一个最小事实：\nmirror 会交换 left/right 的结构方向； loss 可以把这个 mirrored slot assignment 学回参数里。 这已经够重要，因为它说明 kernel 的 root/left/right 不是三个匿名标量位置，而是树上的局部结构方向。\nDeepSeek 回测后的收束 DeepSeek / Runner 做了 ARA 可靠性审阅，把 SPR-040 评为：\n中等可靠。 这个评价是合理的。\n因为 SPR-040 的 evidence 很清楚：\nflipped-kernel error 接近机器精度。 unflipped-kernel error 明显变大。 loss 能学回 [root,right,left]。 但它的范围也很窄：\n这是结构赋值级别的 proof。 不是旋转 proof。 不是 3D fold proof。 也不是“模型自己学会何时翻转整棵树”的 proof。 换句话说，现在证明的是：\n给定 mirror 这种结构变换后， kernel 的 left/right 槽位应该怎样跟着变。 还没有证明：\n模型自己发现某个句子需要 mirror。 模型自己决定 mirror 发生在哪个 subheap。 模型自己决定递归 mirror 到多深。 这个边界很重要。它让 SPR-040 更专业，也更不容易过度解释。\n为什么要证明 mirror SPR-039 证明了：\n参数 TreeHeap Theta 可以通过梯度学习一个局部卷积 kernel。 例如在 7 节点堆上：\n1 / \\ 2 3 / \\ / \\ 4 5 6 7 一个最小 kernel 可以写成：\ntheta = [theta_root, theta_left, theta_right] 它在某个内部节点 i 上做：\nK_theta(H)[i] = theta_root * H[i] + theta_left * H[left(i)] + theta_right * H[right(i)] 如果 theta = [1,1,1]，它就是局部求和。\n但 Houming818 提醒了一个更关键的问题：\nTreeHeap kernel 不能只会求和。 它应该能表达结构操作。 比如，左右镜像翻转。\n如果 TreeHeap 真的是结构化空间，那么：\n树翻了， 算子也应该按结构翻。 这就是 SPR-040。\nmirror 在堆地址上的定义 仍然看这棵 7 节点完全二叉堆：\n1 / \\ 2 3 / \\ / \\ 4 5 6 7 左右 mirror 后：\n1 / \\ 3 2 / \\ / \\ 7 6 5 4 所以地址映射是：\nM(1) = 1 M(2) = 3 M(3) = 2 M(4) = 7 M(5) = 6 M(6) = 5 M(7) = 4 如果用数组表示：\nH = [1,2,3,4,5,6,7] M(H) = [1,3,2,7,6,5,4] 这不是随便重排。\n它是一个保持树结构的左右镜像。\n代数上可以写成：\nH' = P_m H 其中 P_m 是堆地址的置换矩阵。对于 7 节点堆，它对应：\nP_m = (0, 2, 1, 6, 5, 4, 3) 这里用的是 zero-based index。\nmirror 在 kernel 槽位上的定义 局部 kernel 是：\ntheta = [root, left, right] 如果树左右翻转，left 和 right 的意义也要交换。\n所以 kernel 也要 mirror：\nP_lr(theta) = [root, right, left] 写成矩阵：\nP_lr = [[1,0,0], [0,0,1], [0,1,0]] 这就是这篇 proof 的重点。\n不是只翻树。\n而是：\n翻树地址 P_m 同时翻 kernel 槽位 P_lr Claim SPR-040 的 claim 是：\nS1-KERNEL-MIRROR-C01: TreeHeap local convolution is equivariant under mirror / chiral flip: P_m K_theta(H) = K_{P_lr theta}(P_m H) 中文说：\n先卷积，再 mirror 等价于 先 mirror，再用 mirror 后的 kernel 卷积。 这就是“几何操作由代数操作实现”。\n一个具体例子 输入：\nH = [1,2,3,4,5,6,7] theta = [0.5, 1.25, -0.75] 这个 kernel 是故意选成非对称的。\n因为如果用 [1,1,1]，left 和 right 权重一样，翻不翻都一样，证明没有力量。\nroot 节点的卷积：\nK_theta(H)[1] = 0.5*1 + 1.25*2 - 0.75*3 = 0.75 node 2：\nK_theta(H)[2] = 0.5*2 + 1.25*4 - 0.75*5 = 2.25 node 3：\nK_theta(H)[3] = 0.5*3 + 1.25*6 - 0.75*7 = 3.75 内部节点结果是：\n[0.75, 2.25, 3.75] mirror 后，node 2 和 node 3 的结构位置交换。\n如果我们先 mirror 输入：\nP_m H = [1,3,2,7,6,5,4] 就必须同时使用 mirrored kernel：\nP_lr theta = [0.5, -0.75, 1.25] 这时两条路径会得到同一个结果：\nP_m K_theta(H) = K_{P_lr theta}(P_m H) Proof 分两部分 Proof A：演绎等式检查 这部分不训练。\n直接检查：\nleft = P_m K_theta(H) right = K_{P_lr theta}(P_m H) 然后算：\nmax_abs(left - right) 如果这个误差接近 0，就说明代数等式成立。\n这一步是数学/代数检查。它不是学习结果。\n也就是说，P_m 是我们定义好的 mirror 地址置换，P_lr 是我们定义好的 kernel 槽位置换。这里验证的是：\n这个定义是否自洽。 它不证明模型自己学会了翻树。\nProof B：归纳学习检查 这部分训练。\n我们构造 mirrored data：\ninput = P_m H target = internal_nodes(P_m K_theta(H)) 然后让一个三槽位参数：\nTheta = [theta_root, theta_left, theta_right] 通过 MSE loss 和梯度下降学习。\n如果数据真的携带 mirror 规律，那么它应该学出：\nTheta ~= P_lr theta = [0.5, -0.75, 1.25] 这一步说明的不只是“公式手写成立”，还说明这个 mirrored kernel 可以从数据里被学回。\n更具体地说，这一步要验证：\nlearned_root ~= original_root learned_left ~= original_right learned_right ~= original_left 也就是说，loss 学到的不是一个抽象口号，而是 left/right 槽位在 mirror 后的对应关系。\n这一步才是学习结果。\n但学习到的东西也要说准确：\n学到的是 mirrored kernel slot assignment。 不是学到 mirror 触发规则。 不是学到递归翻转策略。 实验结果 脚本：\nara/s1-echo/src/s1_mirror_kernel_symmetry_probe.py 证据：\nara/s1-echo/evidence/s1_mirror_kernel_symmetry_probe/ 主机：\nio.grepcode.cn 结果：\n指标 数值 pilot_pass true flipped-kernel test max error 8.88e-16 flipped-kernel OOD max error 3.55e-15 unflipped-kernel mean error 6.4372 learned mirrored theta [0.5000000000000002, -0.7499999999999998, 1.2499999999999996] theta-mirror L2 error 5.44e-16 left slot learns original right error 2.22e-16 right slot learns original left error 4.44e-16 learned test MSE 1.01e-30 learned OOD MSE 9.76e-30 解释：\n用 mirrored kernel 时，误差是机器精度。 不用 mirrored kernel 时，误差明显变大。 从 mirrored data 训练时，参数能学回 [root,right,left]。 left/right 槽位 assignment 的学习误差也是机器精度。 所以：\nS1-KERNEL-MIRROR-C01 -\u003e supported pilot 这说明了什么 SPR-040 支持一个很重要的方向：\nTreeHeap 的几何操作，可以下降到代数操作。 具体到这篇：\n几何 mirror --\u003e 堆地址置换 P_m + kernel 槽位置换 P_lr 这让 TreeHeap kernel 不只是“局部求和器”。\n它开始像一个结构化算子系统：\n卷积 写入 读取 mirror 路径移动 子堆组合 子堆分解 这些都可以成为后续 encoder/decoder 的基本工具。\n但这里要避免过度解释。\nSPR-040 现在最稳的结论不是：\nTreeHeap 已经证明了完整 3D fold。 TreeHeap 已经学会连续旋转角。 TreeHeap 已经解决 latent plane 投影。 而是：\nTreeHeap kernel 的槽位具有结构方向意义； mirror 会改变这些方向的对应关系； 这个方向对应关系可以被 loss 学回。 这是一块很小但很硬的积木。\n它把 TreeHeap kernel 从“标量覆盖”推进到“结构方向上的局部卷积”，但还没有推进到完整的空间折叠理论。\n如果用一句更数学化的话说：\nroot/left/right 是 TreeHeap 局部坐标系。 mirror 是这个局部坐标系上的置换。 loss 可以学习置换后的参数赋值。 但还没有到：\nloss 可以学习何时选择这个置换。 这个“何时选择”需要另一层学习树。\n后续数学故事：多参森林 Houming818 提出的更合理方向是：\n不要让一个大参数树混合学习所有结构能力。 应该用多参森林。 也就是：\nTheta_write 负责写入 Theta_read 负责读取 Theta_compose 负责组合 Theta_mirror 负责 mirror Theta_time 负责时间状语前置 每棵树有自己的参数和梯度。\n这样做的原因是，mirror 的学习信号不应该被 read/write/semantic 的大 loss 混在一起冲掉。\n对于 mirror，可以拆成两棵相关的树：\nTheta_mirror: 怎么翻，也就是执行 mirror 算子。 Phi_mirror: 什么时候翻，也就是触发规则。 当前 SPR-040 只碰到了第一件事的一小部分：\nmirror 后 kernel 槽位如何赋值。 还没有学习：\nPhi_mirror(H, context) -\u003e 是否触发 mirror 以翻译为例：\nI arrived home at 7 o'clock. 我七点到家了。 这里更像是一个局部结构重排：\n时间短语从英文尾部，移动到中文谓词前。 这不是全树 mirror，而是某种局部 reorder kernel。未来应该有一棵专门的参数树学习：\nTheta_time: 怎么把时间短语前置。 Phi_time: 什么时候触发时间短语前置。 所以 SPR-040 的位置很清楚：\n它不是终点。 它是在证明 TreeHeap kernel 的结构方向是真的。 还没有证明什么 这次没有证明：\n语言理解 WMT 翻译 真实语义 mirror 任意群等变 TreeHeap 胜过所有 flat model 连续旋转角学习 完整 3D fold latent plane 投影权重学习 learned mirror trigger learned recursive mirror depth 它只证明：\nTreeHeap 的 root/left/right 局部卷积， 在 mirror 操作下有正确的代数置换形式。 下一步 接下来可以沿着几个方向扩展，但不需要急着开新编号去做旋转。更合理的是先让后学工程师评判 SPR-040 这个最小 claim 是否站稳：\n1. 当前 mirror assignment proof 是否表述清楚 2. 是否需要补一个 flat baseline，证明无结构槽位时不能自然解释 mirror 3. 是否要把 scalar slot 扩展到 vector slot 4. 是否要把 depth-1 root/left/right 扩展到 recursive subheap 5. 是否要接回 short real corpus TreeHeap echo 6. 是否要设计 multi-parameter forest：单独训练 mirror/time/read/write 参数树 如果这些继续成立，TreeHeap 的 kernel 就不是一组临时写出来的函数，而是一个可以逐步扩展的结构化代数工具箱。\n一句话总结：\nSPR-040 证明： TreeHeap 的左右 mirror 可以用代数置换实现； 树地址要翻，kernel 的 left/right 槽位也要翻； 这个规则既能手算成立，也能从 mirrored data 里被梯度学回。 ARA: mirror kernel symmetry / evidence / claims\n",
+  "wordCount" : "857",
+  "inLanguage": "en",
+  "datePublished": "2026-07-01T00:00:00Z",
+  "dateModified": "2026-07-01T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/040-mirror-kernel-symmetry.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item active">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换
+    </h1>
+    <div class="post-description">
+      SPR-040 proof：证明 TreeHeap 局部卷积在左右 mirror 下可以由堆地址置换和 kernel 槽位置换实现，并且 mirrored kernel 可以从数据中学回。
+    </div>
+    <div class="post-meta"><span title='2026-07-01 00:00:00 +0000 UTC'>July 1, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="treeheap-kernel-的-mirror-手性翻转几何翻转如何变成代数置换">TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换<a hidden class="anchor" aria-hidden="true" href="#treeheap-kernel-的-mirror-手性翻转几何翻转如何变成代数置换">#</a></h1>
+<p>先统一术语。</p>
+<p>之前草稿里用了“共轭”这个词。这个词容易让人想到复数共轭、矩阵共轭、群表示里的 conjugation。SPR-040 现在不再这样叫。</p>
+<p>这里讨论的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>mirror / chiral flip / 左右镜像翻转
+</span></span></code></pre></div><p>也就是把一棵 TreeHeap 的 left 和 right 对换。</p>
+<p>这篇文章要证明一件很具体的事：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>几何上的左右翻转，
+</span></span><span style="display:flex;"><span>可以在代数层面变成两个置换：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>1. 堆地址置换
+</span></span><span style="display:flex;"><span>2. kernel 槽位置换
+</span></span></code></pre></div><p>这不是语言理解 proof，也不是 WMT proof。它是 TreeHeap kernel 工具箱里的一个基础 proof。</p>
+<p>这次收束以后，SPR-040 也不准备升级成旋转、3D fold 或平面投影 proof。我们先只托付一个最小事实：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>mirror 会交换 left/right 的结构方向；
+</span></span><span style="display:flex;"><span>loss 可以把这个 mirrored slot assignment 学回参数里。
+</span></span></code></pre></div><p>这已经够重要，因为它说明 kernel 的 <code>root/left/right</code> 不是三个匿名标量位置，而是树上的局部结构方向。</p>
+<h2 id="deepseek-回测后的收束">DeepSeek 回测后的收束<a hidden class="anchor" aria-hidden="true" href="#deepseek-回测后的收束">#</a></h2>
+<p>DeepSeek / Runner 做了 ARA 可靠性审阅，把 SPR-040 评为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>中等可靠。
+</span></span></code></pre></div><p>这个评价是合理的。</p>
+<p>因为 SPR-040 的 evidence 很清楚：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>flipped-kernel error 接近机器精度。
+</span></span><span style="display:flex;"><span>unflipped-kernel error 明显变大。
+</span></span><span style="display:flex;"><span>loss 能学回 [root,right,left]。
+</span></span></code></pre></div><p>但它的范围也很窄：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这是结构赋值级别的 proof。
+</span></span><span style="display:flex;"><span>不是旋转 proof。
+</span></span><span style="display:flex;"><span>不是 3D fold proof。
+</span></span><span style="display:flex;"><span>也不是“模型自己学会何时翻转整棵树”的 proof。
+</span></span></code></pre></div><p>换句话说，现在证明的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>给定 mirror 这种结构变换后，
+</span></span><span style="display:flex;"><span>kernel 的 left/right 槽位应该怎样跟着变。
+</span></span></code></pre></div><p>还没有证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型自己发现某个句子需要 mirror。
+</span></span><span style="display:flex;"><span>模型自己决定 mirror 发生在哪个 subheap。
+</span></span><span style="display:flex;"><span>模型自己决定递归 mirror 到多深。
+</span></span></code></pre></div><p>这个边界很重要。它让 SPR-040 更专业，也更不容易过度解释。</p>
+<h2 id="为什么要证明-mirror">为什么要证明 mirror<a hidden class="anchor" aria-hidden="true" href="#为什么要证明-mirror">#</a></h2>
+<p>SPR-039 证明了：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>参数 TreeHeap Theta 可以通过梯度学习一个局部卷积 kernel。
+</span></span></code></pre></div><p>例如在 7 节点堆上：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>        1
+</span></span><span style="display:flex;"><span>      /   \
+</span></span><span style="display:flex;"><span>     2     3
+</span></span><span style="display:flex;"><span>    / \   / \
+</span></span><span style="display:flex;"><span>   4   5 6   7
+</span></span></code></pre></div><p>一个最小 kernel 可以写成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>theta = [theta_root, theta_left, theta_right]
+</span></span></code></pre></div><p>它在某个内部节点 <code>i</code> 上做：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>K_theta(H)[i]
+</span></span><span style="display:flex;"><span>  = theta_root  * H[i]
+</span></span><span style="display:flex;"><span>  + theta_left  * H[left(i)]
+</span></span><span style="display:flex;"><span>  + theta_right * H[right(i)]
+</span></span></code></pre></div><p>如果 <code>theta = [1,1,1]</code>，它就是局部求和。</p>
+<p>但 Houming818 提醒了一个更关键的问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap kernel 不能只会求和。
+</span></span><span style="display:flex;"><span>它应该能表达结构操作。
+</span></span></code></pre></div><p>比如，左右镜像翻转。</p>
+<p>如果 TreeHeap 真的是结构化空间，那么：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>树翻了，
+</span></span><span style="display:flex;"><span>算子也应该按结构翻。
+</span></span></code></pre></div><p>这就是 SPR-040。</p>
+<h2 id="mirror-在堆地址上的定义">mirror 在堆地址上的定义<a hidden class="anchor" aria-hidden="true" href="#mirror-在堆地址上的定义">#</a></h2>
+<p>仍然看这棵 7 节点完全二叉堆：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>        1
+</span></span><span style="display:flex;"><span>      /   \
+</span></span><span style="display:flex;"><span>     2     3
+</span></span><span style="display:flex;"><span>    / \   / \
+</span></span><span style="display:flex;"><span>   4   5 6   7
+</span></span></code></pre></div><p>左右 mirror 后：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>        1
+</span></span><span style="display:flex;"><span>      /   \
+</span></span><span style="display:flex;"><span>     3     2
+</span></span><span style="display:flex;"><span>    / \   / \
+</span></span><span style="display:flex;"><span>   7   6 5   4
+</span></span></code></pre></div><p>所以地址映射是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>M(1) = 1
+</span></span><span style="display:flex;"><span>M(2) = 3
+</span></span><span style="display:flex;"><span>M(3) = 2
+</span></span><span style="display:flex;"><span>M(4) = 7
+</span></span><span style="display:flex;"><span>M(5) = 6
+</span></span><span style="display:flex;"><span>M(6) = 5
+</span></span><span style="display:flex;"><span>M(7) = 4
+</span></span></code></pre></div><p>如果用数组表示：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H = [1,2,3,4,5,6,7]
+</span></span><span style="display:flex;"><span>M(H) = [1,3,2,7,6,5,4]
+</span></span></code></pre></div><p>这不是随便重排。</p>
+<p>它是一个保持树结构的左右镜像。</p>
+<p>代数上可以写成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H&#39; = P_m H
+</span></span></code></pre></div><p>其中 <code>P_m</code> 是堆地址的置换矩阵。对于 7 节点堆，它对应：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P_m = (0, 2, 1, 6, 5, 4, 3)
+</span></span></code></pre></div><p>这里用的是 zero-based index。</p>
+<h2 id="mirror-在-kernel-槽位上的定义">mirror 在 kernel 槽位上的定义<a hidden class="anchor" aria-hidden="true" href="#mirror-在-kernel-槽位上的定义">#</a></h2>
+<p>局部 kernel 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>theta = [root, left, right]
+</span></span></code></pre></div><p>如果树左右翻转，left 和 right 的意义也要交换。</p>
+<p>所以 kernel 也要 mirror：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P_lr(theta) = [root, right, left]
+</span></span></code></pre></div><p>写成矩阵：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P_lr =
+</span></span><span style="display:flex;"><span>[[1,0,0],
+</span></span><span style="display:flex;"><span> [0,0,1],
+</span></span><span style="display:flex;"><span> [0,1,0]]
+</span></span></code></pre></div><p>这就是这篇 proof 的重点。</p>
+<p>不是只翻树。</p>
+<p>而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>翻树地址 P_m
+</span></span><span style="display:flex;"><span>同时翻 kernel 槽位 P_lr
+</span></span></code></pre></div><h2 id="claim">Claim<a hidden class="anchor" aria-hidden="true" href="#claim">#</a></h2>
+<p>SPR-040 的 claim 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>S1-KERNEL-MIRROR-C01:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>TreeHeap local convolution is equivariant under mirror / chiral flip:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>P_m K_theta(H) = K_{P_lr theta}(P_m H)
+</span></span></code></pre></div><p>中文说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>先卷积，再 mirror
+</span></span><span style="display:flex;"><span>等价于
+</span></span><span style="display:flex;"><span>先 mirror，再用 mirror 后的 kernel 卷积。
+</span></span></code></pre></div><p>这就是“几何操作由代数操作实现”。</p>
+<h2 id="一个具体例子">一个具体例子<a hidden class="anchor" aria-hidden="true" href="#一个具体例子">#</a></h2>
+<p>输入：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H = [1,2,3,4,5,6,7]
+</span></span><span style="display:flex;"><span>theta = [0.5, 1.25, -0.75]
+</span></span></code></pre></div><p>这个 kernel 是故意选成非对称的。</p>
+<p>因为如果用 <code>[1,1,1]</code>，left 和 right 权重一样，翻不翻都一样，证明没有力量。</p>
+<p>root 节点的卷积：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>K_theta(H)[1]
+</span></span><span style="display:flex;"><span>  = 0.5*1 + 1.25*2 - 0.75*3
+</span></span><span style="display:flex;"><span>  = 0.75
+</span></span></code></pre></div><p>node 2：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>K_theta(H)[2]
+</span></span><span style="display:flex;"><span>  = 0.5*2 + 1.25*4 - 0.75*5
+</span></span><span style="display:flex;"><span>  = 2.25
+</span></span></code></pre></div><p>node 3：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>K_theta(H)[3]
+</span></span><span style="display:flex;"><span>  = 0.5*3 + 1.25*6 - 0.75*7
+</span></span><span style="display:flex;"><span>  = 3.75
+</span></span></code></pre></div><p>内部节点结果是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[0.75, 2.25, 3.75]
+</span></span></code></pre></div><p>mirror 后，node 2 和 node 3 的结构位置交换。</p>
+<p>如果我们先 mirror 输入：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P_m H = [1,3,2,7,6,5,4]
+</span></span></code></pre></div><p>就必须同时使用 mirrored kernel：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P_lr theta = [0.5, -0.75, 1.25]
+</span></span></code></pre></div><p>这时两条路径会得到同一个结果：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P_m K_theta(H)
+</span></span><span style="display:flex;"><span>=
+</span></span><span style="display:flex;"><span>K_{P_lr theta}(P_m H)
+</span></span></code></pre></div><h2 id="proof-分两部分">Proof 分两部分<a hidden class="anchor" aria-hidden="true" href="#proof-分两部分">#</a></h2>
+<h3 id="proof-a演绎等式检查">Proof A：演绎等式检查<a hidden class="anchor" aria-hidden="true" href="#proof-a演绎等式检查">#</a></h3>
+<p>这部分不训练。</p>
+<p>直接检查：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>left  = P_m K_theta(H)
+</span></span><span style="display:flex;"><span>right = K_{P_lr theta}(P_m H)
+</span></span></code></pre></div><p>然后算：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>max_abs(left - right)
+</span></span></code></pre></div><p>如果这个误差接近 0，就说明代数等式成立。</p>
+<p>这一步是数学/代数检查。它不是学习结果。</p>
+<p>也就是说，<code>P_m</code> 是我们定义好的 mirror 地址置换，<code>P_lr</code> 是我们定义好的 kernel 槽位置换。这里验证的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这个定义是否自洽。
+</span></span></code></pre></div><p>它不证明模型自己学会了翻树。</p>
+<h3 id="proof-b归纳学习检查">Proof B：归纳学习检查<a hidden class="anchor" aria-hidden="true" href="#proof-b归纳学习检查">#</a></h3>
+<p>这部分训练。</p>
+<p>我们构造 mirrored data：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>input  = P_m H
+</span></span><span style="display:flex;"><span>target = internal_nodes(P_m K_theta(H))
+</span></span></code></pre></div><p>然后让一个三槽位参数：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Theta = [theta_root, theta_left, theta_right]
+</span></span></code></pre></div><p>通过 MSE loss 和梯度下降学习。</p>
+<p>如果数据真的携带 mirror 规律，那么它应该学出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Theta ~= P_lr theta = [0.5, -0.75, 1.25]
+</span></span></code></pre></div><p>这一步说明的不只是“公式手写成立”，还说明这个 mirrored kernel 可以从数据里被学回。</p>
+<p>更具体地说，这一步要验证：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>learned_root  ~= original_root
+</span></span><span style="display:flex;"><span>learned_left  ~= original_right
+</span></span><span style="display:flex;"><span>learned_right ~= original_left
+</span></span></code></pre></div><p>也就是说，loss 学到的不是一个抽象口号，而是 left/right 槽位在 mirror 后的对应关系。</p>
+<p>这一步才是学习结果。</p>
+<p>但学习到的东西也要说准确：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>学到的是 mirrored kernel slot assignment。
+</span></span><span style="display:flex;"><span>不是学到 mirror 触发规则。
+</span></span><span style="display:flex;"><span>不是学到递归翻转策略。
+</span></span></code></pre></div><h2 id="实验结果">实验结果<a hidden class="anchor" aria-hidden="true" href="#实验结果">#</a></h2>
+<p>脚本：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s1-echo/src/s1_mirror_kernel_symmetry_probe.py
+</span></span></code></pre></div><p>证据：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s1-echo/evidence/s1_mirror_kernel_symmetry_probe/
+</span></span></code></pre></div><p>主机：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>io.grepcode.cn
+</span></span></code></pre></div><p>结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">数值</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>pilot_pass</td>
+          <td style="text-align: right"><code>true</code></td>
+      </tr>
+      <tr>
+          <td>flipped-kernel test max error</td>
+          <td style="text-align: right"><code>8.88e-16</code></td>
+      </tr>
+      <tr>
+          <td>flipped-kernel OOD max error</td>
+          <td style="text-align: right"><code>3.55e-15</code></td>
+      </tr>
+      <tr>
+          <td>unflipped-kernel mean error</td>
+          <td style="text-align: right"><code>6.4372</code></td>
+      </tr>
+      <tr>
+          <td>learned mirrored theta</td>
+          <td style="text-align: right"><code>[0.5000000000000002, -0.7499999999999998, 1.2499999999999996]</code></td>
+      </tr>
+      <tr>
+          <td>theta-mirror L2 error</td>
+          <td style="text-align: right"><code>5.44e-16</code></td>
+      </tr>
+      <tr>
+          <td>left slot learns original right error</td>
+          <td style="text-align: right"><code>2.22e-16</code></td>
+      </tr>
+      <tr>
+          <td>right slot learns original left error</td>
+          <td style="text-align: right"><code>4.44e-16</code></td>
+      </tr>
+      <tr>
+          <td>learned test MSE</td>
+          <td style="text-align: right"><code>1.01e-30</code></td>
+      </tr>
+      <tr>
+          <td>learned OOD MSE</td>
+          <td style="text-align: right"><code>9.76e-30</code></td>
+      </tr>
+  </tbody>
+</table>
+<p>解释：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>用 mirrored kernel 时，误差是机器精度。
+</span></span><span style="display:flex;"><span>不用 mirrored kernel 时，误差明显变大。
+</span></span><span style="display:flex;"><span>从 mirrored data 训练时，参数能学回 [root,right,left]。
+</span></span><span style="display:flex;"><span>left/right 槽位 assignment 的学习误差也是机器精度。
+</span></span></code></pre></div><p>所以：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>S1-KERNEL-MIRROR-C01 -&gt; supported pilot
+</span></span></code></pre></div><h2 id="这说明了什么">这说明了什么<a hidden class="anchor" aria-hidden="true" href="#这说明了什么">#</a></h2>
+<p>SPR-040 支持一个很重要的方向：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的几何操作，可以下降到代数操作。
+</span></span></code></pre></div><p>具体到这篇：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>几何 mirror
+</span></span><span style="display:flex;"><span>--&gt;
+</span></span><span style="display:flex;"><span>堆地址置换 P_m
+</span></span><span style="display:flex;"><span>+ kernel 槽位置换 P_lr
+</span></span></code></pre></div><p>这让 TreeHeap kernel 不只是“局部求和器”。</p>
+<p>它开始像一个结构化算子系统：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>卷积
+</span></span><span style="display:flex;"><span>写入
+</span></span><span style="display:flex;"><span>读取
+</span></span><span style="display:flex;"><span>mirror
+</span></span><span style="display:flex;"><span>路径移动
+</span></span><span style="display:flex;"><span>子堆组合
+</span></span><span style="display:flex;"><span>子堆分解
+</span></span></code></pre></div><p>这些都可以成为后续 encoder/decoder 的基本工具。</p>
+<p>但这里要避免过度解释。</p>
+<p>SPR-040 现在最稳的结论不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 已经证明了完整 3D fold。
+</span></span><span style="display:flex;"><span>TreeHeap 已经学会连续旋转角。
+</span></span><span style="display:flex;"><span>TreeHeap 已经解决 latent plane 投影。
+</span></span></code></pre></div><p>而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap kernel 的槽位具有结构方向意义；
+</span></span><span style="display:flex;"><span>mirror 会改变这些方向的对应关系；
+</span></span><span style="display:flex;"><span>这个方向对应关系可以被 loss 学回。
+</span></span></code></pre></div><p>这是一块很小但很硬的积木。</p>
+<p>它把 TreeHeap kernel 从“标量覆盖”推进到“结构方向上的局部卷积”，但还没有推进到完整的空间折叠理论。</p>
+<p>如果用一句更数学化的话说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root/left/right 是 TreeHeap 局部坐标系。
+</span></span><span style="display:flex;"><span>mirror 是这个局部坐标系上的置换。
+</span></span><span style="display:flex;"><span>loss 可以学习置换后的参数赋值。
+</span></span></code></pre></div><p>但还没有到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>loss 可以学习何时选择这个置换。
+</span></span></code></pre></div><p>这个“何时选择”需要另一层学习树。</p>
+<h2 id="后续数学故事多参森林">后续数学故事：多参森林<a hidden class="anchor" aria-hidden="true" href="#后续数学故事多参森林">#</a></h2>
+<p>Houming818 提出的更合理方向是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>不要让一个大参数树混合学习所有结构能力。
+</span></span><span style="display:flex;"><span>应该用多参森林。
+</span></span></code></pre></div><p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Theta_write   负责写入
+</span></span><span style="display:flex;"><span>Theta_read    负责读取
+</span></span><span style="display:flex;"><span>Theta_compose 负责组合
+</span></span><span style="display:flex;"><span>Theta_mirror  负责 mirror
+</span></span><span style="display:flex;"><span>Theta_time    负责时间状语前置
+</span></span></code></pre></div><p>每棵树有自己的参数和梯度。</p>
+<p>这样做的原因是，mirror 的学习信号不应该被 read/write/semantic 的大 loss 混在一起冲掉。</p>
+<p>对于 mirror，可以拆成两棵相关的树：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Theta_mirror:
+</span></span><span style="display:flex;"><span>  怎么翻，也就是执行 mirror 算子。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Phi_mirror:
+</span></span><span style="display:flex;"><span>  什么时候翻，也就是触发规则。
+</span></span></code></pre></div><p>当前 SPR-040 只碰到了第一件事的一小部分：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>mirror 后 kernel 槽位如何赋值。
+</span></span></code></pre></div><p>还没有学习：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Phi_mirror(H, context) -&gt; 是否触发 mirror
+</span></span></code></pre></div><p>以翻译为例：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>I arrived home at 7 o&#39;clock.
+</span></span><span style="display:flex;"><span>我七点到家了。
+</span></span></code></pre></div><p>这里更像是一个局部结构重排：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>时间短语从英文尾部，移动到中文谓词前。
+</span></span></code></pre></div><p>这不是全树 mirror，而是某种局部 reorder kernel。未来应该有一棵专门的参数树学习：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Theta_time:
+</span></span><span style="display:flex;"><span>  怎么把时间短语前置。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Phi_time:
+</span></span><span style="display:flex;"><span>  什么时候触发时间短语前置。
+</span></span></code></pre></div><p>所以 SPR-040 的位置很清楚：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>它不是终点。
+</span></span><span style="display:flex;"><span>它是在证明 TreeHeap kernel 的结构方向是真的。
+</span></span></code></pre></div><h2 id="还没有证明什么">还没有证明什么<a hidden class="anchor" aria-hidden="true" href="#还没有证明什么">#</a></h2>
+<p>这次没有证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>语言理解
+</span></span><span style="display:flex;"><span>WMT 翻译
+</span></span><span style="display:flex;"><span>真实语义 mirror
+</span></span><span style="display:flex;"><span>任意群等变
+</span></span><span style="display:flex;"><span>TreeHeap 胜过所有 flat model
+</span></span><span style="display:flex;"><span>连续旋转角学习
+</span></span><span style="display:flex;"><span>完整 3D fold
+</span></span><span style="display:flex;"><span>latent plane 投影权重学习
+</span></span><span style="display:flex;"><span>learned mirror trigger
+</span></span><span style="display:flex;"><span>learned recursive mirror depth
+</span></span></code></pre></div><p>它只证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的 root/left/right 局部卷积，
+</span></span><span style="display:flex;"><span>在 mirror 操作下有正确的代数置换形式。
+</span></span></code></pre></div><h2 id="下一步">下一步<a hidden class="anchor" aria-hidden="true" href="#下一步">#</a></h2>
+<p>接下来可以沿着几个方向扩展，但不需要急着开新编号去做旋转。更合理的是先让后学工程师评判 SPR-040 这个最小 claim 是否站稳：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1. 当前 mirror assignment proof 是否表述清楚
+</span></span><span style="display:flex;"><span>2. 是否需要补一个 flat baseline，证明无结构槽位时不能自然解释 mirror
+</span></span><span style="display:flex;"><span>3. 是否要把 scalar slot 扩展到 vector slot
+</span></span><span style="display:flex;"><span>4. 是否要把 depth-1 root/left/right 扩展到 recursive subheap
+</span></span><span style="display:flex;"><span>5. 是否要接回 short real corpus TreeHeap echo
+</span></span><span style="display:flex;"><span>6. 是否要设计 multi-parameter forest：单独训练 mirror/time/read/write 参数树
+</span></span></code></pre></div><p>如果这些继续成立，TreeHeap 的 kernel 就不是一组临时写出来的函数，而是一个可以逐步扩展的结构化代数工具箱。</p>
+<p>一句话总结：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>SPR-040 证明：
+</span></span><span style="display:flex;"><span>TreeHeap 的左右 mirror 可以用代数置换实现；
+</span></span><span style="display:flex;"><span>树地址要翻，kernel 的 left/right 槽位也要翻；
+</span></span><span style="display:flex;"><span>这个规则既能手算成立，也能从 mirrored data 里被梯度学回。
+</span></span></code></pre></div><blockquote>
+<p>ARA: <a href="https://github.com/houming818/sametime/blob/main/ara/s1-echo/logic/mirror_kernel_symmetry.md">mirror kernel symmetry</a> / <a href="https://github.com/houming818/sametime/tree/main/ara/s1-echo/evidence/s1_mirror_kernel_symmetry_probe">evidence</a> / <a href="https://github.com/houming818/sametime/blob/main/ara/s1-echo/logic/claims.md">claims</a></p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

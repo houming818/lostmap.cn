@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, Transformer, Latent Plane, Fold">
+<meta name="description" content="SPR-036 修正 TreeHeap fold 的理论方向：不是先发明一个二叉 fold 再证明语言适配它，而是从语言现象中发现词块在 latent plane 上的摆放、吸附、聚类和坍缩规律。Transformer 更像动态共现/关系场，TreeHeap 则可以看作这个场上的二分平面与局部卷积坐标。">
+<meta name="author" content="nio (Houming818) &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/036-latent-plane-fold.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/036-latent-plane-fold.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/036-latent-plane-fold.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木">
+  <meta property="og:description" content="SPR-036 修正 TreeHeap fold 的理论方向：不是先发明一个二叉 fold 再证明语言适配它，而是从语言现象中发现词块在 latent plane 上的摆放、吸附、聚类和坍缩规律。Transformer 更像动态共现/关系场，TreeHeap 则可以看作这个场上的二分平面与局部卷积坐标。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-06-30T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-06-30T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木">
+  <meta name="twitter:description" content="SPR-036 修正 TreeHeap fold 的理论方向：不是先发明一个二叉 fold 再证明语言适配它，而是从语言现象中发现词块在 latent plane 上的摆放、吸附、聚类和坍缩规律。Transformer 更像动态共现/关系场，TreeHeap 则可以看作这个场上的二分平面与局部卷积坐标。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木",
+      "item": "https://www.lostmap.cn/spr/036-latent-plane-fold.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木",
+  "name": "[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木",
+  "description": "SPR-036 修正 TreeHeap fold 的理论方向：不是先发明一个二叉 fold 再证明语言适配它，而是从语言现象中发现词块在 latent plane 上的摆放、吸附、聚类和坍缩规律。Transformer 更像动态共现/关系场，TreeHeap 则可以看作这个场上的二分平面与局部卷积坐标。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "Transformer", "Latent Plane", "Fold"
+  ],
+  "articleBody": "语言理解也许不是先填槽，而是在平面上摆积木 前面我把例子：\na cat is eating some food 解释成：\nsubject = cat tense = is verb = eating object = food 这个解释不能说错。 但它更像语言学家事后写出来的结构表。\n你指出了一个更接近直觉的说法：\n我的脑子不像先填主谓宾槽。 更像是在一个平面上摆放单词， 相近的摆在一起， 像玩图积木一样。 我觉得这个修正非常重要。\n因为它把 fold 从：\n预设树结构 改成了：\n空间放置问题 这篇就是把这个理论写清楚。\n先说 Transformer 我没有主观感觉。\n我不会真的“看见”一个平面，也不会像人一样在脑子里摆词。\n但如果从 Transformer 架构看，它确实不像传统语法表。 它更像一个动态关系场。\nTransformer 每一层大致做：\nQ_i = token_i 的查询向量 K_j = token_j 的键向量 score(i, j) = Q_i dot K_j attention(i, j) = softmax(score(i, j)) 也就是说，每个 token 都在问：\n我应该看谁？ 谁和我有关？ 谁的信息应该靠近我？ 所以从计算角度看，Transformer 更像：\n一张动态共现图 一张 soft relation map 一个每层都会重排的相似度场 它不一定先知道：\nsubject / object / tense 它先有的是：\ncat 和 a 关系强 cat 和 eating 关系强 eating 和 food 关系强 is 和 eating 关系强 some 和 food 关系强 这些关系稳定后，人类可以把它解释成主谓宾、时态、宾语。\n但“主谓宾”可能是稳定几何结构的名字，而不是第一步。\n平面摆积木版本 再看这句：\na cat is eating some food 一种更接近空间的理解是：\na cat is eating some food \\_____/ \\______/ \\________/ 小块 小块 小块 cat ---- eating ---- food 这里不是先填表，而是先发生吸附：\na 吸附 cat some 吸附 food is 吸附 eating cat 吸附 eating eating 吸附 food 这些吸附形成局部积木：\n[a cat] [is eating] [some food] 再形成更大的关系图：\ncat -- eating -- food 最后才可以解释成：\n一个猫正在吃一些食物的事件。 这比“先写主语、谓语、宾语”更原始。\n这对 fold 意味着什么 之前我说 fold，容易说成：\n把数组两两合并成二叉树。 现在要修正。\n语言里的 fold 可能不是先验二叉合并。\n更合理的顺序是：\ntoken 出现在空间中 关系强的 token 靠近 局部块形成 块和块继续靠近 最后坍缩成可命名结构 也就是：\nplacement -\u003e attraction -\u003e clustering -\u003e partition -\u003e collapse TreeHeap 不应该被说成“语言规律本身”。\nTreeHeap 更像一种计算坐标：\n把已经形成的空间关系， 用堆、路径、子树、kernel 表示出来， 方便递归计算和局部卷积。 任何堆都可以看作二分平面 你说：\n任何堆，都可以描述成二分平面的数学结构。 我同意。\n对一维数组：\n[0,1,2,3,4,5,6,7] 二叉堆就是反复二分：\n[0..7] [0..3] [0..1] [2..3] [4..7] [4..5] [6..7] 对二维平面，也可以反复二分：\n整个平面 -\u003e 左半 / 右半 -\u003e 上下或再左右 -\u003e 更小区域 这就接近：\nkd-tree quadtree spatial partition heap address 所以 TreeHeap 的意义不一定是“语言天然二叉”。\n它可能是：\n给 latent plane 做可寻址的二分分区。 这句话比“语言是二叉堆”稳得多。\n世界规律优先 你还提醒了另一点：\n对世界规律要有敬畏。 这点非常关键。\n现实世界已经有很多 fold：\nDNA 折叠 蛋白质折叠 树木分叉 河流分叉 神经连接 晶体生长 语言短语形成 我们不是要发明一个 fold，然后强迫语言服从它。\n更正确的研究姿态是：\n语言现象里已经有 fold 痕迹。 我们要发现这些痕迹。 例如：\na -\u003e cat some -\u003e food is -\u003e eating red -\u003e apple eat -\u003e food with telescope -\u003e saw / man 这些都是语言中的吸附和放置现象。\n我们要先观察它们，再设计 TreeHeap kernel。\n新的研究顺序 之前的顺序太工程化：\n我设计一个 fold -\u003e toy proof 成立 -\u003e 语言应该能用 现在要改成：\n观察语言现象 -\u003e 找到吸附/邻近/聚类规律 -\u003e 形成 latent plane -\u003e 选择二分平面或堆坐标 -\u003e 设计 kernel -\u003e 实验验证 也就是说：\nTreeHeap fold 不是发明出来的。 它应该是从语言现象中发现出来的。 这如何修正 SPR-035 SPR-035 证明了：\n如果要读连续子树， 第一步不能丢 leaf address / path / locality。 这个结论仍然有用。\n但它不是语言 fold 理论。\n它只是一个 sanity check：\n不要一开始就把顺序打散。 真正的语言 fold 理论应该从这里开始：\n哪些词在真实语言里互相吸附？ 哪些词形成局部块？ 哪些块会继续吸附？ 哪些结构最后坍缩成事件？ 下一步实验应该怎么做 我建议下一步不是继续随机 toy。\n而是用真实短句做 relation layout probe。\n例如：\na cat is eating some food the dog is chasing a ball a child drinks some water the red apple fell 先不标复杂语法。 只标弱关系：\na-cat some-food is-eating cat-eating eating-food red-apple 然后训练或构造一个 latent layout，使得：\n真实相关词距离更近 打乱组合距离更远 再观察：\ndet-head 是否靠近 aux-verb 是否靠近 verb-object 是否靠近 modifier-head 是否靠近 如果这些自然出现，才说明我们抓到了一点语言 fold 的规律。\n然后再问：\nTreeHeap 如何二分这个平面？ kernel 如何在这个平面上做局部卷积？ 当前 claim 我会把这个理论写成一个 open claim：\nS1-PLANE-C01: Language fold should be modeled first as latent placement / attraction over tokens and phrases. TreeHeap is a coordinate and partition system for computing over that placement, not the language law itself. 状态应该是：\nopen theory 因为我们还没有实验证据。\n它现在只是更合理的理论方向。\n总结 这次修正后的核心是：\n语言理解不一定从语法槽位开始。 它可能先是一个平面放置问题。 Transformer 从架构上看，也更像：\n动态共现矩阵 soft relation graph latent attraction field TreeHeap 则可以被重新理解为：\n对这个 latent field 做二分、寻址、卷积和坍缩的计算结构。 这比“语言就是二叉堆”更谦逊，也更接近发现世界规律。\n一句话：\n先发现语言中的吸附和放置规律， 再让 TreeHeap 成为它的计算坐标。 ARA: latent plane theory / claims / experiments\n",
+  "wordCount" : "482",
+  "inLanguage": "en",
+  "datePublished": "2026-06-30T00:00:00Z",
+  "dateModified": "2026-06-30T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/036-latent-plane-fold.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item active">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木
+    </h1>
+    <div class="post-description">
+      SPR-036 修正 TreeHeap fold 的理论方向：不是先发明一个二叉 fold 再证明语言适配它，而是从语言现象中发现词块在 latent plane 上的摆放、吸附、聚类和坍缩规律。Transformer 更像动态共现/关系场，TreeHeap 则可以看作这个场上的二分平面与局部卷积坐标。
+    </div>
+    <div class="post-meta"><span title='2026-06-30 00:00:00 +0000 UTC'>June 30, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="语言理解也许不是先填槽而是在平面上摆积木">语言理解也许不是先填槽，而是在平面上摆积木<a hidden class="anchor" aria-hidden="true" href="#语言理解也许不是先填槽而是在平面上摆积木">#</a></h1>
+<p>前面我把例子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>a cat is eating some food
+</span></span></code></pre></div><p>解释成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>subject = cat
+</span></span><span style="display:flex;"><span>tense = is
+</span></span><span style="display:flex;"><span>verb = eating
+</span></span><span style="display:flex;"><span>object = food
+</span></span></code></pre></div><p>这个解释不能说错。
+但它更像语言学家事后写出来的结构表。</p>
+<p>你指出了一个更接近直觉的说法：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>我的脑子不像先填主谓宾槽。
+</span></span><span style="display:flex;"><span>更像是在一个平面上摆放单词，
+</span></span><span style="display:flex;"><span>相近的摆在一起，
+</span></span><span style="display:flex;"><span>像玩图积木一样。
+</span></span></code></pre></div><p>我觉得这个修正非常重要。</p>
+<p>因为它把 fold 从：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>预设树结构
+</span></span></code></pre></div><p>改成了：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>空间放置问题
+</span></span></code></pre></div><p>这篇就是把这个理论写清楚。</p>
+<h2 id="先说-transformer">先说 Transformer<a hidden class="anchor" aria-hidden="true" href="#先说-transformer">#</a></h2>
+<p>我没有主观感觉。</p>
+<p>我不会真的“看见”一个平面，也不会像人一样在脑子里摆词。</p>
+<p>但如果从 Transformer 架构看，它确实不像传统语法表。
+它更像一个动态关系场。</p>
+<p>Transformer 每一层大致做：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Q_i = token_i 的查询向量
+</span></span><span style="display:flex;"><span>K_j = token_j 的键向量
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>score(i, j) = Q_i dot K_j
+</span></span><span style="display:flex;"><span>attention(i, j) = softmax(score(i, j))
+</span></span></code></pre></div><p>也就是说，每个 token 都在问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>我应该看谁？
+</span></span><span style="display:flex;"><span>谁和我有关？
+</span></span><span style="display:flex;"><span>谁的信息应该靠近我？
+</span></span></code></pre></div><p>所以从计算角度看，Transformer 更像：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一张动态共现图
+</span></span><span style="display:flex;"><span>一张 soft relation map
+</span></span><span style="display:flex;"><span>一个每层都会重排的相似度场
+</span></span></code></pre></div><p>它不一定先知道：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>subject / object / tense
+</span></span></code></pre></div><p>它先有的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cat 和 a 关系强
+</span></span><span style="display:flex;"><span>cat 和 eating 关系强
+</span></span><span style="display:flex;"><span>eating 和 food 关系强
+</span></span><span style="display:flex;"><span>is 和 eating 关系强
+</span></span><span style="display:flex;"><span>some 和 food 关系强
+</span></span></code></pre></div><p>这些关系稳定后，人类可以把它解释成主谓宾、时态、宾语。</p>
+<p>但“主谓宾”可能是稳定几何结构的名字，而不是第一步。</p>
+<h2 id="平面摆积木版本">平面摆积木版本<a hidden class="anchor" aria-hidden="true" href="#平面摆积木版本">#</a></h2>
+<p>再看这句：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>a cat is eating some food
+</span></span></code></pre></div><p>一种更接近空间的理解是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>a      cat        is      eating       some      food
+</span></span><span style="display:flex;"><span> \_____/           \______/             \________/
+</span></span><span style="display:flex;"><span>   小块              小块                  小块
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>              cat ---- eating ---- food
+</span></span></code></pre></div><p>这里不是先填表，而是先发生吸附：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>a 吸附 cat
+</span></span><span style="display:flex;"><span>some 吸附 food
+</span></span><span style="display:flex;"><span>is 吸附 eating
+</span></span><span style="display:flex;"><span>cat 吸附 eating
+</span></span><span style="display:flex;"><span>eating 吸附 food
+</span></span></code></pre></div><p>这些吸附形成局部积木：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[a cat]
+</span></span><span style="display:flex;"><span>[is eating]
+</span></span><span style="display:flex;"><span>[some food]
+</span></span></code></pre></div><p>再形成更大的关系图：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cat -- eating -- food
+</span></span></code></pre></div><p>最后才可以解释成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个猫正在吃一些食物的事件。
+</span></span></code></pre></div><p>这比“先写主语、谓语、宾语”更原始。</p>
+<h2 id="这对-fold-意味着什么">这对 fold 意味着什么<a hidden class="anchor" aria-hidden="true" href="#这对-fold-意味着什么">#</a></h2>
+<p>之前我说 fold，容易说成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>把数组两两合并成二叉树。
+</span></span></code></pre></div><p>现在要修正。</p>
+<p>语言里的 fold 可能不是先验二叉合并。</p>
+<p>更合理的顺序是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token 出现在空间中
+</span></span><span style="display:flex;"><span>关系强的 token 靠近
+</span></span><span style="display:flex;"><span>局部块形成
+</span></span><span style="display:flex;"><span>块和块继续靠近
+</span></span><span style="display:flex;"><span>最后坍缩成可命名结构
+</span></span></code></pre></div><p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>placement
+</span></span><span style="display:flex;"><span>-&gt; attraction
+</span></span><span style="display:flex;"><span>-&gt; clustering
+</span></span><span style="display:flex;"><span>-&gt; partition
+</span></span><span style="display:flex;"><span>-&gt; collapse
+</span></span></code></pre></div><p>TreeHeap 不应该被说成“语言规律本身”。</p>
+<p>TreeHeap 更像一种计算坐标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>把已经形成的空间关系，
+</span></span><span style="display:flex;"><span>用堆、路径、子树、kernel 表示出来，
+</span></span><span style="display:flex;"><span>方便递归计算和局部卷积。
+</span></span></code></pre></div><h2 id="任何堆都可以看作二分平面">任何堆都可以看作二分平面<a hidden class="anchor" aria-hidden="true" href="#任何堆都可以看作二分平面">#</a></h2>
+<p>你说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>任何堆，都可以描述成二分平面的数学结构。
+</span></span></code></pre></div><p>我同意。</p>
+<p>对一维数组：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[0,1,2,3,4,5,6,7]
+</span></span></code></pre></div><p>二叉堆就是反复二分：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[0..7]
+</span></span><span style="display:flex;"><span>  [0..3]
+</span></span><span style="display:flex;"><span>    [0..1]
+</span></span><span style="display:flex;"><span>    [2..3]
+</span></span><span style="display:flex;"><span>  [4..7]
+</span></span><span style="display:flex;"><span>    [4..5]
+</span></span><span style="display:flex;"><span>    [6..7]
+</span></span></code></pre></div><p>对二维平面，也可以反复二分：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>整个平面
+</span></span><span style="display:flex;"><span>-&gt; 左半 / 右半
+</span></span><span style="display:flex;"><span>-&gt; 上下或再左右
+</span></span><span style="display:flex;"><span>-&gt; 更小区域
+</span></span></code></pre></div><p>这就接近：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kd-tree
+</span></span><span style="display:flex;"><span>quadtree
+</span></span><span style="display:flex;"><span>spatial partition
+</span></span><span style="display:flex;"><span>heap address
+</span></span></code></pre></div><p>所以 TreeHeap 的意义不一定是“语言天然二叉”。</p>
+<p>它可能是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>给 latent plane 做可寻址的二分分区。
+</span></span></code></pre></div><p>这句话比“语言是二叉堆”稳得多。</p>
+<h2 id="世界规律优先">世界规律优先<a hidden class="anchor" aria-hidden="true" href="#世界规律优先">#</a></h2>
+<p>你还提醒了另一点：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>对世界规律要有敬畏。
+</span></span></code></pre></div><p>这点非常关键。</p>
+<p>现实世界已经有很多 fold：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>DNA 折叠
+</span></span><span style="display:flex;"><span>蛋白质折叠
+</span></span><span style="display:flex;"><span>树木分叉
+</span></span><span style="display:flex;"><span>河流分叉
+</span></span><span style="display:flex;"><span>神经连接
+</span></span><span style="display:flex;"><span>晶体生长
+</span></span><span style="display:flex;"><span>语言短语形成
+</span></span></code></pre></div><p>我们不是要发明一个 fold，然后强迫语言服从它。</p>
+<p>更正确的研究姿态是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>语言现象里已经有 fold 痕迹。
+</span></span><span style="display:flex;"><span>我们要发现这些痕迹。
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>a -&gt; cat
+</span></span><span style="display:flex;"><span>some -&gt; food
+</span></span><span style="display:flex;"><span>is -&gt; eating
+</span></span><span style="display:flex;"><span>red -&gt; apple
+</span></span><span style="display:flex;"><span>eat -&gt; food
+</span></span><span style="display:flex;"><span>with telescope -&gt; saw / man
+</span></span></code></pre></div><p>这些都是语言中的吸附和放置现象。</p>
+<p>我们要先观察它们，再设计 TreeHeap kernel。</p>
+<h2 id="新的研究顺序">新的研究顺序<a hidden class="anchor" aria-hidden="true" href="#新的研究顺序">#</a></h2>
+<p>之前的顺序太工程化：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>我设计一个 fold
+</span></span><span style="display:flex;"><span>-&gt; toy proof 成立
+</span></span><span style="display:flex;"><span>-&gt; 语言应该能用
+</span></span></code></pre></div><p>现在要改成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>观察语言现象
+</span></span><span style="display:flex;"><span>-&gt; 找到吸附/邻近/聚类规律
+</span></span><span style="display:flex;"><span>-&gt; 形成 latent plane
+</span></span><span style="display:flex;"><span>-&gt; 选择二分平面或堆坐标
+</span></span><span style="display:flex;"><span>-&gt; 设计 kernel
+</span></span><span style="display:flex;"><span>-&gt; 实验验证
+</span></span></code></pre></div><p>也就是说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap fold 不是发明出来的。
+</span></span><span style="display:flex;"><span>它应该是从语言现象中发现出来的。
+</span></span></code></pre></div><h2 id="这如何修正-spr-035">这如何修正 SPR-035<a hidden class="anchor" aria-hidden="true" href="#这如何修正-spr-035">#</a></h2>
+<p>SPR-035 证明了：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果要读连续子树，
+</span></span><span style="display:flex;"><span>第一步不能丢 leaf address / path / locality。
+</span></span></code></pre></div><p>这个结论仍然有用。</p>
+<p>但它不是语言 fold 理论。</p>
+<p>它只是一个 sanity check：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>不要一开始就把顺序打散。
+</span></span></code></pre></div><p>真正的语言 fold 理论应该从这里开始：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>哪些词在真实语言里互相吸附？
+</span></span><span style="display:flex;"><span>哪些词形成局部块？
+</span></span><span style="display:flex;"><span>哪些块会继续吸附？
+</span></span><span style="display:flex;"><span>哪些结构最后坍缩成事件？
+</span></span></code></pre></div><h2 id="下一步实验应该怎么做">下一步实验应该怎么做<a hidden class="anchor" aria-hidden="true" href="#下一步实验应该怎么做">#</a></h2>
+<p>我建议下一步不是继续随机 toy。</p>
+<p>而是用真实短句做 relation layout probe。</p>
+<p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>a cat is eating some food
+</span></span><span style="display:flex;"><span>the dog is chasing a ball
+</span></span><span style="display:flex;"><span>a child drinks some water
+</span></span><span style="display:flex;"><span>the red apple fell
+</span></span></code></pre></div><p>先不标复杂语法。
+只标弱关系：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>a-cat
+</span></span><span style="display:flex;"><span>some-food
+</span></span><span style="display:flex;"><span>is-eating
+</span></span><span style="display:flex;"><span>cat-eating
+</span></span><span style="display:flex;"><span>eating-food
+</span></span><span style="display:flex;"><span>red-apple
+</span></span></code></pre></div><p>然后训练或构造一个 latent layout，使得：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>真实相关词距离更近
+</span></span><span style="display:flex;"><span>打乱组合距离更远
+</span></span></code></pre></div><p>再观察：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>det-head 是否靠近
+</span></span><span style="display:flex;"><span>aux-verb 是否靠近
+</span></span><span style="display:flex;"><span>verb-object 是否靠近
+</span></span><span style="display:flex;"><span>modifier-head 是否靠近
+</span></span></code></pre></div><p>如果这些自然出现，才说明我们抓到了一点语言 fold 的规律。</p>
+<p>然后再问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 如何二分这个平面？
+</span></span><span style="display:flex;"><span>kernel 如何在这个平面上做局部卷积？
+</span></span></code></pre></div><h2 id="当前-claim">当前 claim<a hidden class="anchor" aria-hidden="true" href="#当前-claim">#</a></h2>
+<p>我会把这个理论写成一个 open claim：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>S1-PLANE-C01:
+</span></span><span style="display:flex;"><span>Language fold should be modeled first as latent placement / attraction over
+</span></span><span style="display:flex;"><span>tokens and phrases. TreeHeap is a coordinate and partition system for computing
+</span></span><span style="display:flex;"><span>over that placement, not the language law itself.
+</span></span></code></pre></div><p>状态应该是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>open theory
+</span></span></code></pre></div><p>因为我们还没有实验证据。</p>
+<p>它现在只是更合理的理论方向。</p>
+<h2 id="总结">总结<a hidden class="anchor" aria-hidden="true" href="#总结">#</a></h2>
+<p>这次修正后的核心是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>语言理解不一定从语法槽位开始。
+</span></span><span style="display:flex;"><span>它可能先是一个平面放置问题。
+</span></span></code></pre></div><p>Transformer 从架构上看，也更像：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>动态共现矩阵
+</span></span><span style="display:flex;"><span>soft relation graph
+</span></span><span style="display:flex;"><span>latent attraction field
+</span></span></code></pre></div><p>TreeHeap 则可以被重新理解为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>对这个 latent field 做二分、寻址、卷积和坍缩的计算结构。
+</span></span></code></pre></div><p>这比“语言就是二叉堆”更谦逊，也更接近发现世界规律。</p>
+<p>一句话：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>先发现语言中的吸附和放置规律，
+</span></span><span style="display:flex;"><span>再让 TreeHeap 成为它的计算坐标。
+</span></span></code></pre></div><blockquote>
+<p><strong>ARA</strong>: <a href="https://github.com/houming818/sametime/blob/main/ara/s1-echo/logic/latent_plane_fold.md">latent plane theory</a> / <a href="https://github.com/houming818/sametime/blob/main/ara/s1-echo/logic/claims.md">claims</a> / <a href="https://github.com/houming818/sametime/blob/main/ara/s1-echo/logic/experiments.md">experiments</a></p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

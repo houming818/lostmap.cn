@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[TF-001] Transformer 从零到一——为什么、是什么、怎么实现 | LostMap</title>
+<meta name="keywords" content="Transformer,, Self-Attention,, Multi-Head,, Positional, Encoding,, LayerNorm,, Pre-LN,, Residual,, Encoder-Decoder,, Vaswani">
+<meta name="description" content="从 RNN 的串行瓶颈出发，走到 Multi-Head Attention 的全并行设计，最后逐行对照 model.py 看懂每一行代码。涵盖 Q/K/V 几何直觉、scaled dot-product、Pre-LN、causal mask、从 NMT 到 GPT 的演进。">
+<meta name="author" content="nio (Houming818) &amp; opencode (First Mate)">
+<link rel="canonical" href="https://www.lostmap.cn/tf/001-transformer-from-scratch.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/tf/001-transformer-from-scratch.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/tf/001-transformer-from-scratch.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[TF-001] Transformer 从零到一——为什么、是什么、怎么实现">
+  <meta property="og:description" content="从 RNN 的串行瓶颈出发，走到 Multi-Head Attention 的全并行设计，最后逐行对照 model.py 看懂每一行代码。涵盖 Q/K/V 几何直觉、scaled dot-product、Pre-LN、causal mask、从 NMT 到 GPT 的演进。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="tf">
+    <meta property="article:published_time" content="2026-05-17T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-05-17T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[TF-001] Transformer 从零到一——为什么、是什么、怎么实现">
+  <meta name="twitter:description" content="从 RNN 的串行瓶颈出发，走到 Multi-Head Attention 的全并行设计，最后逐行对照 model.py 看懂每一行代码。涵盖 Q/K/V 几何直觉、scaled dot-product、Pre-LN、causal mask、从 NMT 到 GPT 的演进。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[TF-001] Transformer 从零到一——为什么、是什么、怎么实现",
+      "item": "https://www.lostmap.cn/tf/001-transformer-from-scratch.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[TF-001] Transformer 从零到一——为什么、是什么、怎么实现",
+  "name": "[TF-001] Transformer 从零到一——为什么、是什么、怎么实现",
+  "description": "从 RNN 的串行瓶颈出发，走到 Multi-Head Attention 的全并行设计，最后逐行对照 model.py 看懂每一行代码。涵盖 Q/K/V 几何直觉、scaled dot-product、Pre-LN、causal mask、从 NMT 到 GPT 的演进。",
+  "keywords": [
+    "Transformer,", "Self-Attention,", "Multi-Head,", "Positional", "Encoding,", "LayerNorm,", "Pre-LN,", "Residual,", "Encoder-Decoder,", "Vaswani"
+  ],
+  "articleBody": "Transformer 从零到一 不是因为它更聪明——是因为它把整个句子当一张全连接图，一次算完。\n1. RNN 为什么不行 RNN 的翻译流程：读第 1 个词 → 更新隐藏状态 → 读第 2 个词 → 更新隐藏状态 → … → 读最后一个词 → 开始解码。\n\"die katze schläft\" → h1 → h2 → h3 → 解码 \"the cat sleeps\" 这里有一个根本问题：50 个词共用一条链。第 50 个词的梯度要穿过 49 层才能传到第 1 个词。LSTM 用三个门（遗忘门、输入门、输出门）延缓了梯度消失，但治标不治本。\n用 Phase 1 LSTM 跑 IWSLT14 翻译，最佳 BLEU 只有 3.06。跑 5 个 epoch 就过拟合——梯度链太长，信息衰减太快，模型记不住长程依赖。\nTransformer 的方案是：不串行了。整个句子一次性扔进去，让每个词同时关联所有其他词。\n但这个方案不免费——代价是两方面的膨胀：\n1. Hidden 膨胀。 LSTM 的 encoder 输出是 (num_layers, B, hidden_size)，比如 2 层 256 维 = (2, B, 256)，只存最终状态 512 个浮点数。Transformer 的 encoder 输出是 (B, S, d_model) ——每个位置都保留了完整的 d_model 维向量。句长 S=128、d_model=512 时，encoder 输出是 65536 个浮点数，是 LSTM hidden 的 128 倍。\n2. 空间复杂度 O(n²)。 Self-Attention 计算所有词对之间的分数，Attention 矩阵是 (B, heads, S, S)。S=128 时是 128² = 16384 个元素/头，S=512 时是 262144。相比之下 LSTM 的复杂度是 O(n)——每步只看当前输入和 hidden state。这就是为什么长序列（长文本、高像素图像）上原生 Attention 会撞显存墙。\n代价之三是：需要位置编码。Attention 本身不认识顺序——而 RNN 天然有位置信息，因为词是一个一个按顺序灌进去的，位置即处理顺序，不需要额外标记。Transformer 一次性吞入整句，词的先后关系全部丢失，必须显式注入 sin/cos 位置信号补回来。常被误称为\"时序信息\"，其实不是时序——是位置信息，跟时间无关，跟排在哪儿有关。\n那代价花得值吗？ 一个直接的反问：把 LSTM 的 hidden_size 膨胀到和 Transformer 同等参数量，能追上来吗？事实证明不能。LSTM BiLSTM + Attention 在 IWSLT14 上的上限是 BLEU 3.77，而同等参数量的 Transformer 是 11.49。\n差距不是参数量——是信息流动方式。\n改变这个架构，改变的是矩阵本身的形状。 LSTM 的梯度沿时间步串行累积——error signal 穿过 n 层 cell state 逐层回传，路径长度 O(n)。Transformer 的梯度通过 Attention 权重矩阵直连——第 i 个位置到第 j 个位置的梯度走一次 matmul 的链式法则就到，路径长度 O(1)。前者是串联电路，后者是全连接总线的平行电路。\n这是一个数据结构层面的观察。 O(n) 和 O(1) 不是运算步数的差异——是矩阵的拓扑结构从链变成了图。RNN 的隐藏状态链是一个一维序列，梯度沿这条线逐站传递。Attention 的权重矩阵是一个二维邻接矩阵，任意两点直连，梯度在各位置间均匀分布。形状的改变先于算法的改变。 后面拆解的 Self-Attention、Multi-Head、LayerNorm，都是在\"全连接邻接矩阵\"这个数据结构上展开的具体计算规则。\nLSTM (即使扩大) Transformer 信息瓶颈 单管滴管：整句逐个吸入 (num_layers, B, hidden_size) 一个定长向量，解码器只能从这根管里拆 (B, S, d_model) 按位置展开，解码器直接查源句任意位置 梯度路径 O(n)：第 50 个词的梯度穿 49 层 RNN step 才到第 1 个词 O(1)：任意两个位置通过 Attention 权重直连 并行性 串行：必须等上一步算完，GPU 大量空闲 全并行：所有位置一次 matmul 算完 LSTM 的 hidden state 本质是一个单管滴管——不管管子多粗（hidden_size=512、1024、2048），一次只能吸一个孔，50 个词的语义必须逐个挤过去。Transformer 是多通道移液器——多个吸头对准矩阵的一整行，一次操作同时处理所有位置。这才是根本差别。\nRNN 不是废了。它在这里只是碰巧被拿来解决 NLP——NLP 需要全距离依赖，RNN 的链式拓扑先天吃亏。但在流式信号处理、实时控制、低延迟嵌入式推理里，时序本身就是信息，串行不是缺陷是特性，RNN 依然是英雄之刃。\n怎么做到的？答案就是 Self-Attention。\n2. Self-Attention —— Q、K、V Self-Attention 的直觉：我是一个词，我拿三个问题去问整句话里的每个词。\n组件 含义 直觉 Q (Query) “我想找什么？” 当前词的搜索意图 K (Key) “我有什么？” 每个词的标签/索引 V (Value) “我值多少？” 每个词的实际语义内容 Q、K、V 都来自同一个输入序列，不是来自词表。 输入张量 (B, T, d_model) 分别过三个不同的线性投影 W_q、W_k、W_v（都是 nn.Linear(d_model, d_model)），得到三个形状完全相同的张量。词表只在两处出现——入口的 Embedding（token → d_model，本质是一键查表）和出口的 Linear（d_model → vocab_size logits）。中间的 Q、K、V 全程在 d_model 空间运算，跟词表大小无关。\n这些 W 参数本质是寄存器。 不管是 RNN 的 W_hh（h_{t-1}→h_t 的时间连接），还是 Transformer 的 W_q/W_k/W_v（位置 i→位置 j 的图连接），里面存的都是一个一个的标量参数——梯度反向传播时，值就积累在这些寄存器里。RNN 积的是串行时间量，Transformer 积的是全连接边权重。拓扑不同，寄存的逻辑相同。\n这些寄存器之所以排列成矩阵，是为了适应物理世界的算力架构。 GPU 的并行单元按矩阵瓦片调度——寄存器排成矩阵，才能被一次 matmul 调起所有通道。不是\"矩阵天然适合存参数\"，是\"参数必须排成矩阵才能用硬件\"。\n流程：\n1. 每个词过一个线性层 → 得到自己的 Q, K, V 2. Q 和所有 K 做点积 → 得到 \"当前词和每个词的匹配分数\" 3. 除以 √d_k → 缩放防梯度饱和（点积方差随维度增长） 4. softmax → 归一化成分数权重 5. 权重 × V → 加权求和 → 当前词的上下文表示 公式：\n$\n$ \\text{Attention}(Q, K, V) = \\text{softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)V $$\n为什么除以 √d_k？ 假设 Q 和 K 的每个元素独立同分布，均值为 0，方差为 1。点积 q·k 的方差是 d_k。d_k 大了之后，点积值可能很大，会让 softmax 落入梯度平坦区（极低或极高的 softmax 值梯度接近 0）。除以 √d_k 把方差压回 1，保持 softmax 在\"敏感区\"。\n代码对照——model.py:59：\nscores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k) 2.1 Mask —— 边界与未来 让模型知道\"哪句话在哪结束、哪个词不能偷看\"。Encoder 屏蔽 padding，Decoder 用下三角屏蔽未来词。\n# Encoder mask (model.py:115): padding 位置不能参与 src_mask = (src != 0).unsqueeze(1).unsqueeze(2) # (B, 1, 1, S) # Decoder mask (model.py:167): 未来词不能偷看 tgt_mask = torch.tril(torch.ones(1, 1, T, T, device=tgt.device)) # 比如 T=4: # [[1, 0, 0, 0], # [1, 1, 0, 0], # [1, 1, 1, 0], # [1, 1, 1, 1]] 3. Multi-Head —— 8 个专家各自打分 一个 Attention Head 只从一种角度衡量\"相似度\"。Multi-Head 让 8 个头各自在低维子空间（d_k = d_model / 8）独立计算 Attention，然后拼接起来。\nd_model = 512, num_heads = 8 → d_k = 64 不是 \"把 512 维劈成 8 段\" —— 而是 \"每个头都有权看全部 512 维，但只输出 64 维\" 代码——model.py:46-65：\n# 四个线性投影 self.W_q = nn.Linear(d_model, d_model) # 512 → 512（拆分到 8 头 × 64） self.W_k = nn.Linear(d_model, d_model) self.W_v = nn.Linear(d_model, d_model) self.W_o = nn.Linear(d_model, d_model) # 拼接后投影回 512 def forward(self, query, key, value, mask=None): B = query.size(0) Q = self.W_q(query).view(B, -1, self.num_heads, self.d_k).transpose(1, 2) K = self.W_k(key).view(B, -1, self.num_heads, self.d_k).transpose(1, 2) V = self.W_v(value).view(B, -1, self.num_heads, self.d_k).transpose(1, 2) # → (B, num_heads, T, d_k) scores = Q @ K.transpose(-2, -1) / math.sqrt(self.d_k) if mask is not None: scores = scores.masked_fill(mask == 0, float(\"-inf\")) attn = F.softmax(scores, dim=-1) # → (B, num_heads, T, d_k) out = attn @ V out = out.transpose(1, 2).contiguous().view(B, -1, d_model) # → (B, T, d_model) return self.W_o(out) 关键 view 和 transpose：\nW_q 后: (B, T, 512) view(B, T, 8, 64) → (B, T, 8, 64) transpose(1, 2) → (B, 8, T, 64) # 把 \"头数\" 当作 batch 维并行算 view 不分配新内存，不拷贝，不初始化。 它只是在 W_q 刚算出来的 512 个浮点数上换一个形状标签——把同一块内存重新标记为 8 组 × 64。view 前是 W_q 的有效计算结果，view 后读到的就是那些值，不存在未初始化的随机残值。512 = 8 × 64，严丝合缝，无残留。\n4. Positional Encoding —— 位置从哪来 Self-Attention 不分词序：“A 打了 B” 和 “B 打了 A” 在纯 Attention 里等价。需要注入位置信息。\nTransformer 选 sin/cos 函数，每个维度用不同频率：\nPE(pos, 2i) = sin(pos / 10000^(2i/d_model)) PE(pos, 2i+1) = cos(pos / 10000^(2i/d_model)) 维度 0-1：频率最低（接近 DC）—— 编码\"这句话有多长\" 维度 510-511：频率最高 —— 编码\"相邻词的关系\" 可视化——左边是 128 个位置 × 512 维的 sin/cos 栅格，右边是几条维度线随位置的变化：\n代码——model.py:22-30：\npe = torch.zeros(1, max_len, d_model) pos = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1) div = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model)) pe[0, :, 0::2] = torch.sin(pos * div) pe[0, :, 1::2] = torch.cos(pos * div) self.register_buffer(\"pe\", pe) # 不是可训练参数！持久化但不求梯度 为什么选 sin/cos？因为 sin(a+b) 可以用 sin(a) 和 cos(b) 线性组合表示——这让\"相对位置\"可以被 Attention 学习到，而不只是\"绝对位置\"。\n5. FFN + Residual + LayerNorm 每个 Attention 层后面跟一个 Position-wise Feed-Forward Network：对每个位置独立做相同的两层 MLP。\nFFN(x) = ReLU(xW1 + b1)W2 + b2 512→2048 2048→512 代码——model.py:72-80：\nclass FFN(nn.Module): def __init__(self, d_model, d_ff, dropout=0.1): self.fc1 = nn.Linear(d_model, d_ff) # 升维 self.fc2 = nn.Linear(d_ff, d_model) # 降回来 self.dropout = nn.Dropout(dropout) def forward(self, x): return self.fc2(self.dropout(F.relu(self.fc1(x)))) Residual Connection 是 Transformer 能堆到 100 层的核心原因：\nx = x + Sublayer(x) 梯度可以通过残差路径 x 直达浅层，不用穿过 Sublayer 的矩阵乘法——这就是\"高速公路\"。\nLayerNorm 归一化每条样本的特征维度（d_model），消除层间的数值漂移：\n$\n$\\text{LayerNorm}(x) = \\frac{x - \\mu}{\\sqrt{\\sigma^2 + \\epsilon}} \\cdot \\gamma + \\beta$$\n本代码用 Pre-LN（现代惯例）——Norm 在前，Sublayer 在后：\n原始论文 Vaswani 2017 (Post-LN): x = LayerNorm(x + Sublayer(x)) 现代实现 (Pre-LN, 更稳定): x = x + Sublayer(LayerNorm(x)) 区别：Post-LN 的残差梯度必须先穿过 LayerNorm 的归一化再流入浅层——随着层数变深，归一化累积把梯度压得太小，导致深层几乎不更新。Pre-LN 让梯度直接走残差路径，不经过 Norm——这就是为什么 Pre-LN 能训 100 层而 Post-LN 不行。\n对应代码——model.py:97-99：\n# Pre-LN: norm 在里面，残差在外面 x = x + self.dropout1(self.self_attn(self.norm1(x), self.norm1(x), self.norm1(x), mask)) x = x + self.dropout2(self.ffn(self.norm2(x))) 上面把零件拆开讲完了——下面拼起来，看一整句数据怎么穿过 Encoder 和 Decoder。\n6. Encoder-Decoder 全流程 来源：Wikipedia / “Attention Is All You Need” (Vaswani et al., 2017)\n数据流逐阶段拆解：\n┌─ Encoder ─┐ ┌─ Decoder ──────────┐ src: \"die katze\" Embed+PosEn Embed+PosEn tgt: \" the cat\" │ │ │ │ ▼ ▼ ▼ ▼ [1, 4] [1, 4, 512] [1, 5, 512] [1, 5] │ │ ▼ ▼ N×EncoderLayer N×DecoderLayer ┌ Self-Attn ─┐ ┌ Masked Self-Attn ─┐ │ + FFN │ │ Cross-Attn │ ← Q 来自 decoder │ + FFN │ │ + FFN │ ← K/V 来自 encoder └────────────┘ └───────────────────┘ │ │ ▼ ▼ Final LayerNorm Final LayerNorm │ │ │ ▼ src_mask──────────┼─→ cross_attn ──→ Linear(d_model → vocab) │ │ ▼ [1, 5, 32000] ← logits 每一层的 tensor 形状变化（d_model=512, vocab=32000, 例句 src=4 token, tgt=5 token）：\n步骤 形状 说明 Embedding(src) (B, 4, 512) token → 512 维向量 ×√512 + PositionalEncoding (B, 4, 512) 加位置信息 EncoderLayer × N (B, 4, 512) N 层 Self-Attn + FFN Final LayerNorm (B, 4, 512) 归一化 — 交棒 — Embedding(tgt) (B, 5, 512) 目标端也 embed ×√512 + PositionalEncoding (B, 5, 512) DecoderLayer × N (B, 5, 512) Self-Attn(masked) + Cross-Attn + FFN Final LayerNorm (B, 5, 512) Linear(512 → 32000) (B, 5, 32000) 投影到词表 关键洞察：feature 维度全程不变。 从 Embedding 到 Final LayerNorm，每一层的输出都是 (B, T, d_model)。没有\"先压缩到 hidden state 再解开\"的过程——这就是 Transformer 和 LSTM 最本质的架构差异。\n对比 LSTM（Phase 1/2 的 Encoder-Decoder）：\nLSTM Transformer ──── ─────────── Encoder: src → [LSTM × N] → hidden src → [Self-Attn × N] → enc_out (B,4,256) → (2, B, 256) (B,4,512) → (B,4,512) ← 保持！ Decoder: hidden → [LSTM × N] → logits tgt → [Self/Cross-Attn × N] → logits (2, B, 256) → (B, 5, 32000) (B,5,512) → (B,5,512) → (B,5,32000) LSTM 的 hidden 是 (num_layers, B, hidden_size) ——一个固定大小的向量。50 个词的语义被压缩到 256 个浮点数里，解码器必须从这个压缩包里逐字拆出译文。\nTransformer 的 enc_out 是 (B, S, d_model) ——按位置展开的矩阵。解码器的 Cross-Attention 可以直接盯着源句子的每个位置查，不用从压缩包里猜。\n这就是\"关联\"比\"压缩\"更有效的根本原因。\n代码对照——model.py:189-191，整个流程被压缩成三行：\nclass Transformer(nn.Module): def forward(self, src, tgt, src_len): enc_out, src_mask = self.encoder(src, src_len) return self.decoder(tgt, enc_out, src_mask) Cross-Attention 的关键（model.py:143-144）——Q 来自 decoder，K/V 来自 encoder：\n# decoder 的 cross-attention: x = x + self.dropout2(self.cross_attn( self.norm2(x), # ← Q: decoder 的当前状态（\"我想翻译出什么\"） enc_out, # ← K: encoder 的输出（\"源句子里有什么\"） enc_out, # ← V: encoder 的输出（\"源句子的语义\"） src_mask # ← 屏蔽源句子的 padding )) 以上是推理时的数据流——下面看训练时怎么让模型\"学会\"翻译。\n7. 训练三件套 Teacher Forcing：训练时不喂自己的预测结果，而是喂正确答案的上一步。解码 \" the cat\" 时，第一步输入 应该输出 the，第二步输入 the 应该输出 cat——但用的是真实的目标序列，不是模型自己生成的。\n代码——train_wmt14.py:182：\nlogits = model(src, tgt[:, :-1], src_len) # tgt[:, :-1] = \" the cat\" → 期望输出 = \"the cat \" # tgt[:, 1:] = \"the cat \" → 损失计算目标 Label Smoothing：不要让模型对正确答案有 100% 的确信。把正确答案的概率从 1.0 降为 0.9，其他词瓜分 0.1。这防止模型过度自信，提升泛化。\ncriterion = torch.nn.CrossEntropyLoss(ignore_index=0, label_smoothing=0.1) Warmup Scheduler：刚开始训练时学习率从 0 线性增长到目标值，然后衰减。前几步太大 → 梯度爆炸；太小 → 收敛慢。Warmup 给出了一个\"缓慢启动\"的安全缓冲区。\nlr = d_model^(-0.5) * min(step_num^(-0.5), step_num * warmup^(-1.5)) 8. 代码全图：model.py 逐块标注 前面分模块讲完——这里是压缩版速查，按执行流排列，每个模块对应的行号和关键 tensor 流。不是替代前文，是让你回头找代码的时候一眼定位。\nmodel.py 总览 (191 行) ═══════════════════════════════════════ [L16-35] PositionalEncoding pe[pos, 2i] = sin(pos / 10000^(2i/d)) pe[pos, 2i+1] = cos(pos / 10000^(2i/d)) → register_buffer, 不学 [L41-65] MultiHeadAttention W_q, W_k, W_v, W_o: 四个独立的线性投影 view+transpose: (B, T, 512) → (B, 8, T, 64) Q·K^T / √64 → softmax → ×V → concat → W_o [L72-80] FFN fc1: 512→2048 (ReLU) → dropout → fc2: 2048→512 每个位置独立，共享参数 [L87-100] EncoderLayer norm1 → Self-Attention → +residual (dropout) norm2 → FFN → +residual (dropout) [L103-120] Encoder Embedding → ×√d_model → +PositionalEncoding → EncoderLayer × N → Final LayerNorm → return (enc_out, src_mask) [L127-147] DecoderLayer norm1 → Masked Self-Attention → +residual norm2 → Cross-Attention(Q=dec,KV=enc) → +residual norm3 → FFN → +residual [L150-176] Decoder Embedding → ×√d_model → +PositionalEncoding → DecoderLayer × N → Final LayerNorm → Linear(512→32000) → logits [L183-191] Transformer enc_out, src_mask = encoder(src, src_len) return decoder(tgt, enc_out, src_mask) 9. 从 NMT 到 GPT Encoder-Decoder 架构适合机器翻译——有明确的\"源\"和\"目标\"。但 LLM（GPT 系列）只用 Decoder。\nEncoder-Decoder（翻译）: src → [Encoder: 全连接 Attention] → enc_out tgt → [Decoder: masked Self-Attn + Cross-Attn(enc)] → logits Decoder-only（GPT）: input → [Decoder: masked Self-Attention] → logits ↑ causal mask 就是全部 （Cross-Attention 删了，因为没有 encoder） 只需要删掉 Cross-Attention，去掉 Encoder——Transformer 就退化成了 GPT。解码时逐 token 生成，每次用 causal mask 让当前位置后面的 token 不可见。\n这就是 Transformer 的故事：从针对翻译的 Encoder-Decoder 设计，到成为所有 LLM 的通用骨架。不是因为\"翻译\"这个任务特殊——是因为 Self-Attention + Residual + LayerNorm 这三个东西的组合，恰好构成了一个能稳定堆叠到任意深度的通用序列处理器。\n三句话带走：\nRNN 是单管滴管——梯度 O(n)、信息逐个挤过一根 hidden state 管；Transformer 是多通道移液器——O(1) 路径、全并行吸入一整行。 发动机是 Self-Attention（Q·K^T/√d × softmax × V），拼装上 Multi-Head、Pre-LN Residual、sin/cos Positional Encoding。 Encoder-Decoder 是翻译特化版——删掉 Cross-Attn 和 Encoder 就是 GPT。 License: GPLv3 本文《Transformer 从零到一》系列采用 GNU 通用公共许可证第三版 (GNU General Public License v3.0) 协议进行开源发布与分发。允许任何形式的复制、修改和分发，但必须继承相同的开源协议，承认在算力宇宙中所有的迭代与变异。\n",
+  "wordCount" : "1535",
+  "inLanguage": "en",
+  "datePublished": "2026-05-17T00:00:00Z",
+  "dateModified": "2026-05-17T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 opencode (First Mate)"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/tf/001-transformer-from-scratch.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item active">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [TF-001] Transformer 从零到一——为什么、是什么、怎么实现
+    </h1>
+    <div class="post-description">
+      从 RNN 的串行瓶颈出发，走到 Multi-Head Attention 的全并行设计，最后逐行对照 model.py 看懂每一行代码。涵盖 Q/K/V 几何直觉、scaled dot-product、Pre-LN、causal mask、从 NMT 到 GPT 的演进。
+    </div>
+    <div class="post-meta"><span title='2026-05-17 00:00:00 +0000 UTC'>May 17, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; opencode (First Mate)</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="transformer-从零到一">Transformer 从零到一<a hidden class="anchor" aria-hidden="true" href="#transformer-从零到一">#</a></h1>
+<blockquote>
+<p>不是因为它更聪明——是因为它把整个句子当一张全连接图，一次算完。</p>
+</blockquote>
+<h2 id="1-rnn-为什么不行">1. RNN 为什么不行<a hidden class="anchor" aria-hidden="true" href="#1-rnn-为什么不行">#</a></h2>
+<p>RNN 的翻译流程：读第 1 个词 → 更新隐藏状态 → 读第 2 个词 → 更新隐藏状态 → … → 读最后一个词 → 开始解码。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>&#34;die katze schläft&#34;  →  h1 → h2 → h3 → 解码 &#34;the cat sleeps&#34;
+</span></span></code></pre></div><p>这里有一个根本问题：<strong>50 个词共用一条链</strong>。第 50 个词的梯度要穿过 49 层才能传到第 1 个词。LSTM 用三个门（遗忘门、输入门、输出门）延缓了梯度消失，但治标不治本。</p>
+<p>用 Phase 1 LSTM 跑 IWSLT14 翻译，最佳 BLEU 只有 3.06。跑 5 个 epoch 就过拟合——梯度链太长，信息衰减太快，模型记不住长程依赖。</p>
+<p>Transformer 的方案是：<strong>不串行了。整个句子一次性扔进去，让每个词同时关联所有其他词。</strong></p>
+<p>但这个方案不免费——代价是两方面的膨胀：</p>
+<p><strong>1. Hidden 膨胀。</strong> LSTM 的 encoder 输出是 <code>(num_layers, B, hidden_size)</code>，比如 2 层 256 维 = <code>(2, B, 256)</code>，只存最终状态 512 个浮点数。Transformer 的 encoder 输出是 <code>(B, S, d_model)</code> ——每个位置都保留了完整的 d_model 维向量。句长 S=128、d_model=512 时，encoder 输出是 65536 个浮点数，<strong>是 LSTM hidden 的 128 倍</strong>。</p>
+<p><strong>2. 空间复杂度 O(n²)。</strong> Self-Attention 计算所有词对之间的分数，Attention 矩阵是 (B, heads, S, S)。S=128 时是 128² = 16384 个元素/头，S=512 时是 262144。相比之下 LSTM 的复杂度是 O(n)——每步只看当前输入和 hidden state。这就是为什么长序列（长文本、高像素图像）上原生 Attention 会撞显存墙。</p>
+<p>代价之三是：<strong>需要位置编码</strong>。Attention 本身不认识顺序——而 RNN 天然有位置信息，因为词是一个一个按顺序灌进去的，位置即处理顺序，不需要额外标记。Transformer 一次性吞入整句，词的先后关系全部丢失，必须显式注入 sin/cos 位置信号补回来。常被误称为&quot;时序信息&quot;，其实不是时序——是<strong>位置信息</strong>，跟时间无关，跟排在哪儿有关。</p>
+<p><strong>那代价花得值吗？</strong> 一个直接的反问：把 LSTM 的 hidden_size 膨胀到和 Transformer 同等参数量，能追上来吗？事实证明不能。LSTM BiLSTM + Attention 在 IWSLT14 上的上限是 BLEU 3.77，而同等参数量的 Transformer 是 11.49。</p>
+<p>差距不是参数量——是信息流动方式。</p>
+<p><strong>改变这个架构，改变的是矩阵本身的形状。</strong> LSTM 的梯度沿时间步串行累积——error signal 穿过 n 层 cell state 逐层回传，路径长度 O(n)。Transformer 的梯度通过 Attention 权重矩阵直连——第 i 个位置到第 j 个位置的梯度走一次 matmul 的链式法则就到，路径长度 O(1)。前者是串联电路，后者是全连接总线的平行电路。</p>
+<blockquote>
+<p><strong>这是一个数据结构层面的观察。</strong> O(n) 和 O(1) 不是运算步数的差异——是矩阵的拓扑结构从链变成了图。RNN 的隐藏状态链是一个一维序列，梯度沿这条线逐站传递。Attention 的权重矩阵是一个二维邻接矩阵，任意两点直连，梯度在各位置间均匀分布。<strong>形状的改变先于算法的改变。</strong> 后面拆解的 Self-Attention、Multi-Head、LayerNorm，都是在&quot;全连接邻接矩阵&quot;这个数据结构上展开的具体计算规则。</p>
+</blockquote>
+<table>
+  <thead>
+      <tr>
+          <th></th>
+          <th>LSTM (即使扩大)</th>
+          <th>Transformer</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>信息瓶颈</strong></td>
+          <td>单管滴管：整句逐个吸入 <code>(num_layers, B, hidden_size)</code> 一个定长向量，解码器只能从这根管里拆</td>
+          <td><code>(B, S, d_model)</code> 按位置展开，解码器直接查源句任意位置</td>
+      </tr>
+      <tr>
+          <td><strong>梯度路径</strong></td>
+          <td>O(n)：第 50 个词的梯度穿 49 层 RNN step 才到第 1 个词</td>
+          <td>O(1)：任意两个位置通过 Attention 权重直连</td>
+      </tr>
+      <tr>
+          <td><strong>并行性</strong></td>
+          <td>串行：必须等上一步算完，GPU 大量空闲</td>
+          <td>全并行：所有位置一次 matmul 算完</td>
+      </tr>
+  </tbody>
+</table>
+<p>LSTM 的 hidden state 本质是一个<strong>单管滴管</strong>——不管管子多粗（hidden_size=512、1024、2048），一次只能吸一个孔，50 个词的语义必须逐个挤过去。Transformer 是<strong>多通道移液器</strong>——多个吸头对准矩阵的一整行，一次操作同时处理所有位置。这才是根本差别。</p>
+<p>RNN 不是废了。它在这里只是碰巧被拿来解决 NLP——NLP 需要全距离依赖，RNN 的链式拓扑先天吃亏。但在流式信号处理、实时控制、低延迟嵌入式推理里，<strong>时序本身就是信息</strong>，串行不是缺陷是特性，RNN 依然是英雄之刃。</p>
+<p>怎么做到的？答案就是 Self-Attention。</p>
+<h2 id="2-self-attention--qkv">2. Self-Attention —— Q、K、V<a hidden class="anchor" aria-hidden="true" href="#2-self-attention--qkv">#</a></h2>
+<p>Self-Attention 的直觉：<strong>我是一个词，我拿三个问题去问整句话里的每个词。</strong></p>
+<table>
+  <thead>
+      <tr>
+          <th>组件</th>
+          <th>含义</th>
+          <th>直觉</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>Q (Query)</strong></td>
+          <td>&ldquo;我想找什么？&rdquo;</td>
+          <td>当前词的搜索意图</td>
+      </tr>
+      <tr>
+          <td><strong>K (Key)</strong></td>
+          <td>&ldquo;我有什么？&rdquo;</td>
+          <td>每个词的标签/索引</td>
+      </tr>
+      <tr>
+          <td><strong>V (Value)</strong></td>
+          <td>&ldquo;我值多少？&rdquo;</td>
+          <td>每个词的实际语义内容</td>
+      </tr>
+  </tbody>
+</table>
+<blockquote>
+<p><strong>Q、K、V 都来自同一个输入序列，不是来自词表。</strong> 输入张量 <code>(B, T, d_model)</code> 分别过三个不同的线性投影 <code>W_q</code>、<code>W_k</code>、<code>W_v</code>（都是 <code>nn.Linear(d_model, d_model)</code>），得到三个形状完全相同的张量。词表只在两处出现——入口的 Embedding（token → d_model，本质是一键查表）和出口的 Linear（d_model → vocab_size logits）。中间的 Q、K、V 全程在 d_model 空间运算，跟词表大小无关。</p>
+</blockquote>
+<blockquote>
+<p><strong>这些 W 参数本质是寄存器。</strong> 不管是 RNN 的 <code>W_hh</code>（h_{t-1}→h_t 的时间连接），还是 Transformer 的 <code>W_q/W_k/W_v</code>（位置 i→位置 j 的图连接），里面存的都是一个一个的标量参数——梯度反向传播时，值就积累在这些寄存器里。RNN 积的是串行时间量，Transformer 积的是全连接边权重。拓扑不同，寄存的逻辑相同。</p>
+<p><strong>这些寄存器之所以排列成矩阵，是为了适应物理世界的算力架构。</strong> GPU 的并行单元按矩阵瓦片调度——寄存器排成矩阵，才能被一次 <code>matmul</code> 调起所有通道。不是&quot;矩阵天然适合存参数&quot;，是&quot;参数必须排成矩阵才能用硬件&quot;。</p>
+</blockquote>
+<p>流程：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1. 每个词过一个线性层 → 得到自己的 Q, K, V
+</span></span><span style="display:flex;"><span>2. Q 和所有 K 做点积 → 得到 &#34;当前词和每个词的匹配分数&#34;
+</span></span><span style="display:flex;"><span>3. 除以 √d_k → 缩放防梯度饱和（点积方差随维度增长）
+</span></span><span style="display:flex;"><span>4. softmax → 归一化成分数权重
+</span></span><span style="display:flex;"><span>5. 权重 × V → 加权求和 → 当前词的上下文表示
+</span></span></code></pre></div><p>公式：</p>
+<p>$</p>
+$ \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V $<p>$</p>
+<p><strong>为什么除以 √d_k？</strong> 假设 Q 和 K 的每个元素独立同分布，均值为 0，方差为 1。点积 <code>q·k</code> 的方差是 d_k。d_k 大了之后，点积值可能很大，会让 softmax 落入梯度平坦区（极低或极高的 softmax 值梯度接近 0）。除以 √d_k 把方差压回 1，保持 softmax 在&quot;敏感区&quot;。</p>
+<p>代码对照——<code>model.py:59</code>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>scores <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>matmul(Q, K<span style="color:#f92672">.</span>transpose(<span style="color:#f92672">-</span><span style="color:#ae81ff">2</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)) <span style="color:#f92672">/</span> math<span style="color:#f92672">.</span>sqrt(self<span style="color:#f92672">.</span>d_k)
+</span></span></code></pre></div><h3 id="21-mask--边界与未来">2.1 Mask —— 边界与未来<a hidden class="anchor" aria-hidden="true" href="#21-mask--边界与未来">#</a></h3>
+<p>让模型知道&quot;哪句话在哪结束、哪个词不能偷看&quot;。Encoder 屏蔽 padding，Decoder 用下三角屏蔽未来词。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#75715e"># Encoder mask (model.py:115): padding 位置不能参与</span>
+</span></span><span style="display:flex;"><span>src_mask <span style="color:#f92672">=</span> (src <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)<span style="color:#f92672">.</span>unsqueeze(<span style="color:#ae81ff">1</span>)<span style="color:#f92672">.</span>unsqueeze(<span style="color:#ae81ff">2</span>)  <span style="color:#75715e"># (B, 1, 1, S)</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Decoder mask (model.py:167): 未来词不能偷看</span>
+</span></span><span style="display:flex;"><span>tgt_mask <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>tril(torch<span style="color:#f92672">.</span>ones(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, T, T, device<span style="color:#f92672">=</span>tgt<span style="color:#f92672">.</span>device))
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 比如 T=4:</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># [[1, 0, 0, 0],</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#  [1, 1, 0, 0],</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#  [1, 1, 1, 0],</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#  [1, 1, 1, 1]]</span>
+</span></span></code></pre></div><h2 id="3-multi-head--8-个专家各自打分">3. Multi-Head —— 8 个专家各自打分<a hidden class="anchor" aria-hidden="true" href="#3-multi-head--8-个专家各自打分">#</a></h2>
+<p>一个 Attention Head 只从一种角度衡量&quot;相似度&quot;。Multi-Head 让 8 个头各自在低维子空间（<code>d_k = d_model / 8</code>）独立计算 Attention，然后拼接起来。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>d_model = 512, num_heads = 8 → d_k = 64
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>不是 &#34;把 512 维劈成 8 段&#34; —— 
+</span></span><span style="display:flex;"><span>而是 &#34;每个头都有权看全部 512 维，但只输出 64 维&#34;
+</span></span></code></pre></div><p>代码——<code>model.py:46-65</code>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#75715e"># 四个线性投影</span>
+</span></span><span style="display:flex;"><span>self<span style="color:#f92672">.</span>W_q <span style="color:#f92672">=</span> nn<span style="color:#f92672">.</span>Linear(d_model, d_model)   <span style="color:#75715e"># 512 → 512（拆分到 8 头 × 64）</span>
+</span></span><span style="display:flex;"><span>self<span style="color:#f92672">.</span>W_k <span style="color:#f92672">=</span> nn<span style="color:#f92672">.</span>Linear(d_model, d_model)
+</span></span><span style="display:flex;"><span>self<span style="color:#f92672">.</span>W_v <span style="color:#f92672">=</span> nn<span style="color:#f92672">.</span>Linear(d_model, d_model)
+</span></span><span style="display:flex;"><span>self<span style="color:#f92672">.</span>W_o <span style="color:#f92672">=</span> nn<span style="color:#f92672">.</span>Linear(d_model, d_model)   <span style="color:#75715e"># 拼接后投影回 512</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">forward</span>(self, query, key, value, mask<span style="color:#f92672">=</span><span style="color:#66d9ef">None</span>):
+</span></span><span style="display:flex;"><span>    B <span style="color:#f92672">=</span> query<span style="color:#f92672">.</span>size(<span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>    Q <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>W_q(query)<span style="color:#f92672">.</span>view(B, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, self<span style="color:#f92672">.</span>num_heads, self<span style="color:#f92672">.</span>d_k)<span style="color:#f92672">.</span>transpose(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">2</span>)
+</span></span><span style="display:flex;"><span>    K <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>W_k(key)<span style="color:#f92672">.</span>view(B, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, self<span style="color:#f92672">.</span>num_heads, self<span style="color:#f92672">.</span>d_k)<span style="color:#f92672">.</span>transpose(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">2</span>)
+</span></span><span style="display:flex;"><span>    V <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>W_v(value)<span style="color:#f92672">.</span>view(B, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, self<span style="color:#f92672">.</span>num_heads, self<span style="color:#f92672">.</span>d_k)<span style="color:#f92672">.</span>transpose(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">2</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># → (B, num_heads, T, d_k)</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    scores <span style="color:#f92672">=</span> Q <span style="color:#f92672">@</span> K<span style="color:#f92672">.</span>transpose(<span style="color:#f92672">-</span><span style="color:#ae81ff">2</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>) <span style="color:#f92672">/</span> math<span style="color:#f92672">.</span>sqrt(self<span style="color:#f92672">.</span>d_k)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> mask <span style="color:#f92672">is</span> <span style="color:#f92672">not</span> <span style="color:#66d9ef">None</span>:
+</span></span><span style="display:flex;"><span>        scores <span style="color:#f92672">=</span> scores<span style="color:#f92672">.</span>masked_fill(mask <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>, float(<span style="color:#e6db74">&#34;-inf&#34;</span>))
+</span></span><span style="display:flex;"><span>    attn <span style="color:#f92672">=</span> F<span style="color:#f92672">.</span>softmax(scores, dim<span style="color:#f92672">=-</span><span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># → (B, num_heads, T, d_k)</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    out <span style="color:#f92672">=</span> attn <span style="color:#f92672">@</span> V
+</span></span><span style="display:flex;"><span>    out <span style="color:#f92672">=</span> out<span style="color:#f92672">.</span>transpose(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">2</span>)<span style="color:#f92672">.</span>contiguous()<span style="color:#f92672">.</span>view(B, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, d_model)
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># → (B, T, d_model)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> self<span style="color:#f92672">.</span>W_o(out)
+</span></span></code></pre></div><p>关键 <code>view</code> 和 <code>transpose</code>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>W_q 后: (B, T, 512)
+</span></span><span style="display:flex;"><span>view(B, T, 8, 64) → (B, T, 8, 64)
+</span></span><span style="display:flex;"><span>transpose(1, 2) → (B, 8, T, 64)   # 把 &#34;头数&#34; 当作 batch 维并行算
+</span></span></code></pre></div><blockquote>
+<p><strong><code>view</code> 不分配新内存，不拷贝，不初始化。</strong> 它只是在 W_q 刚算出来的 512 个浮点数上换一个形状标签——把同一块内存重新标记为 8 组 × 64。<code>view</code> 前是 W_q 的有效计算结果，<code>view</code> 后读到的就是那些值，不存在未初始化的随机残值。512 = 8 × 64，严丝合缝，无残留。</p>
+</blockquote>
+<h2 id="4-positional-encoding--位置从哪来">4. Positional Encoding —— 位置从哪来<a hidden class="anchor" aria-hidden="true" href="#4-positional-encoding--位置从哪来">#</a></h2>
+<p>Self-Attention 不分词序：&ldquo;A 打了 B&rdquo; 和 &ldquo;B 打了 A&rdquo; 在纯 Attention 里等价。需要注入位置信息。</p>
+<p>Transformer 选 sin/cos 函数，每个维度用不同频率：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>PE(pos, 2i)   = sin(pos / 10000^(2i/d_model))
+</span></span><span style="display:flex;"><span>PE(pos, 2i+1) = cos(pos / 10000^(2i/d_model))
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>维度 0-1：频率最低（接近 DC）—— 编码&#34;这句话有多长&#34;
+</span></span><span style="display:flex;"><span>维度 510-511：频率最高 —— 编码&#34;相邻词的关系&#34;
+</span></span></code></pre></div><p>可视化——左边是 128 个位置 × 512 维的 sin/cos 栅格，右边是几条维度线随位置的变化：</p>
+<p><img alt="PE grid" loading="lazy" src="/tf/pe_grid.png"></p>
+<p>代码——<code>model.py:22-30</code>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>pe <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>zeros(<span style="color:#ae81ff">1</span>, max_len, d_model)
+</span></span><span style="display:flex;"><span>pos <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>arange(<span style="color:#ae81ff">0</span>, max_len, dtype<span style="color:#f92672">=</span>torch<span style="color:#f92672">.</span>float)<span style="color:#f92672">.</span>unsqueeze(<span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>div <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>exp(torch<span style="color:#f92672">.</span>arange(<span style="color:#ae81ff">0</span>, d_model, <span style="color:#ae81ff">2</span>)<span style="color:#f92672">.</span>float() <span style="color:#f92672">*</span> (<span style="color:#f92672">-</span>math<span style="color:#f92672">.</span>log(<span style="color:#ae81ff">10000.0</span>) <span style="color:#f92672">/</span> d_model))
+</span></span><span style="display:flex;"><span>pe[<span style="color:#ae81ff">0</span>, :, <span style="color:#ae81ff">0</span>::<span style="color:#ae81ff">2</span>] <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>sin(pos <span style="color:#f92672">*</span> div)
+</span></span><span style="display:flex;"><span>pe[<span style="color:#ae81ff">0</span>, :, <span style="color:#ae81ff">1</span>::<span style="color:#ae81ff">2</span>] <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>cos(pos <span style="color:#f92672">*</span> div)
+</span></span><span style="display:flex;"><span>self<span style="color:#f92672">.</span>register_buffer(<span style="color:#e6db74">&#34;pe&#34;</span>, pe)  <span style="color:#75715e"># 不是可训练参数！持久化但不求梯度</span>
+</span></span></code></pre></div><p>为什么选 sin/cos？因为 <code>sin(a+b)</code> 可以用 <code>sin(a)</code> 和 <code>cos(b)</code> 线性组合表示——这让&quot;相对位置&quot;可以被 Attention 学习到，而不只是&quot;绝对位置&quot;。</p>
+<h2 id="5-ffn--residual--layernorm">5. FFN + Residual + LayerNorm<a hidden class="anchor" aria-hidden="true" href="#5-ffn--residual--layernorm">#</a></h2>
+<p>每个 Attention 层后面跟一个 <strong>Position-wise Feed-Forward Network</strong>：<strong>对每个位置独立做相同的两层 MLP</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>FFN(x) = ReLU(xW1 + b1)W2 + b2
+</span></span><span style="display:flex;"><span>              512→2048   2048→512
+</span></span></code></pre></div><p>代码——<code>model.py:72-80</code>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">FFN</span>(nn<span style="color:#f92672">.</span>Module):
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">__init__</span>(self, d_model, d_ff, dropout<span style="color:#f92672">=</span><span style="color:#ae81ff">0.1</span>):
+</span></span><span style="display:flex;"><span>        self<span style="color:#f92672">.</span>fc1 <span style="color:#f92672">=</span> nn<span style="color:#f92672">.</span>Linear(d_model, d_ff)     <span style="color:#75715e"># 升维</span>
+</span></span><span style="display:flex;"><span>        self<span style="color:#f92672">.</span>fc2 <span style="color:#f92672">=</span> nn<span style="color:#f92672">.</span>Linear(d_ff, d_model)     <span style="color:#75715e"># 降回来</span>
+</span></span><span style="display:flex;"><span>        self<span style="color:#f92672">.</span>dropout <span style="color:#f92672">=</span> nn<span style="color:#f92672">.</span>Dropout(dropout)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">forward</span>(self, x):
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> self<span style="color:#f92672">.</span>fc2(self<span style="color:#f92672">.</span>dropout(F<span style="color:#f92672">.</span>relu(self<span style="color:#f92672">.</span>fc1(x))))
+</span></span></code></pre></div><p><strong>Residual Connection</strong> 是 Transformer 能堆到 100 层的核心原因：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x = x + Sublayer(x)
+</span></span></code></pre></div><p>梯度可以通过残差路径 <code>x</code> 直达浅层，不用穿过 Sublayer 的矩阵乘法——这就是&quot;高速公路&quot;。</p>
+<p><strong>LayerNorm</strong> 归一化每条样本的特征维度（d_model），消除层间的数值漂移：</p>
+<p>$</p>
+$\text{LayerNorm}(x) = \frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}} \cdot \gamma + \beta$<p>$</p>
+<p>本代码用 <strong>Pre-LN</strong>（现代惯例）——Norm 在前，Sublayer 在后：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>原始论文 Vaswani 2017 (Post-LN):
+</span></span><span style="display:flex;"><span>x = LayerNorm(x + Sublayer(x))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>现代实现 (Pre-LN, 更稳定):
+</span></span><span style="display:flex;"><span>x = x + Sublayer(LayerNorm(x))
+</span></span></code></pre></div><p>区别：Post-LN 的残差梯度必须先穿过 LayerNorm 的归一化再流入浅层——随着层数变深，归一化累积把梯度压得太小，导致深层几乎不更新。Pre-LN 让梯度直接走残差路径，不经过 Norm——这就是为什么 Pre-LN 能训 100 层而 Post-LN 不行。</p>
+<p>对应代码——<code>model.py:97-99</code>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#75715e"># Pre-LN: norm 在里面，残差在外面</span>
+</span></span><span style="display:flex;"><span>x <span style="color:#f92672">=</span> x <span style="color:#f92672">+</span> self<span style="color:#f92672">.</span>dropout1(self<span style="color:#f92672">.</span>self_attn(self<span style="color:#f92672">.</span>norm1(x), self<span style="color:#f92672">.</span>norm1(x), self<span style="color:#f92672">.</span>norm1(x), mask))
+</span></span><span style="display:flex;"><span>x <span style="color:#f92672">=</span> x <span style="color:#f92672">+</span> self<span style="color:#f92672">.</span>dropout2(self<span style="color:#f92672">.</span>ffn(self<span style="color:#f92672">.</span>norm2(x)))
+</span></span></code></pre></div><p>上面把零件拆开讲完了——下面拼起来，看一整句数据怎么穿过 Encoder 和 Decoder。</p>
+<h2 id="6-encoder-decoder-全流程">6. Encoder-Decoder 全流程<a hidden class="anchor" aria-hidden="true" href="#6-encoder-decoder-全流程">#</a></h2>
+<p><img alt="Transformer Architecture" loading="lazy" src="/tf/transformer_full_arch.png">
+<em>来源：Wikipedia / &ldquo;Attention Is All You Need&rdquo; (Vaswani et al., 2017)</em></p>
+<p>数据流逐阶段拆解：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>                    ┌─ Encoder ─┐              ┌─ Decoder ──────────┐
+</span></span><span style="display:flex;"><span>src: &#34;die katze&#34;    Embed+PosEn               Embed+PosEn            tgt: &#34;&lt;sos&gt; the cat&#34;
+</span></span><span style="display:flex;"><span>       │              │                            │                      │
+</span></span><span style="display:flex;"><span>       ▼              ▼                            ▼                      ▼
+</span></span><span style="display:flex;"><span>  [1, 4]         [1, 4, 512]                [1, 5, 512]           [1, 5]
+</span></span><span style="display:flex;"><span>                      │                            │
+</span></span><span style="display:flex;"><span>                      ▼                            ▼
+</span></span><span style="display:flex;"><span>               N×EncoderLayer               N×DecoderLayer
+</span></span><span style="display:flex;"><span>               ┌ Self-Attn ─┐              ┌ Masked Self-Attn ─┐
+</span></span><span style="display:flex;"><span>               │   + FFN    │              │    Cross-Attn     │ ← Q 来自 decoder
+</span></span><span style="display:flex;"><span>               │   + FFN    │              │    + FFN          │ ← K/V 来自 encoder
+</span></span><span style="display:flex;"><span>               └────────────┘              └───────────────────┘
+</span></span><span style="display:flex;"><span>                      │                            │
+</span></span><span style="display:flex;"><span>                      ▼                            ▼
+</span></span><span style="display:flex;"><span>               Final LayerNorm              Final LayerNorm
+</span></span><span style="display:flex;"><span>                      │                            │
+</span></span><span style="display:flex;"><span>                      │                            ▼
+</span></span><span style="display:flex;"><span>    src_mask──────────┼─→ cross_attn ──→ Linear(d_model → vocab)
+</span></span><span style="display:flex;"><span>                      │                            │
+</span></span><span style="display:flex;"><span>                                                   ▼
+</span></span><span style="display:flex;"><span>                                             [1, 5, 32000]  ← logits
+</span></span></code></pre></div><p>每一层的 tensor 形状变化（d_model=512, vocab=32000, 例句 src=4 token, tgt=5 token）：</p>
+<table>
+  <thead>
+      <tr>
+          <th>步骤</th>
+          <th>形状</th>
+          <th>说明</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Embedding(src)</td>
+          <td>(B, 4, 512)</td>
+          <td>token → 512 维向量</td>
+      </tr>
+      <tr>
+          <td>×√512 + PositionalEncoding</td>
+          <td>(B, 4, 512)</td>
+          <td>加位置信息</td>
+      </tr>
+      <tr>
+          <td>EncoderLayer × N</td>
+          <td>(B, 4, 512)</td>
+          <td>N 层 Self-Attn + FFN</td>
+      </tr>
+      <tr>
+          <td>Final LayerNorm</td>
+          <td>(B, 4, 512)</td>
+          <td>归一化</td>
+      </tr>
+      <tr>
+          <td>— 交棒 —</td>
+          <td></td>
+          <td></td>
+      </tr>
+      <tr>
+          <td>Embedding(tgt)</td>
+          <td>(B, 5, 512)</td>
+          <td>目标端也 embed</td>
+      </tr>
+      <tr>
+          <td>×√512 + PositionalEncoding</td>
+          <td>(B, 5, 512)</td>
+          <td></td>
+      </tr>
+      <tr>
+          <td>DecoderLayer × N</td>
+          <td>(B, 5, 512)</td>
+          <td>Self-Attn(masked) + Cross-Attn + FFN</td>
+      </tr>
+      <tr>
+          <td>Final LayerNorm</td>
+          <td>(B, 5, 512)</td>
+          <td></td>
+      </tr>
+      <tr>
+          <td>Linear(512 → 32000)</td>
+          <td>(B, 5, 32000)</td>
+          <td>投影到词表</td>
+      </tr>
+  </tbody>
+</table>
+<blockquote>
+<p><strong>关键洞察：feature 维度全程不变。</strong> 从 Embedding 到 Final LayerNorm，每一层的输出都是 <code>(B, T, d_model)</code>。没有&quot;先压缩到 hidden state 再解开&quot;的过程——这就是 Transformer 和 LSTM 最本质的架构差异。</p>
+</blockquote>
+<p>对比 LSTM（Phase 1/2 的 Encoder-Decoder）：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>                 LSTM                              Transformer
+</span></span><span style="display:flex;"><span>                 ────                              ───────────
+</span></span><span style="display:flex;"><span>Encoder:  src → [LSTM × N] → hidden         src → [Self-Attn × N] → enc_out
+</span></span><span style="display:flex;"><span>          (B,4,256) → (2, B, 256)          (B,4,512) → (B,4,512)   ← 保持！
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Decoder:  hidden → [LSTM × N] → logits      tgt → [Self/Cross-Attn × N] → logits
+</span></span><span style="display:flex;"><span>          (2, B, 256) → (B, 5, 32000)      (B,5,512) → (B,5,512) → (B,5,32000)
+</span></span></code></pre></div><p>LSTM 的 <code>hidden</code> 是 <code>(num_layers, B, hidden_size)</code> ——一个<strong>固定大小</strong>的向量。50 个词的语义被压缩到 256 个浮点数里，解码器必须从这个压缩包里逐字拆出译文。</p>
+<p>Transformer 的 <code>enc_out</code> 是 <code>(B, S, d_model)</code> ——<strong>按位置展开</strong>的矩阵。解码器的 Cross-Attention 可以直接盯着源句子的每个位置查，不用从压缩包里猜。</p>
+<p>这就是&quot;关联&quot;比&quot;压缩&quot;更有效的根本原因。</p>
+<p>代码对照——<code>model.py:189-191</code>，整个流程被压缩成三行：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Transformer</span>(nn<span style="color:#f92672">.</span>Module):
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">forward</span>(self, src, tgt, src_len):
+</span></span><span style="display:flex;"><span>        enc_out, src_mask <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>encoder(src, src_len)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> self<span style="color:#f92672">.</span>decoder(tgt, enc_out, src_mask)
+</span></span></code></pre></div><p>Cross-Attention 的关键（<code>model.py:143-144</code>）——Q 来自 decoder，K/V 来自 encoder：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#75715e"># decoder 的 cross-attention:</span>
+</span></span><span style="display:flex;"><span>x <span style="color:#f92672">=</span> x <span style="color:#f92672">+</span> self<span style="color:#f92672">.</span>dropout2(self<span style="color:#f92672">.</span>cross_attn(
+</span></span><span style="display:flex;"><span>    self<span style="color:#f92672">.</span>norm2(x),   <span style="color:#75715e"># ← Q: decoder 的当前状态（&#34;我想翻译出什么&#34;）</span>
+</span></span><span style="display:flex;"><span>    enc_out,         <span style="color:#75715e"># ← K: encoder 的输出（&#34;源句子里有什么&#34;）</span>
+</span></span><span style="display:flex;"><span>    enc_out,         <span style="color:#75715e"># ← V: encoder 的输出（&#34;源句子的语义&#34;）</span>
+</span></span><span style="display:flex;"><span>    src_mask         <span style="color:#75715e"># ← 屏蔽源句子的 padding</span>
+</span></span><span style="display:flex;"><span>))
+</span></span></code></pre></div><p>以上是推理时的数据流——下面看训练时怎么让模型&quot;学会&quot;翻译。</p>
+<h2 id="7-训练三件套">7. 训练三件套<a hidden class="anchor" aria-hidden="true" href="#7-训练三件套">#</a></h2>
+<p><strong>Teacher Forcing</strong>：训练时不喂自己的预测结果，而是喂<strong>正确答案的上一步</strong>。解码 <code>&quot;&lt;sos&gt; the cat&quot;</code> 时，第一步输入 <code>&lt;sos&gt;</code> 应该输出 <code>the</code>，第二步输入 <code>the</code> 应该输出 <code>cat</code>——但用的是真实的目标序列，不是模型自己生成的。</p>
+<p>代码——<code>train_wmt14.py:182</code>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>logits <span style="color:#f92672">=</span> model(src, tgt[:, :<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>], src_len)
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># tgt[:, :-1] = &#34;&lt;sos&gt; the cat&#34;  →  期望输出 = &#34;the cat &lt;/s&gt;&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># tgt[:, 1:]  = &#34;the cat &lt;/s&gt;&#34;   →  损失计算目标</span>
+</span></span></code></pre></div><p><strong>Label Smoothing</strong>：不要让模型对正确答案有 100% 的确信。把正确答案的概率从 1.0 降为 0.9，其他词瓜分 0.1。这防止模型过度自信，提升泛化。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>criterion <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>nn<span style="color:#f92672">.</span>CrossEntropyLoss(ignore_index<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>, label_smoothing<span style="color:#f92672">=</span><span style="color:#ae81ff">0.1</span>)
+</span></span></code></pre></div><p><strong>Warmup Scheduler</strong>：刚开始训练时学习率从 0 线性增长到目标值，然后衰减。前几步太大 → 梯度爆炸；太小 → 收敛慢。Warmup 给出了一个&quot;缓慢启动&quot;的安全缓冲区。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>lr <span style="color:#f92672">=</span> d_model<span style="color:#f92672">^</span>(<span style="color:#f92672">-</span><span style="color:#ae81ff">0.5</span>) <span style="color:#f92672">*</span> min(step_num<span style="color:#f92672">^</span>(<span style="color:#f92672">-</span><span style="color:#ae81ff">0.5</span>), step_num <span style="color:#f92672">*</span> warmup<span style="color:#f92672">^</span>(<span style="color:#f92672">-</span><span style="color:#ae81ff">1.5</span>))
+</span></span></code></pre></div><h2 id="8-代码全图modelpy-逐块标注">8. 代码全图：model.py 逐块标注<a hidden class="anchor" aria-hidden="true" href="#8-代码全图modelpy-逐块标注">#</a></h2>
+<p>前面分模块讲完——这里是<strong>压缩版速查</strong>，按执行流排列，每个模块对应的行号和关键 tensor 流。不是替代前文，是让你回头找代码的时候一眼定位。</p>
+<pre tabindex="0"><code>model.py 总览 (191 行)
+═══════════════════════════════════════
+
+[L16-35]  PositionalEncoding
+  pe[pos, 2i]   = sin(pos / 10000^(2i/d))
+  pe[pos, 2i+1] = cos(pos / 10000^(2i/d))
+  → register_buffer, 不学
+
+[L41-65]  MultiHeadAttention
+  W_q, W_k, W_v, W_o: 四个独立的线性投影
+  view+transpose: (B, T, 512) → (B, 8, T, 64)
+  Q·K^T / √64 → softmax → ×V → concat → W_o
+
+[L72-80]  FFN
+  fc1: 512→2048 (ReLU) → dropout → fc2: 2048→512
+  每个位置独立，共享参数
+
+[L87-100] EncoderLayer
+  norm1 → Self-Attention → +residual (dropout)
+  norm2 → FFN          → +residual (dropout)
+
+[L103-120] Encoder
+  Embedding → ×√d_model → +PositionalEncoding
+  → EncoderLayer × N → Final LayerNorm
+  → return (enc_out, src_mask)
+
+[L127-147] DecoderLayer
+  norm1 → Masked Self-Attention      → +residual
+  norm2 → Cross-Attention(Q=dec,KV=enc) → +residual
+  norm3 → FFN                         → +residual
+
+[L150-176] Decoder
+  Embedding → ×√d_model → +PositionalEncoding
+  → DecoderLayer × N → Final LayerNorm
+  → Linear(512→32000) → logits
+
+[L183-191] Transformer
+  enc_out, src_mask = encoder(src, src_len)
+  return decoder(tgt, enc_out, src_mask)
+</code></pre><h2 id="9-从-nmt-到-gpt">9. 从 NMT 到 GPT<a hidden class="anchor" aria-hidden="true" href="#9-从-nmt-到-gpt">#</a></h2>
+<p>Encoder-Decoder 架构适合机器翻译——有明确的&quot;源&quot;和&quot;目标&quot;。但 LLM（GPT 系列）只用 Decoder。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Encoder-Decoder（翻译）:
+</span></span><span style="display:flex;"><span>src → [Encoder: 全连接 Attention] → enc_out
+</span></span><span style="display:flex;"><span>tgt → [Decoder: masked Self-Attn + Cross-Attn(enc)] → logits
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Decoder-only（GPT）:
+</span></span><span style="display:flex;"><span>input → [Decoder: masked Self-Attention] → logits
+</span></span><span style="display:flex;"><span>        ↑
+</span></span><span style="display:flex;"><span>        causal mask 就是全部
+</span></span><span style="display:flex;"><span>        （Cross-Attention 删了，因为没有 encoder）
+</span></span></code></pre></div><p>只需要删掉 Cross-Attention，去掉 Encoder——Transformer 就退化成了 GPT。解码时逐 token 生成，每次用 <code>causal mask</code> 让当前位置后面的 token 不可见。</p>
+<p>这就是 Transformer 的故事：从针对翻译的 Encoder-Decoder 设计，到成为所有 LLM 的通用骨架。不是因为&quot;翻译&quot;这个任务特殊——是因为 <strong>Self-Attention + Residual + LayerNorm</strong> 这三个东西的组合，恰好构成了一个能稳定堆叠到任意深度的通用序列处理器。</p>
+<blockquote>
+<p><strong>三句话带走：</strong></p>
+<ol>
+<li>RNN 是单管滴管——梯度 O(n)、信息逐个挤过一根 hidden state 管；Transformer 是多通道移液器——O(1) 路径、全并行吸入一整行。</li>
+<li>发动机是 <strong>Self-Attention</strong>（Q·K^T/√d × softmax × V），拼装上 <strong>Multi-Head</strong>、<strong>Pre-LN Residual</strong>、<strong>sin/cos Positional Encoding</strong>。</li>
+<li>Encoder-Decoder 是翻译特化版——删掉 Cross-Attn 和 Encoder 就是 GPT。</li>
+</ol>
+</blockquote>
+<hr>
+<blockquote>
+<p><strong>License: GPLv3</strong>
+本文《Transformer 从零到一》系列采用 GNU 通用公共许可证第三版 (GNU General Public License v3.0) 协议进行开源发布与分发。允许任何形式的复制、修改和分发，但必须继承相同的开源协议，承认在算力宇宙中所有的迭代与变异。</p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

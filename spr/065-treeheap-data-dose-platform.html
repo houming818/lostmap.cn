@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, Data Scale, NLL, WMT, Transformer, GRU, Experiment Platform">
+<meta name="description" content="固定训练更新次数，把真实双语语料从 30K 扩到 1M：TreeHeap、Flat GRU 和小 Transformer 的 NLL 为何同时从 6.x 降到约 4.0，以及这对研究平台意味着什么。">
+<meta name="author" content="Houming818 &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/065-treeheap-data-dose-platform.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/065-treeheap-data-dose-platform.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/065-treeheap-data-dose-platform.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计">
+  <meta property="og:description" content="固定训练更新次数，把真实双语语料从 30K 扩到 1M：TreeHeap、Flat GRU 和小 Transformer 的 NLL 为何同时从 6.x 降到约 4.0，以及这对研究平台意味着什么。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-07-20T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-07-21T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计">
+  <meta name="twitter:description" content="固定训练更新次数，把真实双语语料从 30K 扩到 1M：TreeHeap、Flat GRU 和小 Transformer 的 NLL 为何同时从 6.x 降到约 4.0，以及这对研究平台意味着什么。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计",
+      "item": "https://www.lostmap.cn/spr/065-treeheap-data-dose-platform.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计",
+  "name": "[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计",
+  "description": "固定训练更新次数，把真实双语语料从 30K 扩到 1M：TreeHeap、Flat GRU 和小 Transformer 的 NLL 为何同时从 6.x 降到约 4.0，以及这对研究平台意味着什么。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "Data Scale", "NLL", "WMT", "Transformer", "GRU", "Experiment Platform"
+  ],
+  "articleBody": "NLL 6.x 不是架构天花板：30K 数据平台审计 证据状态更新（2026-07-28）：数据剂量与 NLL 曲线本身保留，但其解释范围缩小。后续审计发现，同系列 teacher-forcing 目标可能主要测到“给定正确中文前缀后的续写能力”，而非英文条件翻译。本文仍证明更多独立数据改善了该训练目标，不再证明 TreeHeap 翻译能力随数据扩展。详见 SPR-074。\nSPR-064 比较了 TreeHeap、Flat GRU 和小 Transformer。它回答了“这些模型在同一小实验里谁更好”，却没有先回答另一个基础问题：30,000 对训练语料，是否足以让任何一个模型展示真实能力？ 如果实验平台本身只有 NLL 6.x、BLEU 约 3 到 5 的水平，那么模型之间相差 0.1，可能只是在比较谁更适应一个严重缺数据的平台，而不是比较架构上限。\n本文补上这次遗漏的数据规模实验。结论先说：\n30K 不是本数据集的最优平台，更不是 TreeHeap 的能力上限。把独立训练样本增加到 1M，同时保持优化器更新次数不变，三种模型的 NLL 都从 6.x 降到了约 4.0。这个改善主要来自数据多样性，而不是 TreeHeap 独有优势。\n1. “平台问题”指什么 这里的“平台”不是服务器、显卡或操作系统，而是我们用来评价架构的整套实验坐标系：\n数据量与数据质量 tokenizer 训练更新次数 模型参数量 优化器与学习率 验证集和测试集 baseline 的成熟度 评价指标 假设我们造了两辆新车，却只让它们在一条泥泞、限速 10 公里的小路上比赛。两辆车都只能跑到 9 公里，不代表它们的最高速度相同；只能说明当前道路把车辆差异压住了。\nSPR-064 的平台大致是：\n项目 设置 训练数据 30,000 对英中句子 验证 / 测试 2,000 / 2,000 对 参数量 约 2,730 万 训练 4 epoch TreeHeap h1 NLL 6.1231 Flat GRU NLL 6.0401 小 Transformer NLL 6.4423 或 6.5330 这些数字可以比较本轮模型，却不能证明“Flat 已经是数据集最优解”，也不能证明“TreeHeap 只是更慢的 Flat”。要判断平台是否压住了模型，我们需要改变数据量，同时冻结其他主要变量。\n2. NLL 6.x 到底意味着什么 NLL 是 Negative Log-Likelihood，负对数似然。对每个目标 token，模型会给整个词表分配概率。如果正确 token 的概率是 $p_t$，平均 NLL 为：\n$\n$ \\operatorname{NLL}=-\\frac{1}{T}\\sum_{t=1}^{T}\\log p_t $$\n越低越好。常见的 PPL，也就是困惑度，为：\n$\n$ \\operatorname{PPL}=e^{\\operatorname{NLL}} $$\n可以把 PPL 粗略理解成：模型在每一步面对多少个“同样有竞争力”的候选。它不是候选词的真实数量，但适合帮助理解尺度。\nNLL PPL 约为 直观趋势 6.27 527 非常不确定 5.15 172 明显改善，但仍很宽 4.26 71 候选范围继续收缩 4.02 56 比 30K 平台可靠得多 因此，从 NLL 6.27 降到 4.02 不是小数点上的装饰。PPL 从约 527 降到了约 56，说明模型给正确 token 的相对概率大幅提高。\n但 NLL 也不是产品质量的完整替代。teacher forcing 下 NLL 下降，并不保证自由生成一定自然；还要结合 BLEU、样例、人工检查和真实任务评价。\n3. 为什么不能直接把数据放大，再训练相同 epoch 最简单的做法是：\n30K 训练 4 epoch 1M 也训练 4 epoch 但这不是纯粹的数据量实验。1M 的 4 epoch 包含的优化器更新次数约为 30K 的 33 倍。结果变好以后，我们不知道原因是：\n看到了更多不同句子 还是 只是计算了更多次梯度 因此，这次实验固定每组都是：\n15,625 次 AdamW 更新 batch size = 64 总样本曝光量约 1,000,000 唯一主动改变的变量是独立训练句子数量：\n独立训练句对 每条数据平均复用次数 30,000 33.33 次 100,000 10.00 次 300,000 3.33 次 1,000,000 1.00 次 30K 组反复背同一本薄练习册，1M 组把同样的一百万次阅读机会用于一百万个不同样本。这样才能较干净地测量“数据多样性”本身。\n4. 实验预注册 正式 Claim 为：\nS3-PRIVATE-PROTOCOL-DATA-DOSE-C03：在优化器更新预算和验证/测试集固定时，如果 SPR-064 的 TreeHeap h1 主要受数据不足限制，那么独立训练句对从 30K 增加到 1M 应显著降低 held-out NLL。\n执行前写死四条判断门槛：\nh1 的 1M NLL 至少比 30K 低 0.10。 log10(数据量) 与 h1 NLL 的 Spearman 相关系数不高于 -0.80。 三次相邻扩容中，至少两次使 h1 NLL 下降。 所有梯度保持有限，不得用数值崩溃解释结果。 Flat GRU 和参数量接近的小 Transformer 也执行相同数据剂量。这一点很重要：如果只有 TreeHeap 改善，可以怀疑 TreeHeap 特别缺数据；如果三者都改善，更合理的解释是整个平台都受数据多样性限制。\n固定变量 模型 seed = 71901 验证集 = 固定 2K，哈希锁定 测试集 = 固定 2K，哈希锁定 tokenizer = 固定 SentencePiece 模型，SHA-256 锁定 batch = 64 更新次数 = 15,625 learning rate = 0.002 验证间隔 = 500 steps 训练集采用嵌套设计：30K 是 100K 的子集，100K 是 300K 的子集，300K 是 1M 的子集。因此，扩容不是换一套完全不同的数据抽签。\n5. 正式结果 实验在 io 的 RTX 3090 上运行 5.32 小时。三种模型、四档数据量共 12 个训练臂。\nTest NLL 模型 30K 100K 300K 1M 30K 到 1M 改善 TreeHeap h1 6.2671 5.1454 4.2558 4.0198 2.2473 Flat GRU 6.0319 5.0532 4.2025 3.9365 2.0954 Small Transformer 6.5373 5.3375 4.1761 3.9201 2.6172 三条曲线都严格单调下降，三种模型的 Spearman 系数都是 -1.0。TreeHeap 的四条预注册 gate 全部通过。\nTreeHeap h1 的完整体检 独立句对 最佳 step Test NLL PPL Token BLEU-4 训练时间 峰值显存 30K 1,000 6.2671 526.9 5.401 56.9 分钟 1.84 GiB 100K 3,000 5.1454 171.6 7.778 57.0 分钟 1.85 GiB 300K 14,000 4.2558 70.5 11.079 56.7 分钟 1.84 GiB 1M 15,625 4.0198 55.7 12.085 56.7 分钟 1.84 GiB 训练时间和显存基本不变，符合固定更新预算。NLL、PPL 和 BLEU 则同时随独立数据增加而改善。\n6. 30K 为什么会停在 NLL 6.x 最有解释力的不只是最终 NLL，而是最佳 checkpoint 出现在哪里。\n三个 30K 模型都在第 1,000 step 达到最佳验证结果。继续把同样的 30K 数据重复到 15,625 step 后，最终验证 NLL 严重恶化：\nTreeHeap h1：10.7979 Flat GRU：10.8155 Transformer：14.7291 这说明 30K 不是“学到了平台最优解”，而是很快耗尽了有限样本提供的新信息，随后开始过拟合。\n相反，1M 的 TreeHeap 和 Transformer 都在最后一个 step 才达到本轮最佳结果。它们只完整看过训练集约一次，曲线仍可能继续下降。因此，1M 的 NLL 约 4.0 也不能叫架构上限，只能叫当前固定预算下的一遍数据结果。\n所以 SPR-064 中的 NLL 6.x 应重新解释为：\n30K 独立样本不足以支撑约 27M 参数模型的稳定比较。重复曝光增加了计算，却不能替代新的关系证据。\n这就是平台问题的实证答案。\n7. TreeHeap 赢了吗 没有。\nTreeHeap 的 NLL 从 6.2671 降到 4.0198，证明它能从新增数据中持续学习；但 Flat 和 Transformer 也同样改善。在 1M 时：\nTreeHeap h1 比 Flat 落后 0.0833 NLL TreeHeap h1 比 Transformer 落后 0.0997 NLL 因此最强解释是普遍的数据多样性效应，不是 TreeHeap 独有 scaling law。\n也有一条谨慎的积极信号：TreeHeap 与最佳 baseline 的差距从 30K 时的 0.2352，缩小到 300K 到 1M 时约 0.08 到 0.10。这说明增加数据没有把 TreeHeap 甩开，但单 seed 不足以判断差距缩小是否稳定。\n工程效率仍然是明确负项：\n模型 每个数据剂量平均时间 TreeHeap h1 约 56.8 分钟 Flat GRU 约 15.5 分钟 Small Transformer 约 6.8 分钟 当前 TreeHeap 比 Flat 慢约 3.7 倍，比这个小 Transformer 慢约 8.3 倍。它证明了可学习性，没有证明计算优势。\n8. 数据越多就一定越好吗 也不能这样下结论。\n数据源文件声明包含约 1,417 万行、2.52 GB 文本，但样例检查发现了一些网页碎片、乱码和错位句对。例如型号页面、URL 错误页、广告文本和并不严格对应的双语句子。这些噪声不会推翻固定 split 下的 NLL 曲线，却会限制翻译产品质量。\n数量和质量是两个不同变量：\n更多不同样本 -\u003e 减少重复记忆，扩大关系覆盖 更多噪声样本 -\u003e 也可能教给模型错误对应和网页模板 这次实验只证明在当前语料排序与过滤规则下，从 30K 扩到 1M 的净收益为正。它没有证明继续扩到 14M 一定保持同一斜率，更没有证明“500 GB 才够”。\n9. 以后怎样避免平台误判 后续架构实验至少应同时报告四张表。\n数据卡 数据来源、字节数、行数 清洗与去重规则 训练 / 验证 / 测试哈希 tokenizer 哈希 长度分布和语言分布 训练卡 参数量 optimizer / learning rate batch、更新次数、样本曝光量 最佳 step 与最终 step GPU 时间、峰值显存 质量曲线 NLL / PPL BLEU 或任务指标 至少三个数据剂量 至少三个随机 seed 生成样例与人工审计 架构归因 matched Flat matched Transformer TreeHeap 地址、root、detail、head 干预 相同数据、参数和计算预算 只有当 baseline 已经随着数据正常改善、主要模型接近收敛、结果跨 seed 稳定时，架构差异才有资格被解释为结构能力。\n10. 下一步判断门槛 这次 Claim 的状态是：\n数据不足假设：supported pilot TreeHeap 可从 1M 数据继续学习：supported pilot TreeHeap 优于 Flat：not supported TreeHeap 优于 Transformer：not supported 通用 scaling law：未证明 产品级翻译能力：未证明 下一轮不应只把数据继续堆大。更有效的实验是：\n对 1M 端点执行至少三个 seed，确认 0.08 到 0.10 的差距是否稳定。 给 1M 模型更多更新，区分“一遍数据未收敛”和“模型容量不足”。 建立清洗语料对照，分开测量数量收益与质量收益。 使用更成熟、真正收敛的小 Transformer 作为平台上限参考。 报告达到相同 NLL 所需的 token、step、时间和显存，而不只比较最终分数。 这会把问题从“30K 谁赢了”升级为：\n在足够数据和公平计算预算下，TreeHeap 是否具有不同于 Flat 与 Transformer 的学习曲线、结构因果性和外推收益？\n11. 本轮结论 SPR-064 的架构比较没有作废，但它的适用范围必须缩小：它是一个 30K 小数据平台上的私有协议与结构因果实验，不是架构能力排名。\n数据剂量实验给出了三个清晰结论：\n30K 的 NLL 6.x 主要受到数据多样性限制，不能当作数据集最优值。 TreeHeap、Flat 和 Transformer 都能从 1M 独立句对中获得巨大收益。 TreeHeap 在 1M 时接近两个 baseline，但仍更慢、NLL 仍略差，因此只证明继续航行的资格，没有证明胜利。 这篇文章真正补上的，是我们的测量尺。没有足够宽的平台，架构优劣很容易被过拟合、未收敛和弱 baseline 伪装。现在至少可以确认：此前看到的 6.x 不是墙，只是 30K 这块窄甲板的边缘。\n完整 ARA 证据：\nara/s3-generation/logic/private_protocol_data_dose.md ara/s3-generation/evidence/s3_private_protocol_data_dose_full/ 代码提交：7bbb89c；结论归档提交：6182b5d。实验保留 config.json、数据 manifest、split hash、逐步 trace、运行日志、生成样例和 summary.json。\n本文与相关代码沿用项目现有开源许可证。supported pilot 表示受控单 seed 证据成立，不等于通用 scaling law 或产品性能承诺。\n",
+  "wordCount" : "730",
+  "inLanguage": "en",
+  "datePublished": "2026-07-20T00:00:00Z",
+  "dateModified": "2026-07-21T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Houming818 \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/065-treeheap-data-dose-platform.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item active">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计
+    </h1>
+    <div class="post-description">
+      固定训练更新次数，把真实双语语料从 30K 扩到 1M：TreeHeap、Flat GRU 和小 Transformer 的 NLL 为何同时从 6.x 降到约 4.0，以及这对研究平台意味着什么。
+    </div>
+    <div class="post-meta"><span title='2026-07-20 00:00:00 +0000 UTC'>July 20, 2026</span>&nbsp;·&nbsp;<span>Houming818 &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="nll-6x-不是架构天花板30k-数据平台审计">NLL 6.x 不是架构天花板：30K 数据平台审计<a hidden class="anchor" aria-hidden="true" href="#nll-6x-不是架构天花板30k-数据平台审计">#</a></h1>
+<blockquote>
+<p><strong>证据状态更新（2026-07-28）：数据剂量与 NLL 曲线本身保留，但其解释范围缩小。后续审计发现，同系列 teacher-forcing 目标可能主要测到“给定正确中文前缀后的续写能力”，而非英文条件翻译。本文仍证明更多独立数据改善了该训练目标，不再证明 TreeHeap 翻译能力随数据扩展。详见 SPR-074。</strong></p>
+</blockquote>
+<blockquote>
+<p><code>SPR-064</code> 比较了 TreeHeap、Flat GRU 和小 Transformer。它回答了“这些模型在同一小实验里谁更好”，却没有先回答另一个基础问题：<strong>30,000 对训练语料，是否足以让任何一个模型展示真实能力？</strong> 如果实验平台本身只有 NLL 6.x、BLEU 约 3 到 5 的水平，那么模型之间相差 0.1，可能只是在比较谁更适应一个严重缺数据的平台，而不是比较架构上限。</p>
+</blockquote>
+<p>本文补上这次遗漏的数据规模实验。结论先说：</p>
+<blockquote>
+<p><strong>30K 不是本数据集的最优平台，更不是 TreeHeap 的能力上限。把独立训练样本增加到 1M，同时保持优化器更新次数不变，三种模型的 NLL 都从 6.x 降到了约 4.0。这个改善主要来自数据多样性，而不是 TreeHeap 独有优势。</strong></p>
+</blockquote>
+<hr>
+<h2 id="1-平台问题指什么">1. “平台问题”指什么<a hidden class="anchor" aria-hidden="true" href="#1-平台问题指什么">#</a></h2>
+<p>这里的“平台”不是服务器、显卡或操作系统，而是我们用来评价架构的整套实验坐标系：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>数据量与数据质量
+</span></span><span style="display:flex;"><span>tokenizer
+</span></span><span style="display:flex;"><span>训练更新次数
+</span></span><span style="display:flex;"><span>模型参数量
+</span></span><span style="display:flex;"><span>优化器与学习率
+</span></span><span style="display:flex;"><span>验证集和测试集
+</span></span><span style="display:flex;"><span>baseline 的成熟度
+</span></span><span style="display:flex;"><span>评价指标
+</span></span></code></pre></div><p>假设我们造了两辆新车，却只让它们在一条泥泞、限速 10 公里的小路上比赛。两辆车都只能跑到 9 公里，不代表它们的最高速度相同；只能说明当前道路把车辆差异压住了。</p>
+<p><code>SPR-064</code> 的平台大致是：</p>
+<table>
+  <thead>
+      <tr>
+          <th>项目</th>
+          <th>设置</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>训练数据</td>
+          <td>30,000 对英中句子</td>
+      </tr>
+      <tr>
+          <td>验证 / 测试</td>
+          <td>2,000 / 2,000 对</td>
+      </tr>
+      <tr>
+          <td>参数量</td>
+          <td>约 2,730 万</td>
+      </tr>
+      <tr>
+          <td>训练</td>
+          <td>4 epoch</td>
+      </tr>
+      <tr>
+          <td>TreeHeap h1 NLL</td>
+          <td>6.1231</td>
+      </tr>
+      <tr>
+          <td>Flat GRU NLL</td>
+          <td>6.0401</td>
+      </tr>
+      <tr>
+          <td>小 Transformer NLL</td>
+          <td>6.4423 或 6.5330</td>
+      </tr>
+  </tbody>
+</table>
+<p>这些数字可以比较本轮模型，却不能证明“Flat 已经是数据集最优解”，也不能证明“TreeHeap 只是更慢的 Flat”。要判断平台是否压住了模型，我们需要改变数据量，同时冻结其他主要变量。</p>
+<hr>
+<h2 id="2-nll-6x-到底意味着什么">2. NLL 6.x 到底意味着什么<a hidden class="anchor" aria-hidden="true" href="#2-nll-6x-到底意味着什么">#</a></h2>
+<p>NLL 是 Negative Log-Likelihood，负对数似然。对每个目标 token，模型会给整个词表分配概率。如果正确 token 的概率是 </p>
+$p_t$<p>，平均 NLL 为：</p>
+<p>$</p>
+$ \operatorname{NLL}=-\frac{1}{T}\sum_{t=1}^{T}\log p_t $<p>$</p>
+<p>越低越好。常见的 PPL，也就是困惑度，为：</p>
+<p>$</p>
+$ \operatorname{PPL}=e^{\operatorname{NLL}} $<p>$</p>
+<p>可以把 PPL 粗略理解成：模型在每一步面对多少个“同样有竞争力”的候选。它不是候选词的真实数量，但适合帮助理解尺度。</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">NLL</th>
+          <th style="text-align: right">PPL 约为</th>
+          <th>直观趋势</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">6.27</td>
+          <td style="text-align: right">527</td>
+          <td>非常不确定</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">5.15</td>
+          <td style="text-align: right">172</td>
+          <td>明显改善，但仍很宽</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">4.26</td>
+          <td style="text-align: right">71</td>
+          <td>候选范围继续收缩</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">4.02</td>
+          <td style="text-align: right">56</td>
+          <td>比 30K 平台可靠得多</td>
+      </tr>
+  </tbody>
+</table>
+<p>因此，从 NLL 6.27 降到 4.02 不是小数点上的装饰。PPL 从约 527 降到了约 56，说明模型给正确 token 的相对概率大幅提高。</p>
+<p>但 NLL 也不是产品质量的完整替代。teacher forcing 下 NLL 下降，并不保证自由生成一定自然；还要结合 BLEU、样例、人工检查和真实任务评价。</p>
+<hr>
+<h2 id="3-为什么不能直接把数据放大再训练相同-epoch">3. 为什么不能直接把数据放大，再训练相同 epoch<a hidden class="anchor" aria-hidden="true" href="#3-为什么不能直接把数据放大再训练相同-epoch">#</a></h2>
+<p>最简单的做法是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>30K 训练 4 epoch
+</span></span><span style="display:flex;"><span>1M 也训练 4 epoch
+</span></span></code></pre></div><p>但这不是纯粹的数据量实验。1M 的 4 epoch 包含的优化器更新次数约为 30K 的 33 倍。结果变好以后，我们不知道原因是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>看到了更多不同句子
+</span></span><span style="display:flex;"><span>还是
+</span></span><span style="display:flex;"><span>只是计算了更多次梯度
+</span></span></code></pre></div><p>因此，这次实验固定每组都是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>15,625 次 AdamW 更新
+</span></span><span style="display:flex;"><span>batch size = 64
+</span></span><span style="display:flex;"><span>总样本曝光量约 1,000,000
+</span></span></code></pre></div><p>唯一主动改变的变量是<strong>独立训练句子数量</strong>：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">独立训练句对</th>
+          <th style="text-align: right">每条数据平均复用次数</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">30,000</td>
+          <td style="text-align: right">33.33 次</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">100,000</td>
+          <td style="text-align: right">10.00 次</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">300,000</td>
+          <td style="text-align: right">3.33 次</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">1,000,000</td>
+          <td style="text-align: right">1.00 次</td>
+      </tr>
+  </tbody>
+</table>
+<p>30K 组反复背同一本薄练习册，1M 组把同样的一百万次阅读机会用于一百万个不同样本。这样才能较干净地测量“数据多样性”本身。</p>
+<hr>
+<h2 id="4-实验预注册">4. 实验预注册<a hidden class="anchor" aria-hidden="true" href="#4-实验预注册">#</a></h2>
+<p>正式 Claim 为：</p>
+<blockquote>
+<p><strong>S3-PRIVATE-PROTOCOL-DATA-DOSE-C03：在优化器更新预算和验证/测试集固定时，如果 <code>SPR-064</code> 的 TreeHeap h1 主要受数据不足限制，那么独立训练句对从 30K 增加到 1M 应显著降低 held-out NLL。</strong></p>
+</blockquote>
+<p>执行前写死四条判断门槛：</p>
+<ol>
+<li>h1 的 1M NLL 至少比 30K 低 <code>0.10</code>。</li>
+<li><code>log10(数据量)</code> 与 h1 NLL 的 Spearman 相关系数不高于 <code>-0.80</code>。</li>
+<li>三次相邻扩容中，至少两次使 h1 NLL 下降。</li>
+<li>所有梯度保持有限，不得用数值崩溃解释结果。</li>
+</ol>
+<p>Flat GRU 和参数量接近的小 Transformer 也执行相同数据剂量。这一点很重要：如果只有 TreeHeap 改善，可以怀疑 TreeHeap 特别缺数据；如果三者都改善，更合理的解释是整个平台都受数据多样性限制。</p>
+<h3 id="固定变量">固定变量<a hidden class="anchor" aria-hidden="true" href="#固定变量">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型 seed = 71901
+</span></span><span style="display:flex;"><span>验证集 = 固定 2K，哈希锁定
+</span></span><span style="display:flex;"><span>测试集 = 固定 2K，哈希锁定
+</span></span><span style="display:flex;"><span>tokenizer = 固定 SentencePiece 模型，SHA-256 锁定
+</span></span><span style="display:flex;"><span>batch = 64
+</span></span><span style="display:flex;"><span>更新次数 = 15,625
+</span></span><span style="display:flex;"><span>learning rate = 0.002
+</span></span><span style="display:flex;"><span>验证间隔 = 500 steps
+</span></span></code></pre></div><p>训练集采用嵌套设计：30K 是 100K 的子集，100K 是 300K 的子集，300K 是 1M 的子集。因此，扩容不是换一套完全不同的数据抽签。</p>
+<hr>
+<h2 id="5-正式结果">5. 正式结果<a hidden class="anchor" aria-hidden="true" href="#5-正式结果">#</a></h2>
+<p>实验在 <code>io</code> 的 RTX 3090 上运行 5.32 小时。三种模型、四档数据量共 12 个训练臂。</p>
+<h3 id="test-nll">Test NLL<a hidden class="anchor" aria-hidden="true" href="#test-nll">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>模型</th>
+          <th style="text-align: right">30K</th>
+          <th style="text-align: right">100K</th>
+          <th style="text-align: right">300K</th>
+          <th style="text-align: right">1M</th>
+          <th style="text-align: right">30K 到 1M 改善</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>TreeHeap h1</td>
+          <td style="text-align: right">6.2671</td>
+          <td style="text-align: right">5.1454</td>
+          <td style="text-align: right">4.2558</td>
+          <td style="text-align: right">4.0198</td>
+          <td style="text-align: right"><strong>2.2473</strong></td>
+      </tr>
+      <tr>
+          <td>Flat GRU</td>
+          <td style="text-align: right">6.0319</td>
+          <td style="text-align: right">5.0532</td>
+          <td style="text-align: right">4.2025</td>
+          <td style="text-align: right">3.9365</td>
+          <td style="text-align: right"><strong>2.0954</strong></td>
+      </tr>
+      <tr>
+          <td>Small Transformer</td>
+          <td style="text-align: right">6.5373</td>
+          <td style="text-align: right">5.3375</td>
+          <td style="text-align: right">4.1761</td>
+          <td style="text-align: right">3.9201</td>
+          <td style="text-align: right"><strong>2.6172</strong></td>
+      </tr>
+  </tbody>
+</table>
+<p>三条曲线都严格单调下降，三种模型的 Spearman 系数都是 <code>-1.0</code>。TreeHeap 的四条预注册 gate 全部通过。</p>
+<h3 id="treeheap-h1-的完整体检">TreeHeap h1 的完整体检<a hidden class="anchor" aria-hidden="true" href="#treeheap-h1-的完整体检">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">独立句对</th>
+          <th style="text-align: right">最佳 step</th>
+          <th style="text-align: right">Test NLL</th>
+          <th style="text-align: right">PPL</th>
+          <th style="text-align: right">Token BLEU-4</th>
+          <th style="text-align: right">训练时间</th>
+          <th style="text-align: right">峰值显存</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">30K</td>
+          <td style="text-align: right">1,000</td>
+          <td style="text-align: right">6.2671</td>
+          <td style="text-align: right">526.9</td>
+          <td style="text-align: right">5.401</td>
+          <td style="text-align: right">56.9 分钟</td>
+          <td style="text-align: right">1.84 GiB</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">100K</td>
+          <td style="text-align: right">3,000</td>
+          <td style="text-align: right">5.1454</td>
+          <td style="text-align: right">171.6</td>
+          <td style="text-align: right">7.778</td>
+          <td style="text-align: right">57.0 分钟</td>
+          <td style="text-align: right">1.85 GiB</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">300K</td>
+          <td style="text-align: right">14,000</td>
+          <td style="text-align: right">4.2558</td>
+          <td style="text-align: right">70.5</td>
+          <td style="text-align: right">11.079</td>
+          <td style="text-align: right">56.7 分钟</td>
+          <td style="text-align: right">1.84 GiB</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">1M</td>
+          <td style="text-align: right">15,625</td>
+          <td style="text-align: right">4.0198</td>
+          <td style="text-align: right">55.7</td>
+          <td style="text-align: right">12.085</td>
+          <td style="text-align: right">56.7 分钟</td>
+          <td style="text-align: right">1.84 GiB</td>
+      </tr>
+  </tbody>
+</table>
+<p>训练时间和显存基本不变，符合固定更新预算。NLL、PPL 和 BLEU 则同时随独立数据增加而改善。</p>
+<hr>
+<h2 id="6-30k-为什么会停在-nll-6x">6. 30K 为什么会停在 NLL 6.x<a hidden class="anchor" aria-hidden="true" href="#6-30k-为什么会停在-nll-6x">#</a></h2>
+<p>最有解释力的不只是最终 NLL，而是最佳 checkpoint 出现在哪里。</p>
+<p>三个 30K 模型都在第 1,000 step 达到最佳验证结果。继续把同样的 30K 数据重复到 15,625 step 后，最终验证 NLL 严重恶化：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap h1：10.7979
+</span></span><span style="display:flex;"><span>Flat GRU：10.8155
+</span></span><span style="display:flex;"><span>Transformer：14.7291
+</span></span></code></pre></div><p>这说明 30K 不是“学到了平台最优解”，而是很快耗尽了有限样本提供的新信息，随后开始过拟合。</p>
+<p>相反，1M 的 TreeHeap 和 Transformer 都在最后一个 step 才达到本轮最佳结果。它们只完整看过训练集约一次，曲线仍可能继续下降。因此，1M 的 NLL 约 4.0 也不能叫架构上限，只能叫当前固定预算下的一遍数据结果。</p>
+<p>所以 <code>SPR-064</code> 中的 NLL 6.x 应重新解释为：</p>
+<blockquote>
+<p><strong>30K 独立样本不足以支撑约 27M 参数模型的稳定比较。重复曝光增加了计算，却不能替代新的关系证据。</strong></p>
+</blockquote>
+<p>这就是平台问题的实证答案。</p>
+<hr>
+<h2 id="7-treeheap-赢了吗">7. TreeHeap 赢了吗<a hidden class="anchor" aria-hidden="true" href="#7-treeheap-赢了吗">#</a></h2>
+<p>没有。</p>
+<p>TreeHeap 的 NLL 从 6.2671 降到 4.0198，证明它能从新增数据中持续学习；但 Flat 和 Transformer 也同样改善。在 1M 时：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap h1 比 Flat 落后 0.0833 NLL
+</span></span><span style="display:flex;"><span>TreeHeap h1 比 Transformer 落后 0.0997 NLL
+</span></span></code></pre></div><p>因此最强解释是<strong>普遍的数据多样性效应</strong>，不是 TreeHeap 独有 scaling law。</p>
+<p>也有一条谨慎的积极信号：TreeHeap 与最佳 baseline 的差距从 30K 时的 <code>0.2352</code>，缩小到 300K 到 1M 时约 <code>0.08</code> 到 <code>0.10</code>。这说明增加数据没有把 TreeHeap 甩开，但单 seed 不足以判断差距缩小是否稳定。</p>
+<p>工程效率仍然是明确负项：</p>
+<table>
+  <thead>
+      <tr>
+          <th>模型</th>
+          <th style="text-align: right">每个数据剂量平均时间</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>TreeHeap h1</td>
+          <td style="text-align: right">约 56.8 分钟</td>
+      </tr>
+      <tr>
+          <td>Flat GRU</td>
+          <td style="text-align: right">约 15.5 分钟</td>
+      </tr>
+      <tr>
+          <td>Small Transformer</td>
+          <td style="text-align: right">约 6.8 分钟</td>
+      </tr>
+  </tbody>
+</table>
+<p>当前 TreeHeap 比 Flat 慢约 3.7 倍，比这个小 Transformer 慢约 8.3 倍。它证明了可学习性，没有证明计算优势。</p>
+<hr>
+<h2 id="8-数据越多就一定越好吗">8. 数据越多就一定越好吗<a hidden class="anchor" aria-hidden="true" href="#8-数据越多就一定越好吗">#</a></h2>
+<p>也不能这样下结论。</p>
+<p>数据源文件声明包含约 1,417 万行、2.52 GB 文本，但样例检查发现了一些网页碎片、乱码和错位句对。例如型号页面、URL 错误页、广告文本和并不严格对应的双语句子。这些噪声不会推翻固定 split 下的 NLL 曲线，却会限制翻译产品质量。</p>
+<p>数量和质量是两个不同变量：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>更多不同样本
+</span></span><span style="display:flex;"><span>  -&gt; 减少重复记忆，扩大关系覆盖
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>更多噪声样本
+</span></span><span style="display:flex;"><span>  -&gt; 也可能教给模型错误对应和网页模板
+</span></span></code></pre></div><p>这次实验只证明在当前语料排序与过滤规则下，从 30K 扩到 1M 的净收益为正。它没有证明继续扩到 14M 一定保持同一斜率，更没有证明“500 GB 才够”。</p>
+<hr>
+<h2 id="9-以后怎样避免平台误判">9. 以后怎样避免平台误判<a hidden class="anchor" aria-hidden="true" href="#9-以后怎样避免平台误判">#</a></h2>
+<p>后续架构实验至少应同时报告四张表。</p>
+<h3 id="数据卡">数据卡<a hidden class="anchor" aria-hidden="true" href="#数据卡">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>数据来源、字节数、行数
+</span></span><span style="display:flex;"><span>清洗与去重规则
+</span></span><span style="display:flex;"><span>训练 / 验证 / 测试哈希
+</span></span><span style="display:flex;"><span>tokenizer 哈希
+</span></span><span style="display:flex;"><span>长度分布和语言分布
+</span></span></code></pre></div><h3 id="训练卡">训练卡<a hidden class="anchor" aria-hidden="true" href="#训练卡">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>参数量
+</span></span><span style="display:flex;"><span>optimizer / learning rate
+</span></span><span style="display:flex;"><span>batch、更新次数、样本曝光量
+</span></span><span style="display:flex;"><span>最佳 step 与最终 step
+</span></span><span style="display:flex;"><span>GPU 时间、峰值显存
+</span></span></code></pre></div><h3 id="质量曲线">质量曲线<a hidden class="anchor" aria-hidden="true" href="#质量曲线">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>NLL / PPL
+</span></span><span style="display:flex;"><span>BLEU 或任务指标
+</span></span><span style="display:flex;"><span>至少三个数据剂量
+</span></span><span style="display:flex;"><span>至少三个随机 seed
+</span></span><span style="display:flex;"><span>生成样例与人工审计
+</span></span></code></pre></div><h3 id="架构归因">架构归因<a hidden class="anchor" aria-hidden="true" href="#架构归因">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>matched Flat
+</span></span><span style="display:flex;"><span>matched Transformer
+</span></span><span style="display:flex;"><span>TreeHeap 地址、root、detail、head 干预
+</span></span><span style="display:flex;"><span>相同数据、参数和计算预算
+</span></span></code></pre></div><p>只有当 baseline 已经随着数据正常改善、主要模型接近收敛、结果跨 seed 稳定时，架构差异才有资格被解释为结构能力。</p>
+<hr>
+<h2 id="10-下一步判断门槛">10. 下一步判断门槛<a hidden class="anchor" aria-hidden="true" href="#10-下一步判断门槛">#</a></h2>
+<p>这次 Claim 的状态是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>数据不足假设：supported pilot
+</span></span><span style="display:flex;"><span>TreeHeap 可从 1M 数据继续学习：supported pilot
+</span></span><span style="display:flex;"><span>TreeHeap 优于 Flat：not supported
+</span></span><span style="display:flex;"><span>TreeHeap 优于 Transformer：not supported
+</span></span><span style="display:flex;"><span>通用 scaling law：未证明
+</span></span><span style="display:flex;"><span>产品级翻译能力：未证明
+</span></span></code></pre></div><p>下一轮不应只把数据继续堆大。更有效的实验是：</p>
+<ol>
+<li>对 1M 端点执行至少三个 seed，确认 <code>0.08</code> 到 <code>0.10</code> 的差距是否稳定。</li>
+<li>给 1M 模型更多更新，区分“一遍数据未收敛”和“模型容量不足”。</li>
+<li>建立清洗语料对照，分开测量数量收益与质量收益。</li>
+<li>使用更成熟、真正收敛的小 Transformer 作为平台上限参考。</li>
+<li>报告达到相同 NLL 所需的 token、step、时间和显存，而不只比较最终分数。</li>
+</ol>
+<p>这会把问题从“30K 谁赢了”升级为：</p>
+<blockquote>
+<p><strong>在足够数据和公平计算预算下，TreeHeap 是否具有不同于 Flat 与 Transformer 的学习曲线、结构因果性和外推收益？</strong></p>
+</blockquote>
+<hr>
+<h2 id="11-本轮结论">11. 本轮结论<a hidden class="anchor" aria-hidden="true" href="#11-本轮结论">#</a></h2>
+<p><code>SPR-064</code> 的架构比较没有作废，但它的适用范围必须缩小：它是一个 30K 小数据平台上的私有协议与结构因果实验，不是架构能力排名。</p>
+<p>数据剂量实验给出了三个清晰结论：</p>
+<ol>
+<li>30K 的 NLL 6.x 主要受到数据多样性限制，不能当作数据集最优值。</li>
+<li>TreeHeap、Flat 和 Transformer 都能从 1M 独立句对中获得巨大收益。</li>
+<li>TreeHeap 在 1M 时接近两个 baseline，但仍更慢、NLL 仍略差，因此只证明继续航行的资格，没有证明胜利。</li>
+</ol>
+<p>这篇文章真正补上的，是我们的测量尺。没有足够宽的平台，架构优劣很容易被过拟合、未收敛和弱 baseline 伪装。现在至少可以确认：此前看到的 6.x 不是墙，只是 30K 这块窄甲板的边缘。</p>
+<p>完整 ARA 证据：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s3-generation/logic/private_protocol_data_dose.md
+</span></span><span style="display:flex;"><span>ara/s3-generation/evidence/s3_private_protocol_data_dose_full/
+</span></span></code></pre></div><p>代码提交：<code>7bbb89c</code>；结论归档提交：<code>6182b5d</code>。实验保留 <code>config.json</code>、数据 manifest、split hash、逐步 trace、运行日志、生成样例和 <code>summary.json</code>。</p>
+<p>本文与相关代码沿用项目现有开源许可证。<code>supported pilot</code> 表示受控单 seed 证据成立，不等于通用 scaling law 或产品性能承诺。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

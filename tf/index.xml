@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Transformer 从零到一 on LostMap</title>
+    <link>https://www.lostmap.cn/tf/index.html</link>
+    <description>Recent content in Transformer 从零到一 on LostMap</description>
+    <generator>Hugo</generator>
+    <language>zh-CN</language>
+    <lastBuildDate>Sun, 17 May 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://www.lostmap.cn/tf/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</title>
+      <link>https://www.lostmap.cn/tf/001-transformer-from-scratch.html</link>
+      <pubDate>Sun, 17 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/tf/001-transformer-from-scratch.html</guid>
+      <description>从 RNN 的串行瓶颈出发，走到 Multi-Head Attention 的全并行设计，最后逐行对照 model.py 看懂每一行代码。涵盖 Q/K/V 几何直觉、scaled dot-product、Pre-LN、causal mask、从 NMT 到 GPT 的演进。</description>
+    </item>
+  </channel>
+</rss>

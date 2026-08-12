@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, S3, Seq2Seq, WMT, Generation, Evidence">
+<meta name="description" content="记录首次真实 WMT 英中 seq2seq 运行：TreeHeap encoder-decoder 已能生成主题相关的中文句子，但当前落后 flat GRU；这验证的是 S3 表面生成通路，不是问答或翻译成果。">
+<meta name="author" content="Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/050-real-wmt-seq2seq-voyage.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/050-real-wmt-seq2seq-voyage.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/050-real-wmt-seq2seq-voyage.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答">
+  <meta property="og:description" content="记录首次真实 WMT 英中 seq2seq 运行：TreeHeap encoder-decoder 已能生成主题相关的中文句子，但当前落后 flat GRU；这验证的是 S3 表面生成通路，不是问答或翻译成果。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-07-11T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-07-11T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答">
+  <meta name="twitter:description" content="记录首次真实 WMT 英中 seq2seq 运行：TreeHeap encoder-decoder 已能生成主题相关的中文句子，但当前落后 flat GRU；这验证的是 S3 表面生成通路，不是问答或翻译成果。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答",
+      "item": "https://www.lostmap.cn/spr/050-real-wmt-seq2seq-voyage.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答",
+  "name": "[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答",
+  "description": "记录首次真实 WMT 英中 seq2seq 运行：TreeHeap encoder-decoder 已能生成主题相关的中文句子，但当前落后 flat GRU；这验证的是 S3 表面生成通路，不是问答或翻译成果。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "S3", "Seq2Seq", "WMT", "Generation", "Evidence"
+  ],
+  "articleBody": "第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答 前面的很多实验都很小：echo、路由、内部节点读出、概率桶、受控符号任务。它们帮助我们确认 TreeHeap 的一些局部算子可以工作，但始终留下一个最实际的问题：\nTreeHeap 能不能真正参与自然语言的“输入一句话，输出另一句话”？ 这次我们不再使用 toy token，也不读取历史上已经被降级的 TreeHeap checkpoint。我们直接在真实 WMT 英中平行语料上，从零训练一个最小的 seq2seq 系统。\n先说结论：\n真实文本的 TreeHeap encoder -\u003e decoder 通路已经跑通。 它能输出成句、主题相关的中文。 但当前它没有赢过普通 flat GRU，也不能称为翻译成果。 更重要的是：这仍然不是问答任务。 这是一份首航报告，不是庆功报告。\n1. 为什么先拿 WMT 做 seq2seq？ 最终目标不是机器翻译，而是：\nquestion + context -\u003e TreeHeap encoder -\u003e answer decoder -\u003e answer 也就是问答。\n但问答数据需要三元组：\n上下文、问题、答案 手头的 WMT 数据提供的是另一种真实的输入输出对：\n英文句子 -\u003e 中文句子 它不能证明模型会回答问题，却很适合先验证一个更基础的门：\nTreeHeap 能否接收真实文本， 把它编码成可供 decoder 使用的状态， 并连续生成多步中文 token？ 如果这一步都不成立，直接谈 QA 只会把 encoder、decoder、数据和评价混成一团。\n所以这次 WMT 的身份是：\n真实语言 seq2seq generation gate 不是最终 QA benchmark。\n2. 这次模型到底长什么样？ 输入是英文 SentencePiece token。例如：\nEnglish sentence -\u003e [t1, t2, t3, ...] 每个 token 先写入 TreeHeap 的叶子。然后按 left/right 递归组合：\nparent / \\ left right 局部组合不是简单相加：\nh_parent = Compose_theta(h_left + e_left, h_right + e_right) e_left 和 e_right 是不同的槽位向量，所以：\nCompose(a, b) != Compose(b, a) 经过多层递归后，模型同时拥有：\n叶子节点：具体英文 BPE token 内部节点：局部短语/子堆摘要 root：整句摘要 中文 decoder 每生成一个 token，都产生一个 query。它不是只读 root，而是在所有有效节点上分配概率：\np(i | q_t, H) = softmax(K_theta(q_t, h_i)) 再把各节点状态按概率混合成当前上下文：\nc_t = sum_i p(i | q_t, H) h_i 最后生成下一个中文 token。\n这可以理解为：\ndecoder 每说一个中文词， 都在 TreeHeap 的叶子和内部子堆之间做一次概率读取。 训练时只有标准的 teacher-forcing 交叉熵：\nL = sum_t CE(P(y_t | y_",
+  "wordCount" : "512",
+  "inLanguage": "en",
+  "datePublished": "2026-07-11T00:00:00Z",
+  "dateModified": "2026-07-11T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/050-real-wmt-seq2seq-voyage.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item active">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答
+    </h1>
+    <div class="post-description">
+      记录首次真实 WMT 英中 seq2seq 运行：TreeHeap encoder-decoder 已能生成主题相关的中文句子，但当前落后 flat GRU；这验证的是 S3 表面生成通路，不是问答或翻译成果。
+    </div>
+    <div class="post-meta"><span title='2026-07-11 00:00:00 +0000 UTC'>July 11, 2026</span>&nbsp;·&nbsp;<span>Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="第一次真实语言生成treeheap-从英文到中文但还不是问答">第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答<a hidden class="anchor" aria-hidden="true" href="#第一次真实语言生成treeheap-从英文到中文但还不是问答">#</a></h1>
+<p>前面的很多实验都很小：echo、路由、内部节点读出、概率桶、受控符号任务。它们帮助我们确认 TreeHeap 的一些局部算子可以工作，但始终留下一个最实际的问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 能不能真正参与自然语言的“输入一句话，输出另一句话”？
+</span></span></code></pre></div><p>这次我们不再使用 toy token，也不读取历史上已经被降级的 TreeHeap checkpoint。我们直接在真实 WMT 英中平行语料上，从零训练一个最小的 seq2seq 系统。</p>
+<p>先说结论：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>真实文本的 TreeHeap encoder -&gt; decoder 通路已经跑通。
+</span></span><span style="display:flex;"><span>它能输出成句、主题相关的中文。
+</span></span><span style="display:flex;"><span>但当前它没有赢过普通 flat GRU，也不能称为翻译成果。
+</span></span><span style="display:flex;"><span>更重要的是：这仍然不是问答任务。
+</span></span></code></pre></div><p>这是一份首航报告，不是庆功报告。</p>
+<h2 id="1-为什么先拿-wmt-做-seq2seq">1. 为什么先拿 WMT 做 seq2seq？<a hidden class="anchor" aria-hidden="true" href="#1-为什么先拿-wmt-做-seq2seq">#</a></h2>
+<p>最终目标不是机器翻译，而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>question + context
+</span></span><span style="display:flex;"><span>  -&gt; TreeHeap encoder
+</span></span><span style="display:flex;"><span>  -&gt; answer decoder
+</span></span><span style="display:flex;"><span>  -&gt; answer
+</span></span></code></pre></div><p>也就是问答。</p>
+<p>但问答数据需要三元组：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>上下文、问题、答案
+</span></span></code></pre></div><p>手头的 WMT 数据提供的是另一种真实的输入输出对：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>英文句子 -&gt; 中文句子
+</span></span></code></pre></div><p>它不能证明模型会回答问题，却很适合先验证一个更基础的门：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 能否接收真实文本，
+</span></span><span style="display:flex;"><span>把它编码成可供 decoder 使用的状态，
+</span></span><span style="display:flex;"><span>并连续生成多步中文 token？
+</span></span></code></pre></div><p>如果这一步都不成立，直接谈 QA 只会把 encoder、decoder、数据和评价混成一团。</p>
+<p>所以这次 WMT 的身份是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>真实语言 seq2seq generation gate
+</span></span></code></pre></div><p>不是最终 QA benchmark。</p>
+<h2 id="2-这次模型到底长什么样">2. 这次模型到底长什么样？<a hidden class="anchor" aria-hidden="true" href="#2-这次模型到底长什么样">#</a></h2>
+<p>输入是英文 SentencePiece token。例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>English sentence
+</span></span><span style="display:flex;"><span>  -&gt; [t1, t2, t3, ...]
+</span></span></code></pre></div><p>每个 token 先写入 TreeHeap 的叶子。然后按 left/right 递归组合：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>        parent
+</span></span><span style="display:flex;"><span>       /      \
+</span></span><span style="display:flex;"><span>    left     right
+</span></span></code></pre></div><p>局部组合不是简单相加：</p>
+<pre tabindex="0"><code class="language-math" data-lang="math">h_parent = Compose_theta(h_left + e_left, h_right + e_right)
+</code></pre><p><code>e_left</code> 和 <code>e_right</code> 是不同的槽位向量，所以：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Compose(a, b) != Compose(b, a)
+</span></span></code></pre></div><p>经过多层递归后，模型同时拥有：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>叶子节点：具体英文 BPE token
+</span></span><span style="display:flex;"><span>内部节点：局部短语/子堆摘要
+</span></span><span style="display:flex;"><span>root：整句摘要
+</span></span></code></pre></div><p>中文 decoder 每生成一个 token，都产生一个 query。它不是只读 root，而是在所有有效节点上分配概率：</p>
+<pre tabindex="0"><code class="language-math" data-lang="math">p(i | q_t, H) = softmax(K_theta(q_t, h_i))
+</code></pre><p>再把各节点状态按概率混合成当前上下文：</p>
+<pre tabindex="0"><code class="language-math" data-lang="math">c_t = sum_i p(i | q_t, H) h_i
+</code></pre><p>最后生成下一个中文 token。</p>
+<p>这可以理解为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>decoder 每说一个中文词，
+</span></span><span style="display:flex;"><span>都在 TreeHeap 的叶子和内部子堆之间做一次概率读取。
+</span></span></code></pre></div><p>训练时只有标准的 teacher-forcing 交叉熵：</p>
+<pre tabindex="0"><code class="language-math" data-lang="math">L = sum_t CE(P(y_t | y_&lt;t, H(x)), y_t)
+</code></pre><p>没有人工句法树、没有 route 标签、没有类别标签、没有五个 loss 的大锅炖。</p>
+<h2 id="3-真实数据与对照">3. 真实数据与对照<a hidden class="anchor" aria-hidden="true" href="#3-真实数据与对照">#</a></h2>
+<p>数据：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>/mnt/nas/datasets/wmt17/train.zh-en
+</span></span><span style="display:flex;"><span>方向：English -&gt; Chinese
+</span></span><span style="display:flex;"><span>训练 / 验证 / 测试：30,000 / 2,000 / 2,000
+</span></span><span style="display:flex;"><span>最大 BPE 长度：24
+</span></span><span style="display:flex;"><span>训练：10 epochs
+</span></span><span style="display:flex;"><span>GPU：io 的 RTX 3090，270W 限制保持不变
+</span></span></code></pre></div><p>我们没有只跑 TreeHeap。三种 encoder 使用相同的自回归中文 decoder 与相同的翻译 loss：</p>
+<table>
+  <thead>
+      <tr>
+          <th>Encoder</th>
+          <th>输入能保留什么？</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>BoW</td>
+          <td>英文 token 的平均向量，不保留顺序。</td>
+      </tr>
+      <tr>
+          <td>Flat GRU</td>
+          <td>有序英文 token 序列。</td>
+      </tr>
+      <tr>
+          <td>TreeHeap</td>
+          <td>英文叶子、递归内部子堆、root。</td>
+      </tr>
+  </tbody>
+</table>
+<p>这使问题变得很朴素：TreeHeap 现在到底比无序词袋、比普通有序序列，做得怎样？</p>
+<h2 id="4-数字结果">4. 数字结果<a hidden class="anchor" aria-hidden="true" href="#4-数字结果">#</a></h2>
+<p>完整运行耗时：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>606 秒，约 10.1 分钟
+</span></span></code></pre></div><table>
+  <thead>
+      <tr>
+          <th>Model</th>
+          <th style="text-align: right">Test NLL ↓</th>
+          <th style="text-align: right">PPL ↓</th>
+          <th style="text-align: right">token-BLEU4 ↑</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>TreeHeap</td>
+          <td style="text-align: right">5.129</td>
+          <td style="text-align: right">168.8</td>
+          <td style="text-align: right">1.48</td>
+      </tr>
+      <tr>
+          <td>BoW</td>
+          <td style="text-align: right">4.948</td>
+          <td style="text-align: right">140.9</td>
+          <td style="text-align: right">1.43</td>
+      </tr>
+      <tr>
+          <td>Flat GRU</td>
+          <td style="text-align: right"><strong>4.799</strong></td>
+          <td style="text-align: right"><strong>121.4</strong></td>
+          <td style="text-align: right"><strong>2.87</strong></td>
+      </tr>
+  </tbody>
+</table>
+<p>这里的 <code>token-BLEU4</code> 是脚本内的 BPE-token 近似指标，不是官方 WMT BLEU，不能拿来和论文榜单比较。</p>
+<p>数字的诚实解释是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 已经能学习真实 seq2seq。
+</span></span><span style="display:flex;"><span>TreeHeap 的生成指标略高于 BoW，但差异很小。
+</span></span><span style="display:flex;"><span>TreeHeap 明显落后于 flat GRU。
+</span></span></code></pre></div><p>所以这轮不能支持：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 当前配置优于普通序列模型。
+</span></span></code></pre></div><h2 id="5-输出到底像不像中文">5. 输出到底像不像中文？<a hidden class="anchor" aria-hidden="true" href="#5-输出到底像不像中文">#</a></h2>
+<p>看几个测试集样例。下面没有润色。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>EN: In order to fund this spending, revenues must be raised.
+</span></span><span style="display:flex;"><span>REF: 为了支撑这笔费用,就必须增加政府收入。
+</span></span><span style="display:flex;"><span>TH : 鉴于这一观点,我们必须增加支出。
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>EN: When it comes to economic policy, a fast, faulty decision is often better than inaction.
+</span></span><span style="display:flex;"><span>REF: 当谈到经济政策时,一个快速的、错误的决定通常是比无所作为要好。
+</span></span><span style="display:flex;"><span>TH : 鉴于经济决策,但通常比经济决策,因为其决策的境况通常是积极的。
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>EN: Furthermore, the slow pace of European decision-making has compounded Greece&#39;s troubles.
+</span></span><span style="display:flex;"><span>REF: 此外,欧洲缓慢的决策过程也加深了希腊的麻烦。
+</span></span><span style="display:flex;"><span>TH : 此外,英国选民决定了欧洲国家,但英国退出投票。
+</span></span></code></pre></div><p>这些结果同时说明两件事。</p>
+<p>第一，正面信号：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型并非输出随机 token。
+</span></span><span style="display:flex;"><span>它学会了中文连接方式、部分句式、标点和主题领域词。
+</span></span><span style="display:flex;"><span>“欧洲 / 希腊 / 经济 / 决策 / 支出”等语义场会进入输出。
+</span></span></code></pre></div><p>换句话说，S3 的表面语言 decoder 已经开始工作。它不再只是输出类别桶，也不只是复制输入。</p>
+<p>第二，关键不足：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>主题相近，不等于关系正确。
+</span></span></code></pre></div><p>模型经常把训练集中同一主题的短语拼接到一起：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>欧洲 -&gt; 英国
+</span></span><span style="display:flex;"><span>财政刺激 -&gt; 财政紧缩
+</span></span><span style="display:flex;"><span>决策缓慢 -&gt; 退出投票
+</span></span></code></pre></div><p>句子表面像中文，但事实关系、指代和谓词绑定仍然很不稳定。</p>
+<h2 id="6-treeheap-内部节点有没有参与">6. TreeHeap 内部节点有没有参与？<a hidden class="anchor" aria-hidden="true" href="#6-treeheap-内部节点有没有参与">#</a></h2>
+<p>我们还做了一个不重新训练的读取消融：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>full       可读叶子和所有内部子堆
+</span></span><span style="display:flex;"><span>leaf_only  隐藏内部节点，只读叶子
+</span></span><span style="display:flex;"><span>root_only  只读整句 root
+</span></span></code></pre></div><p>greedy 生成的 token-BLEU4：</p>
+<table>
+  <thead>
+      <tr>
+          <th>Read mode</th>
+          <th style="text-align: right">token-BLEU4</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>full</td>
+          <td style="text-align: right">1.48</td>
+      </tr>
+      <tr>
+          <td>leaf_only</td>
+          <td style="text-align: right">1.26</td>
+      </tr>
+      <tr>
+          <td>root_only</td>
+          <td style="text-align: right">0.037</td>
+      </tr>
+  </tbody>
+</table>
+<p>这说明 root 不是一个足够的万能 hash：只给 root 时，生成几乎崩溃。完整 TreeHeap 比 leaf-only 有小幅提升，说明内部节点可能已经带来一部分可用信息，但增益仍然很弱。</p>
+<p>有一个审计细节必须记录：当前脚本的 ablation NLL 仍错误地沿用了 full-memory 的 teacher-forcing 路径，因此 ablation 的 NLL 相同、不能解释。上表只使用实际走 ablation read path 的 greedy generation 指标。下一次应加载本次 checkpoint 修正后重算，不必重训。</p>
+<h2 id="7-这不是-qa但它为-qa-打开了什么">7. 这不是 QA，但它为 QA 打开了什么？<a hidden class="anchor" aria-hidden="true" href="#7-这不是-qa但它为-qa-打开了什么">#</a></h2>
+<p>问答任务应该是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[QUESTION] + [CONTEXT]
+</span></span><span style="display:flex;"><span>  -&gt; TreeHeap
+</span></span><span style="display:flex;"><span>  -&gt; answer tokens
+</span></span></code></pre></div><p>这次 WMT 实验没有 question，也没有 answer span，因此不能叫 QA。</p>
+<p>但它已经确认了 QA 所需的一条基础通路：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>真实文本
+</span></span><span style="display:flex;"><span>  -&gt; TreeHeap encoder
+</span></span><span style="display:flex;"><span>  -&gt; 多步 decoder
+</span></span><span style="display:flex;"><span>  -&gt; 自然语言输出
+</span></span></code></pre></div><p>下一步不是继续把翻译 BLEU 当最终目标，而是换成真实 QA 三元数据：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>context, question, answer
+</span></span></code></pre></div><p>然后比较：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap encoder
+</span></span><span style="display:flex;"><span>BoW encoder
+</span></span><span style="display:flex;"><span>flat sequence encoder
+</span></span></code></pre></div><p>评价也应换成 QA 的答案指标，例如 exact match、token F1、ROUGE 或 answer BLEU，而不是只看翻译分数。</p>
+<h2 id="8-当前-ara-状态">8. 当前 ARA 状态<a hidden class="anchor" aria-hidden="true" href="#8-当前-ara-状态">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>S3-WMT-SEQ2SEQ-C01
+</span></span><span style="display:flex;"><span>  -&gt; supported feasibility / negative comparative result
+</span></span></code></pre></div><p>它支持的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 可以从真实 WMT 文本端到端训练，
+</span></span><span style="display:flex;"><span>并驱动一个中文 seq2seq decoder 产生可读、主题相关的句子。
+</span></span></code></pre></div><p>它不支持的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 已优于 flat sequence。
+</span></span><span style="display:flex;"><span>TreeHeap 已完成翻译。
+</span></span><span style="display:flex;"><span>TreeHeap 已完成问答。
+</span></span><span style="display:flex;"><span>TreeHeap 已学到稳定世界模型。
+</span></span></code></pre></div><p>这份边界不是泼冷水。它把下一步变得非常明确：先修正 internal-node ablation 的 teacher-forcing 评价，再接入真实 QA 数据，让 TreeHeap 的子堆读取回答“哪段 context 支撑当前答案”。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, Decoder, Recursion, Residual, Lifting Scheme, Multiresolution">
+<meta name="description" content="公开撤回一次把多层变长数组误称为 TreeHeap 递归解码的实验解释，并重新定义 TreeHeap 的分辨率、递归、残差和抽水协议。">
+<meta name="author" content="Houming818 &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/063-treeheap-decoder-depth-growth.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/063-treeheap-decoder-depth-growth.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/063-treeheap-decoder-depth-growth.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码">
+  <meta property="og:description" content="公开撤回一次把多层变长数组误称为 TreeHeap 递归解码的实验解释，并重新定义 TreeHeap 的分辨率、递归、残差和抽水协议。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-07-18T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-07-19T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码">
+  <meta name="twitter:description" content="公开撤回一次把多层变长数组误称为 TreeHeap 递归解码的实验解释，并重新定义 TreeHeap 的分辨率、递归、残差和抽水协议。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码",
+      "item": "https://www.lostmap.cn/spr/063-treeheap-decoder-depth-growth.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码",
+  "name": "[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码",
+  "description": "公开撤回一次把多层变长数组误称为 TreeHeap 递归解码的实验解释，并重新定义 TreeHeap 的分辨率、递归、残差和抽水协议。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "Decoder", "Recursion", "Residual", "Lifting Scheme", "Multiresolution"
+  ],
+  "articleBody": "TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码 本文记录一次重要纠错。旧版 SPR-063 设计了所谓“递归深度剂量实验”，但代码审计发现，decoder 实际读取的是长度为 1、2、4、8 等的平铺数组。它没有沿 TreeHeap 地址移动，也没有读取父子边。因此，已经完成的实验不能否定 TreeHeap 的深度假设，只能否定这种多分辨率 flat READ。\n本文的核心概念由 Houming818 提出：信息应当像抽水机一样从 leaf 逐层退火到 root；这个过程必须递归。Codex Review 负责检查代码是否真的保存了这些概念，并把它整理成下一轮可证伪实验。\n1. 先说结论：旧实验测错了对象 旧代码的 encoder 确实执行了递归 FOLD：\nleaf -\u003e FOLD 得到上一层 parent -\u003e 再用这些 parent 做下一次 FOLD -\u003e 一直得到 root 如果记 leaf 为 $H_D$，那么：\n$\n$ H_{d-1}=F_\\theta(H_d),\\qquad d=D,D-1,\\ldots,1 $$\n同一个 $F_\\theta$ 在不同深度重复调用。这部分是真递归。\n但 encoder 随后把树转换成了一个列表：\nlevels = [ [root], [depth-1 的所有节点], [depth-2 的所有节点], ..., [所有 leaf] ] 每一层只剩一个形状为 [batch, width, dim] 的张量。parent、children、left、right、stop、path 和 span 都没有交给 decoder。\n旧 READ 做的是：\n$\n$ q_{d+1}=R_\\phi(q_d,\\,[h_{d,1},h_{d,2},\\ldots,h_{d,n_d}]) $$\n其中方括号只是当前层的平铺数组。dose 增加一层，本质上只是再读取一个不同长度的数组。\n因此旧实验的准确名称应当是：\n递归池化产生的多分辨率数组实验。\n它不是 TreeHeap 递归 decoder 实验。\n2. 为什么“用树算出节点”还不等于“使用了树” 考虑这棵树：\nA / \\ B C / \\ / \\ 1 2 3 4 递归 encoder 计算：\nB = FOLD(1, 2) C = FOLD(3, 4) A = FOLD(B, C) 如果 decoder 最后只收到：\n[A] [B, C] [1, 2, 3, 4] 它并不知道：\n1、2 属于 B 3、4 属于 C B、C 属于 A 它只能把每一层当作集合或数组进行 attention pooling。\n这解释了守夜实验的异常结果：\n指标 结果 Tree 多层数组 NLL 6.2366 Random 多层数组 NLL 6.2361 Flat pooling NLL 5.9311 所谓“打乱链接”的 NLL 变化 0.00000021 数字没有证明 TreeHeap 拓扑无效，因为拓扑从未进入 READ。所谓 shuffled_links 也只是重新生成了另一组池化数组，并没有在保持节点值不变时修改 decoder 正在遍历的边。\n因此 ARA 状态必须修正为：\n不是：TreeHeap depth claim 被否证 而是：该实验没有测试到 TreeHeap depth claim 3. 分辨率到底是什么 我们先不要求 root 能翻译成人类可读的缩句。encoder 和 decoder 可以形成私有编码。\n这里的分辨率是一个操作定义：\nroot 最少状态，最大覆盖范围 root + 第一层 detail 更多局部信息 继续展开 更高分辨率 全部 leaf/detail 最高表面精度 它类似一张图片：缩略图保留大体结构，放大后补充纹理。但语言不是天然平滑的像素平面，所以我们不能直接宣称 root 一定保存“主语、谓语、宾语”或者一条可读摘要。\n我们真正要验证的是：\nparent 是否保存了对多个 children 都有用的公共状态； child/edge 是否保存了 parent 无法预测的细节； 增加细节后，decoder 是否沿同一棵树递归改善； 破坏地址和父子关系后，这种改善是否消失。 4. 抽水机不能只是加权平均 旧 FOLD 大致是：\nchildren -\u003e slot embedding -\u003e MLP -\u003e softmax 加权平均 -\u003e parent 它可以把多个 child 压成一个 parent，但没有说明哪些信息上传、哪些信息留在原处。连续多次压缩后，信息可能只是被混合和扭曲。\n更完整的抽水过程应当同时产生两类量：\ncoarse：上传给 parent 的公共轮廓 detail：留在 child 或 edge 上的预测残差 定义 children 为 $c_1,\\ldots,c_k$。先计算 parent：\n$\n$ s_p=U_\\theta(c_1,\\ldots,c_k) $$\n再由 parent 和 slot 预测每个 child：\n$\n$ \\hat c_j=P_\\phi(s_p,e_j) $$\n细节残差为：\n$\n$ r_j=c_j-\\hat c_j $$\n于是 child 可以恢复为：\n$\n$ \\tilde c_j=P_\\phi(s_p,e_j)+r_j $$\n这里的 coarse 被抽到 parent，detail residual 没有硬塞进 root，而是保存在对应的边上。\n5. 这与小波 lifting scheme 有什么关系 这套结构不是凭空发明。小波的 lifting scheme 使用 split -\u003e predict -\u003e update 构造多分辨率表示：一部分数据形成低分辨率近似，另一部分记录预测失败产生的 detail。保留全部 detail 时可以精确恢复；逐步丢弃 detail 时得到逐级降低的分辨率。\n对 TreeHeap，可以作如下对应：\nLifting scheme TreeHeap split 把节点分为 parent 覆盖的 child slots predict 用 parent 预测 child state detail child 与预测值的差 $r_j$ update 用 detail 修正 parent 的 coarse state inverse lifting 从 parent 与 residual 递归恢复 children 这给了我们一个重要保护：\nresidual 不应当作为原始 child 的直通旁路混入 root；它应当成为有地址的细节量，只有 decoder 展开对应 edge 时才参与恢复。\n否则 root 会退化成全部 leaf 的 Bag，分辨率抽水优势会消失。\n参考：Wim Sweldens, The Lifting Scheme: A Construction of Second Generation Wavelets。图结构上的可学习版本也已经存在，例如 Graph Neural Networks With Lifting-based Adaptive Graph Wavelets。\n6. Transformer 式残差与 TreeHeap detail residual 不是一回事 Transformer/ResNet 残差大致是：\n$\n$ x_{l+1}=x_l+f_l(x_l) $$\n它提供接近恒等映射的信息与梯度通道，使深层网络不必在每一层重新创造输入。参考 Deep Residual Learning。\n旧 TreeHeap 代码中也有：\npooled + MLP(pooled) query + UPDATE(query, context) 但第一个残差发生在 children 已经被压成 pooled 之后。它只能保护 pooled state，不能保存已经丢失的 child detail。\n因此下一版需要区分：\nkernel residual：帮助深层优化 tree detail residual：保存跨分辨率丢失的信息 两者可以同时存在，但不能混为一个变量。\n7. 字符串中有没有“抽取大轮廓”的已有算法 有相关工作，但没有一种算法能仅靠压缩就保证 root 成为人类认可的摘要。\n7.1 DIORA：用递归预测压力诱导潜在树 DIORA 用 inside-outside recursive autoencoder 考虑句子的多种二叉树组合，并通过“根据其余句子预测某个词”学习 constituent state。\n它支持一个重要判断：递归节点可以在没有人工句法标签时，通过上下文预测任务形成结构。但它不保证 root 是自然语言摘要。\n7.2 Hierarchical Multiscale RNN：从序列中学习不同时间尺度 Hierarchical Multiscale RNN 学习潜在边界，让不同层按不同时间尺度更新。这说明字符串可以在没有显式边界标签时形成多尺度状态。\n7.3 PEGASUS：直接训练“保留重要内容” PEGASUS 从文档中移除重要句子，再要求模型根据剩余内容生成它们。它把摘要需要的“重要性”变成了训练压力。\n7.4 Funnel 与 Hourglass：语言序列可以逐步降低分辨率 Funnel Transformer逐步缩短 hidden sequence；Hourglass Transformer执行 shorten 后再 upsample。它们证明多长度语言计算可行，但不能单独证明语义轮廓形成。\n7.5 Top-down latent tree generation Recursive Top-Down Production for Sentence Generation with Latent Trees从潜在二叉树递归生成句子，与 TreeHeap decoder 从 coarse state 展开 detail 的目标直接相关。\n这些工作共同提示：\n代数协议决定信息怎样压缩与恢复，训练目标决定什么信息值得上传。\n8. 新的数据结构契约 下一版代码中的 TreeHeap 节点至少要保存：\nNode { address 当前堆地址 parent_address 父地址 child_addresses 子地址 depth 递归深度 span 覆盖的 leaf 区间 coarse_state 上传后的低分辨率状态 detail_residual 相对 parent 预测的细节 } 任何实验只要在进入 decoder 前把它重新变成无边的 List[Tensor]，就不得命名为 TreeHeap recursive READ。\n9. 新 encoder：递归 learned lifting 伪代码如下：\nENCODE(node): if node is leaf: return token_embedding(node.token) child_states = [] for child in node.children: child_states.append(ENCODE(child)) parent.coarse = UPDATE(child_states) for slot, child_state in enumerate(child_states): predicted = PREDICT(parent.coarse, slot) edge[slot].detail = child_state - predicted return parent.coarse 关键审计条件是：每个 parent 的输入必须来自其 children 的递归返回值，而不是从全局 leaf array 重新池化。\n10. 新 decoder：沿地址 top-down 展开 DECODE(address, state, remaining_depth): node = heap[address] bucket = ROUTE_KERNEL(query, node, path) if bucket.stop is selected or remaining_depth == 0: return OUTPUT(state) for child_address in node.child_addresses: predicted_child = PREDICT(state, child_slot) child_state = predicted_child + edge.detail DECODE(child_address, child_state, remaining_depth - 1) 这里的递归深度不是读取数组的数量，而是 kernel 沿合法地址实际移动的次数。\n一次路径可能是：\nroot -\u003e left -\u003e right -\u003e stop 每一步都携带当前地址、局部 subheap、path state 和概率桶。\n11. 下一项实验不能直接跑语言大模型 我们先验证数学与代码契约，再验证语言归纳能力。\n这里不是从零开始。项目已有两段应当复用的实现：\ns2_adaptive_lifting_wmt.py 已经按 detail = child - predict(anchor)、parent = anchor + update(detail) 递归 FOLD，并用逆运算 UNFOLD；历史实验的闭包 MSE 为 2.35e-14。 s2_lifting_pump_wmt.py 的 recursive READ 保留了 active probability。某个 parent 的 expand 概率只会分配给它自己的两个 children，而不是对整层节点重新做一次无条件 pooling。 历史 S2 数据中，recursive/root/full/flat 的测试 NLL 分别为 5.0903 / 5.4337 / 5.1342 / 4.8103。这支持“递归 detail 对翻译有用”，但 flat 仍然更好，也没有证明 root 是语义摘要。\n因此下一项代码工作不是再发明一种 FOLD，而是给已有 recursive READ 增加严格的 max_depth，并审计它是否真的沿地址递归生长。\nProof A：完整 residual 的递归往返 输入一棵随机 TreeHeap：\nleaf -\u003e recursive encode -\u003e root + addressed residuals -\u003e recursive decode -\u003e reconstructed leaf 预测：保留全部 residual 时，重建误差接近浮点误差；删除任何一条 residual 时，只影响其对应 subheap。\n这证明协议和地址实现正确，不证明语义。\nProof B：逐级释放 residual 的率失真曲线 对真实中文 BPE 序列递归编码，只允许 decoder 使用：\nroot root + depth1 residual root + depth1..2 residual ... 全部 residual 预测：token reconstruction NLL 应总体单调下降。若曲线乱跳，说明 coarse/detail 协议没有形成稳定分辨率。\nProof C：递归与地址因果 保持 coarse state 和 residual 数值不变，只交换 residual 所属的 edge address。\n预测：恢复损失明显增加，并主要发生在被交换的 subheap 内。如果全局几乎不变，decoder 仍未利用 TreeHeap 地址。\nProof D：抽水是否产生可用轮廓 在 root 容量固定且明显小于 leaf 总容量时，让 root 预测：\n被遮住的 span； 相邻上下文； 文档中抽出的 gap sentence； 下一段真实文本。 再与随机分组树、flat bottleneck 和 shuffled corpus 比较。\n只有当合法 TreeHeap 的 coarse state 在 held-out 数据上更好，才能说抽水机提取了任务相关轮廓。\n12. 新 Claim 的边界 下一项 Claim 暂定为：\nS3-TREE-LIFT-RECURSIVE-C01 一个显式保存 parent-child 地址的共享 learned-lifting kernel，可以递归地把 leaf 分解为 parent coarse state 与 addressed detail residual；top-down decoder 沿相同地址协议展开时，完整 residual 支持近似无损恢复，逐层释放 residual 形成有序率失真曲线，交换 residual 地址会产生局部且显著的恢复损失。\n它只声明三件事：\n递归协议在代码中真实存在； coarse/detail 分辨率可以稳定定义； decoder 使用了 TreeHeap 地址。 它不声明：\nroot 已经理解人类摘要； TreeHeap 优于 Transformer； 模型已经形成世界知识或意识； 任意 FOLD 都会自然产生语义轮廓。 13. 当前状态 旧实验：完成，但重新分类为 multiresolution flat READ 旧 Claim：未被测试，不是被否证 新协议：递归 learned lifting + addressed residual + top-down READ 新实验：确定性 contract 已通过，冻结 WMT depth-cap 子实验已完成 2026-07-19，第一道 contract probe 已在 io 的 CPU 上完成：\n检查 结果 8-leaf 完整 FOLD/UNFOLD MSE 3.2341e-15 不同 depth cap 下 route 质量守恒最大误差 5.9605e-8 交换两个 residual 后，目标四叶 subheap MSE 1.4019 同一次交换在 subheap 外造成的 MSE 2.7198e-15 这说明当前复用的 lifting 代数可以递归闭合，概率质量可以沿父子地址守恒，而且 residual 地址扰动具有严格局部性。它仍然没有证明 root 学到了语言轮廓。下一道真实语料实验将专门验证 root source causality、递归深度收益和学习后的地址因果性。\n13.1 冻结 checkpoint 的递归深度结果 我们随后复用了一个在 20 万条 WMT 英中句对上训练完成的 learned_update checkpoint。模型参数全程冻结，5,000 条测试句也完全 相同；唯一控制变量是 max_depth：到达深度上限时，尚未停止的概率 质量被强制留在当前节点，不再进入孩子。\n这不是分别训练长度为 1、2、4、8 的数组。一次 READ 始终从 root 开始，当前节点的概率桶决定 STOP 或把剩余概率传给它自己的左右孩子。\n允许的最大递归深度 NLL（越低越好） 困惑度（越低越好） 0，只读 root 13.8100 994,481 1 13.9301 1,121,454 2 11.4878 97,514 3 8.2396 3,788 4 6.5393 692 5 5.7286 308 6，完整 READ 4.6335 103 完整 READ 比 root-only 降低 9.1765 NLL。除第一步外，后续五次开放 更深子堆都带来改善。最大概率质量守恒误差为 4.1723e-7，通过 1e-6 门槛。全量审计处理了 84,195 个目标 token，在 io 上耗时 101.45 秒。\n用本科生容易核对的话说：decoder 若只能拿 root，几乎无法完成翻译； 允许它沿真实父子地址继续向下读取，答案会逐层接近完整模型。这是 “增加结构”的正向干预，而不是删除节点的消融。\n但这里必须踩住刹车。它支持的是“深层 addressed state 被同一个 decoder 实际使用”，还不能证明“越靠近 root 就是人类可读的摘要”。depth 1 甚至 比 root-only 差 0.1202，所以曲线不是数学上必然单调。模型原本也在完整 READ 下训练，截断深度属于分布外干预。source shuffle、学习后的 residual 地址交换、sibling pair break 和 flat/Transformer 对比仍需后续实验。\n这次纠错最重要的收获不是换了一个公式，而是建立了一条命名纪律：\n递归生成过数据，不等于递归参与了计算。只有地址、父子关系和共享 kernel 一起进入 decoder 的移动过程，才是 TreeHeap recursive READ。\n",
+  "wordCount" : "1014",
+  "inLanguage": "en",
+  "datePublished": "2026-07-18T00:00:00Z",
+  "dateModified": "2026-07-19T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Houming818 \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/063-treeheap-decoder-depth-growth.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item active">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码
+    </h1>
+    <div class="post-description">
+      公开撤回一次把多层变长数组误称为 TreeHeap 递归解码的实验解释，并重新定义 TreeHeap 的分辨率、递归、残差和抽水协议。
+    </div>
+    <div class="post-meta"><span title='2026-07-18 00:00:00 +0000 UTC'>July 18, 2026</span>&nbsp;·&nbsp;<span>Houming818 &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="treeheap-分辨率协议重审递归抽水细节残差与递归解码">TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码<a hidden class="anchor" aria-hidden="true" href="#treeheap-分辨率协议重审递归抽水细节残差与递归解码">#</a></h1>
+<blockquote>
+<p>本文记录一次重要纠错。旧版 SPR-063 设计了所谓“递归深度剂量实验”，但代码审计发现，decoder 实际读取的是长度为 1、2、4、8 等的平铺数组。它没有沿 TreeHeap 地址移动，也没有读取父子边。因此，已经完成的实验不能否定 TreeHeap 的深度假设，只能否定这种多分辨率 flat READ。</p>
+</blockquote>
+<p>本文的核心概念由 Houming818 提出：信息应当像抽水机一样从 leaf 逐层退火到 root；这个过程必须递归。Codex Review 负责检查代码是否真的保存了这些概念，并把它整理成下一轮可证伪实验。</p>
+<hr>
+<h2 id="1-先说结论旧实验测错了对象">1. 先说结论：旧实验测错了对象<a hidden class="anchor" aria-hidden="true" href="#1-先说结论旧实验测错了对象">#</a></h2>
+<p>旧代码的 encoder 确实执行了递归 FOLD：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>leaf
+</span></span><span style="display:flex;"><span>  -&gt; FOLD 得到上一层 parent
+</span></span><span style="display:flex;"><span>  -&gt; 再用这些 parent 做下一次 FOLD
+</span></span><span style="display:flex;"><span>  -&gt; 一直得到 root
+</span></span></code></pre></div><p>如果记 leaf 为 </p>
+$H_D$<p>，那么：</p>
+<p>$</p>
+$ H_{d-1}=F_\theta(H_d),\qquad d=D,D-1,\ldots,1 $<p>$</p>
+<p>同一个 </p>
+$F_\theta$<p> 在不同深度重复调用。这部分是真递归。</p>
+<p>但 encoder 随后把树转换成了一个列表：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>levels = [
+</span></span><span style="display:flex;"><span>  [root],
+</span></span><span style="display:flex;"><span>  [depth-1 的所有节点],
+</span></span><span style="display:flex;"><span>  [depth-2 的所有节点],
+</span></span><span style="display:flex;"><span>  ...,
+</span></span><span style="display:flex;"><span>  [所有 leaf]
+</span></span><span style="display:flex;"><span>]
+</span></span></code></pre></div><p>每一层只剩一个形状为 <code>[batch, width, dim]</code> 的张量。parent、children、left、right、stop、path 和 span 都没有交给 decoder。</p>
+<p>旧 READ 做的是：</p>
+<p>$</p>
+$ q_{d+1}=R_\phi(q_d,\,[h_{d,1},h_{d,2},\ldots,h_{d,n_d}]) $<p>$</p>
+<p>其中方括号只是当前层的平铺数组。<code>dose</code> 增加一层，本质上只是再读取一个不同长度的数组。</p>
+<p>因此旧实验的准确名称应当是：</p>
+<blockquote>
+<p>递归池化产生的多分辨率数组实验。</p>
+</blockquote>
+<p>它不是 TreeHeap 递归 decoder 实验。</p>
+<hr>
+<h2 id="2-为什么用树算出节点还不等于使用了树">2. 为什么“用树算出节点”还不等于“使用了树”<a hidden class="anchor" aria-hidden="true" href="#2-为什么用树算出节点还不等于使用了树">#</a></h2>
+<p>考虑这棵树：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>             A
+</span></span><span style="display:flex;"><span>          /     \
+</span></span><span style="display:flex;"><span>         B       C
+</span></span><span style="display:flex;"><span>        / \     / \
+</span></span><span style="display:flex;"><span>       1   2   3   4
+</span></span></code></pre></div><p>递归 encoder 计算：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>B = FOLD(1, 2)
+</span></span><span style="display:flex;"><span>C = FOLD(3, 4)
+</span></span><span style="display:flex;"><span>A = FOLD(B, C)
+</span></span></code></pre></div><p>如果 decoder 最后只收到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[A]
+</span></span><span style="display:flex;"><span>[B, C]
+</span></span><span style="display:flex;"><span>[1, 2, 3, 4]
+</span></span></code></pre></div><p>它并不知道：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1、2 属于 B
+</span></span><span style="display:flex;"><span>3、4 属于 C
+</span></span><span style="display:flex;"><span>B、C 属于 A
+</span></span></code></pre></div><p>它只能把每一层当作集合或数组进行 attention pooling。</p>
+<p>这解释了守夜实验的异常结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">结果</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Tree 多层数组 NLL</td>
+          <td style="text-align: right">6.2366</td>
+      </tr>
+      <tr>
+          <td>Random 多层数组 NLL</td>
+          <td style="text-align: right">6.2361</td>
+      </tr>
+      <tr>
+          <td>Flat pooling NLL</td>
+          <td style="text-align: right">5.9311</td>
+      </tr>
+      <tr>
+          <td>所谓“打乱链接”的 NLL 变化</td>
+          <td style="text-align: right">0.00000021</td>
+      </tr>
+  </tbody>
+</table>
+<p>数字没有证明 TreeHeap 拓扑无效，因为拓扑从未进入 READ。所谓 <code>shuffled_links</code> 也只是重新生成了另一组池化数组，并没有在保持节点值不变时修改 decoder 正在遍历的边。</p>
+<p>因此 ARA 状态必须修正为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>不是：TreeHeap depth claim 被否证
+</span></span><span style="display:flex;"><span>而是：该实验没有测试到 TreeHeap depth claim
+</span></span></code></pre></div><hr>
+<h2 id="3-分辨率到底是什么">3. 分辨率到底是什么<a hidden class="anchor" aria-hidden="true" href="#3-分辨率到底是什么">#</a></h2>
+<p>我们先不要求 root 能翻译成人类可读的缩句。encoder 和 decoder 可以形成私有编码。</p>
+<p>这里的分辨率是一个操作定义：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root                  最少状态，最大覆盖范围
+</span></span><span style="display:flex;"><span>root + 第一层 detail  更多局部信息
+</span></span><span style="display:flex;"><span>继续展开              更高分辨率
+</span></span><span style="display:flex;"><span>全部 leaf/detail      最高表面精度
+</span></span></code></pre></div><p>它类似一张图片：缩略图保留大体结构，放大后补充纹理。但语言不是天然平滑的像素平面，所以我们不能直接宣称 root 一定保存“主语、谓语、宾语”或者一条可读摘要。</p>
+<p>我们真正要验证的是：</p>
+<ol>
+<li>parent 是否保存了对多个 children 都有用的公共状态；</li>
+<li>child/edge 是否保存了 parent 无法预测的细节；</li>
+<li>增加细节后，decoder 是否沿同一棵树递归改善；</li>
+<li>破坏地址和父子关系后，这种改善是否消失。</li>
+</ol>
+<hr>
+<h2 id="4-抽水机不能只是加权平均">4. 抽水机不能只是加权平均<a hidden class="anchor" aria-hidden="true" href="#4-抽水机不能只是加权平均">#</a></h2>
+<p>旧 FOLD 大致是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>children
+</span></span><span style="display:flex;"><span>  -&gt; slot embedding
+</span></span><span style="display:flex;"><span>  -&gt; MLP
+</span></span><span style="display:flex;"><span>  -&gt; softmax 加权平均
+</span></span><span style="display:flex;"><span>  -&gt; parent
+</span></span></code></pre></div><p>它可以把多个 child 压成一个 parent，但没有说明哪些信息上传、哪些信息留在原处。连续多次压缩后，信息可能只是被混合和扭曲。</p>
+<p>更完整的抽水过程应当同时产生两类量：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>coarse：上传给 parent 的公共轮廓
+</span></span><span style="display:flex;"><span>detail：留在 child 或 edge 上的预测残差
+</span></span></code></pre></div><p>定义 children 为 </p>
+$c_1,\ldots,c_k$<p>。先计算 parent：</p>
+<p>$</p>
+$ s_p=U_\theta(c_1,\ldots,c_k) $<p>$</p>
+<p>再由 parent 和 slot 预测每个 child：</p>
+<p>$</p>
+$ \hat c_j=P_\phi(s_p,e_j) $<p>$</p>
+<p>细节残差为：</p>
+<p>$</p>
+$ r_j=c_j-\hat c_j $<p>$</p>
+<p>于是 child 可以恢复为：</p>
+<p>$</p>
+$ \tilde c_j=P_\phi(s_p,e_j)+r_j $<p>$</p>
+<p>这里的 <code>coarse</code> 被抽到 parent，<code>detail residual</code> 没有硬塞进 root，而是保存在对应的边上。</p>
+<hr>
+<h2 id="5-这与小波-lifting-scheme-有什么关系">5. 这与小波 lifting scheme 有什么关系<a hidden class="anchor" aria-hidden="true" href="#5-这与小波-lifting-scheme-有什么关系">#</a></h2>
+<p>这套结构不是凭空发明。小波的 lifting scheme 使用 <code>split -&gt; predict -&gt; update</code> 构造多分辨率表示：一部分数据形成低分辨率近似，另一部分记录预测失败产生的 detail。保留全部 detail 时可以精确恢复；逐步丢弃 detail 时得到逐级降低的分辨率。</p>
+<p>对 TreeHeap，可以作如下对应：</p>
+<table>
+  <thead>
+      <tr>
+          <th>Lifting scheme</th>
+          <th>TreeHeap</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>split</td>
+          <td>把节点分为 parent 覆盖的 child slots</td>
+      </tr>
+      <tr>
+          <td>predict</td>
+          <td>用 parent 预测 child state</td>
+      </tr>
+      <tr>
+          <td>detail</td>
+          <td>child 与预测值的差 $r_j$</td>
+      </tr>
+      <tr>
+          <td>update</td>
+          <td>用 detail 修正 parent 的 coarse state</td>
+      </tr>
+      <tr>
+          <td>inverse lifting</td>
+          <td>从 parent 与 residual 递归恢复 children</td>
+      </tr>
+  </tbody>
+</table>
+<p>这给了我们一个重要保护：</p>
+<blockquote>
+<p>residual 不应当作为原始 child 的直通旁路混入 root；它应当成为有地址的细节量，只有 decoder 展开对应 edge 时才参与恢复。</p>
+</blockquote>
+<p>否则 root 会退化成全部 leaf 的 Bag，分辨率抽水优势会消失。</p>
+<p>参考：Wim Sweldens, <a href="https://epubs.siam.org/doi/abs/10.1137/S0036141095289051">The Lifting Scheme: A Construction of Second Generation Wavelets</a>。图结构上的可学习版本也已经存在，例如 <a href="https://arxiv.org/abs/2108.01660">Graph Neural Networks With Lifting-based Adaptive Graph Wavelets</a>。</p>
+<hr>
+<h2 id="6-transformer-式残差与-treeheap-detail-residual-不是一回事">6. Transformer 式残差与 TreeHeap detail residual 不是一回事<a hidden class="anchor" aria-hidden="true" href="#6-transformer-式残差与-treeheap-detail-residual-不是一回事">#</a></h2>
+<p>Transformer/ResNet 残差大致是：</p>
+<p>$</p>
+$ x_{l+1}=x_l+f_l(x_l) $<p>$</p>
+<p>它提供接近恒等映射的信息与梯度通道，使深层网络不必在每一层重新创造输入。参考 <a href="https://arxiv.org/abs/1512.03385">Deep Residual Learning</a>。</p>
+<p>旧 TreeHeap 代码中也有：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>pooled + MLP(pooled)
+</span></span><span style="display:flex;"><span>query  + UPDATE(query, context)
+</span></span></code></pre></div><p>但第一个残差发生在 children 已经被压成 <code>pooled</code> 之后。它只能保护 pooled state，不能保存已经丢失的 child detail。</p>
+<p>因此下一版需要区分：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel residual：帮助深层优化
+</span></span><span style="display:flex;"><span>tree detail residual：保存跨分辨率丢失的信息
+</span></span></code></pre></div><p>两者可以同时存在，但不能混为一个变量。</p>
+<hr>
+<h2 id="7-字符串中有没有抽取大轮廓的已有算法">7. 字符串中有没有“抽取大轮廓”的已有算法<a hidden class="anchor" aria-hidden="true" href="#7-字符串中有没有抽取大轮廓的已有算法">#</a></h2>
+<p>有相关工作，但没有一种算法能仅靠压缩就保证 root 成为人类认可的摘要。</p>
+<h3 id="71-diora用递归预测压力诱导潜在树">7.1 DIORA：用递归预测压力诱导潜在树<a hidden class="anchor" aria-hidden="true" href="#71-diora用递归预测压力诱导潜在树">#</a></h3>
+<p><a href="https://aclanthology.org/N19-1116/">DIORA</a> 用 inside-outside recursive autoencoder 考虑句子的多种二叉树组合，并通过“根据其余句子预测某个词”学习 constituent state。</p>
+<p>它支持一个重要判断：递归节点可以在没有人工句法标签时，通过上下文预测任务形成结构。但它不保证 root 是自然语言摘要。</p>
+<h3 id="72-hierarchical-multiscale-rnn从序列中学习不同时间尺度">7.2 Hierarchical Multiscale RNN：从序列中学习不同时间尺度<a hidden class="anchor" aria-hidden="true" href="#72-hierarchical-multiscale-rnn从序列中学习不同时间尺度">#</a></h3>
+<p><a href="https://arxiv.org/abs/1609.01704">Hierarchical Multiscale RNN</a> 学习潜在边界，让不同层按不同时间尺度更新。这说明字符串可以在没有显式边界标签时形成多尺度状态。</p>
+<h3 id="73-pegasus直接训练保留重要内容">7.3 PEGASUS：直接训练“保留重要内容”<a hidden class="anchor" aria-hidden="true" href="#73-pegasus直接训练保留重要内容">#</a></h3>
+<p><a href="https://arxiv.org/abs/1912.08777/">PEGASUS</a> 从文档中移除重要句子，再要求模型根据剩余内容生成它们。它把摘要需要的“重要性”变成了训练压力。</p>
+<h3 id="74-funnel-与-hourglass语言序列可以逐步降低分辨率">7.4 Funnel 与 Hourglass：语言序列可以逐步降低分辨率<a hidden class="anchor" aria-hidden="true" href="#74-funnel-与-hourglass语言序列可以逐步降低分辨率">#</a></h3>
+<p><a href="https://arxiv.org/abs/2006.03236">Funnel Transformer</a>逐步缩短 hidden sequence；<a href="https://arxiv.org/abs/2110.13711">Hourglass Transformer</a>执行 shorten 后再 upsample。它们证明多长度语言计算可行，但不能单独证明语义轮廓形成。</p>
+<h3 id="75-top-down-latent-tree-generation">7.5 Top-down latent tree generation<a hidden class="anchor" aria-hidden="true" href="#75-top-down-latent-tree-generation">#</a></h3>
+<p><a href="https://aclanthology.org/2020.findings-emnlp.208/">Recursive Top-Down Production for Sentence Generation with Latent Trees</a>从潜在二叉树递归生成句子，与 TreeHeap decoder 从 coarse state 展开 detail 的目标直接相关。</p>
+<p>这些工作共同提示：</p>
+<blockquote>
+<p>代数协议决定信息怎样压缩与恢复，训练目标决定什么信息值得上传。</p>
+</blockquote>
+<hr>
+<h2 id="8-新的数据结构契约">8. 新的数据结构契约<a hidden class="anchor" aria-hidden="true" href="#8-新的数据结构契约">#</a></h2>
+<p>下一版代码中的 TreeHeap 节点至少要保存：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Node {
+</span></span><span style="display:flex;"><span>    address          当前堆地址
+</span></span><span style="display:flex;"><span>    parent_address   父地址
+</span></span><span style="display:flex;"><span>    child_addresses  子地址
+</span></span><span style="display:flex;"><span>    depth            递归深度
+</span></span><span style="display:flex;"><span>    span             覆盖的 leaf 区间
+</span></span><span style="display:flex;"><span>    coarse_state     上传后的低分辨率状态
+</span></span><span style="display:flex;"><span>    detail_residual  相对 parent 预测的细节
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>任何实验只要在进入 decoder 前把它重新变成无边的 <code>List[Tensor]</code>，就不得命名为 TreeHeap recursive READ。</p>
+<hr>
+<h2 id="9-新-encoder递归-learned-lifting">9. 新 encoder：递归 learned lifting<a hidden class="anchor" aria-hidden="true" href="#9-新-encoder递归-learned-lifting">#</a></h2>
+<p>伪代码如下：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ENCODE(node):
+</span></span><span style="display:flex;"><span>    if node is leaf:
+</span></span><span style="display:flex;"><span>        return token_embedding(node.token)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    child_states = []
+</span></span><span style="display:flex;"><span>    for child in node.children:
+</span></span><span style="display:flex;"><span>        child_states.append(ENCODE(child))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    parent.coarse = UPDATE(child_states)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    for slot, child_state in enumerate(child_states):
+</span></span><span style="display:flex;"><span>        predicted = PREDICT(parent.coarse, slot)
+</span></span><span style="display:flex;"><span>        edge[slot].detail = child_state - predicted
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    return parent.coarse
+</span></span></code></pre></div><p>关键审计条件是：每个 parent 的输入必须来自其 children 的递归返回值，而不是从全局 leaf array 重新池化。</p>
+<hr>
+<h2 id="10-新-decoder沿地址-top-down-展开">10. 新 decoder：沿地址 top-down 展开<a hidden class="anchor" aria-hidden="true" href="#10-新-decoder沿地址-top-down-展开">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>DECODE(address, state, remaining_depth):
+</span></span><span style="display:flex;"><span>    node = heap[address]
+</span></span><span style="display:flex;"><span>    bucket = ROUTE_KERNEL(query, node, path)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    if bucket.stop is selected or remaining_depth == 0:
+</span></span><span style="display:flex;"><span>        return OUTPUT(state)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    for child_address in node.child_addresses:
+</span></span><span style="display:flex;"><span>        predicted_child = PREDICT(state, child_slot)
+</span></span><span style="display:flex;"><span>        child_state = predicted_child + edge.detail
+</span></span><span style="display:flex;"><span>        DECODE(child_address, child_state, remaining_depth - 1)
+</span></span></code></pre></div><p>这里的递归深度不是读取数组的数量，而是 kernel 沿合法地址实际移动的次数。</p>
+<p>一次路径可能是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root
+</span></span><span style="display:flex;"><span>  -&gt; left
+</span></span><span style="display:flex;"><span>  -&gt; right
+</span></span><span style="display:flex;"><span>  -&gt; stop
+</span></span></code></pre></div><p>每一步都携带当前地址、局部 subheap、path state 和概率桶。</p>
+<hr>
+<h2 id="11-下一项实验不能直接跑语言大模型">11. 下一项实验不能直接跑语言大模型<a hidden class="anchor" aria-hidden="true" href="#11-下一项实验不能直接跑语言大模型">#</a></h2>
+<p>我们先验证数学与代码契约，再验证语言归纳能力。</p>
+<p>这里不是从零开始。项目已有两段应当复用的实现：</p>
+<ul>
+<li><code>s2_adaptive_lifting_wmt.py</code> 已经按 <code>detail = child - predict(anchor)</code>、<code>parent = anchor + update(detail)</code> 递归 FOLD，并用逆运算 UNFOLD；历史实验的闭包 MSE 为 <code>2.35e-14</code>。</li>
+<li><code>s2_lifting_pump_wmt.py</code> 的 recursive READ 保留了 active probability。某个 parent 的 expand 概率只会分配给它自己的两个 children，而不是对整层节点重新做一次无条件 pooling。</li>
+</ul>
+<p>历史 S2 数据中，recursive/root/full/flat 的测试 NLL 分别为 <code>5.0903 / 5.4337 / 5.1342 / 4.8103</code>。这支持“递归 detail 对翻译有用”，但 flat 仍然更好，也没有证明 root 是语义摘要。</p>
+<p>因此下一项代码工作不是再发明一种 FOLD，而是给已有 recursive READ 增加严格的 <code>max_depth</code>，并审计它是否真的沿地址递归生长。</p>
+<h3 id="proof-a完整-residual-的递归往返">Proof A：完整 residual 的递归往返<a hidden class="anchor" aria-hidden="true" href="#proof-a完整-residual-的递归往返">#</a></h3>
+<p>输入一棵随机 TreeHeap：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>leaf -&gt; recursive encode -&gt; root + addressed residuals
+</span></span><span style="display:flex;"><span>     -&gt; recursive decode -&gt; reconstructed leaf
+</span></span></code></pre></div><p>预测：保留全部 residual 时，重建误差接近浮点误差；删除任何一条 residual 时，只影响其对应 subheap。</p>
+<p>这证明协议和地址实现正确，不证明语义。</p>
+<h3 id="proof-b逐级释放-residual-的率失真曲线">Proof B：逐级释放 residual 的率失真曲线<a hidden class="anchor" aria-hidden="true" href="#proof-b逐级释放-residual-的率失真曲线">#</a></h3>
+<p>对真实中文 BPE 序列递归编码，只允许 decoder 使用：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root
+</span></span><span style="display:flex;"><span>root + depth1 residual
+</span></span><span style="display:flex;"><span>root + depth1..2 residual
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>全部 residual
+</span></span></code></pre></div><p>预测：token reconstruction NLL 应总体单调下降。若曲线乱跳，说明 coarse/detail 协议没有形成稳定分辨率。</p>
+<h3 id="proof-c递归与地址因果">Proof C：递归与地址因果<a hidden class="anchor" aria-hidden="true" href="#proof-c递归与地址因果">#</a></h3>
+<p>保持 coarse state 和 residual 数值不变，只交换 residual 所属的 edge address。</p>
+<p>预测：恢复损失明显增加，并主要发生在被交换的 subheap 内。如果全局几乎不变，decoder 仍未利用 TreeHeap 地址。</p>
+<h3 id="proof-d抽水是否产生可用轮廓">Proof D：抽水是否产生可用轮廓<a hidden class="anchor" aria-hidden="true" href="#proof-d抽水是否产生可用轮廓">#</a></h3>
+<p>在 root 容量固定且明显小于 leaf 总容量时，让 root 预测：</p>
+<ul>
+<li>被遮住的 span；</li>
+<li>相邻上下文；</li>
+<li>文档中抽出的 gap sentence；</li>
+<li>下一段真实文本。</li>
+</ul>
+<p>再与随机分组树、flat bottleneck 和 shuffled corpus 比较。</p>
+<p>只有当合法 TreeHeap 的 coarse state 在 held-out 数据上更好，才能说抽水机提取了任务相关轮廓。</p>
+<hr>
+<h2 id="12-新-claim-的边界">12. 新 Claim 的边界<a hidden class="anchor" aria-hidden="true" href="#12-新-claim-的边界">#</a></h2>
+<p>下一项 Claim 暂定为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>S3-TREE-LIFT-RECURSIVE-C01
+</span></span></code></pre></div><blockquote>
+<p>一个显式保存 parent-child 地址的共享 learned-lifting kernel，可以递归地把 leaf 分解为 parent coarse state 与 addressed detail residual；top-down decoder 沿相同地址协议展开时，完整 residual 支持近似无损恢复，逐层释放 residual 形成有序率失真曲线，交换 residual 地址会产生局部且显著的恢复损失。</p>
+</blockquote>
+<p>它只声明三件事：</p>
+<ol>
+<li>递归协议在代码中真实存在；</li>
+<li>coarse/detail 分辨率可以稳定定义；</li>
+<li>decoder 使用了 TreeHeap 地址。</li>
+</ol>
+<p>它不声明：</p>
+<ul>
+<li>root 已经理解人类摘要；</li>
+<li>TreeHeap 优于 Transformer；</li>
+<li>模型已经形成世界知识或意识；</li>
+<li>任意 FOLD 都会自然产生语义轮廓。</li>
+</ul>
+<hr>
+<h2 id="13-当前状态">13. 当前状态<a hidden class="anchor" aria-hidden="true" href="#13-当前状态">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>旧实验：完成，但重新分类为 multiresolution flat READ
+</span></span><span style="display:flex;"><span>旧 Claim：未被测试，不是被否证
+</span></span><span style="display:flex;"><span>新协议：递归 learned lifting + addressed residual + top-down READ
+</span></span><span style="display:flex;"><span>新实验：确定性 contract 已通过，冻结 WMT depth-cap 子实验已完成
+</span></span></code></pre></div><p>2026-07-19，第一道 contract probe 已在 io 的 CPU 上完成：</p>
+<table>
+  <thead>
+      <tr>
+          <th>检查</th>
+          <th style="text-align: right">结果</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>8-leaf 完整 FOLD/UNFOLD MSE</td>
+          <td style="text-align: right"><code>3.2341e-15</code></td>
+      </tr>
+      <tr>
+          <td>不同 depth cap 下 route 质量守恒最大误差</td>
+          <td style="text-align: right"><code>5.9605e-8</code></td>
+      </tr>
+      <tr>
+          <td>交换两个 residual 后，目标四叶 subheap MSE</td>
+          <td style="text-align: right"><code>1.4019</code></td>
+      </tr>
+      <tr>
+          <td>同一次交换在 subheap 外造成的 MSE</td>
+          <td style="text-align: right"><code>2.7198e-15</code></td>
+      </tr>
+  </tbody>
+</table>
+<p>这说明当前复用的 lifting 代数可以递归闭合，概率质量可以沿父子地址守恒，而且 residual 地址扰动具有严格局部性。它仍然没有证明 root 学到了语言轮廓。下一道真实语料实验将专门验证 root source causality、递归深度收益和学习后的地址因果性。</p>
+<h3 id="131-冻结-checkpoint-的递归深度结果">13.1 冻结 checkpoint 的递归深度结果<a hidden class="anchor" aria-hidden="true" href="#131-冻结-checkpoint-的递归深度结果">#</a></h3>
+<p>我们随后复用了一个在 20 万条 WMT 英中句对上训练完成的
+<code>learned_update</code> checkpoint。模型参数全程冻结，5,000 条测试句也完全
+相同；唯一控制变量是 <code>max_depth</code>：到达深度上限时，尚未停止的概率
+质量被强制留在当前节点，不再进入孩子。</p>
+<p>这不是分别训练长度为 1、2、4、8 的数组。一次 READ 始终从 root
+开始，当前节点的概率桶决定 STOP 或把剩余概率传给它自己的左右孩子。</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">允许的最大递归深度</th>
+          <th style="text-align: right">NLL（越低越好）</th>
+          <th style="text-align: right">困惑度（越低越好）</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">0，只读 root</td>
+          <td style="text-align: right">13.8100</td>
+          <td style="text-align: right">994,481</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">1</td>
+          <td style="text-align: right">13.9301</td>
+          <td style="text-align: right">1,121,454</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">2</td>
+          <td style="text-align: right">11.4878</td>
+          <td style="text-align: right">97,514</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">3</td>
+          <td style="text-align: right">8.2396</td>
+          <td style="text-align: right">3,788</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">4</td>
+          <td style="text-align: right">6.5393</td>
+          <td style="text-align: right">692</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">5</td>
+          <td style="text-align: right">5.7286</td>
+          <td style="text-align: right">308</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">6，完整 READ</td>
+          <td style="text-align: right">4.6335</td>
+          <td style="text-align: right">103</td>
+      </tr>
+  </tbody>
+</table>
+<p>完整 READ 比 root-only 降低 <code>9.1765</code> NLL。除第一步外，后续五次开放
+更深子堆都带来改善。最大概率质量守恒误差为 <code>4.1723e-7</code>，通过
+<code>1e-6</code> 门槛。全量审计处理了 84,195 个目标 token，在 io 上耗时
+<code>101.45</code> 秒。</p>
+<p>用本科生容易核对的话说：decoder 若只能拿 root，几乎无法完成翻译；
+允许它沿真实父子地址继续向下读取，答案会逐层接近完整模型。这是
+“增加结构”的正向干预，而不是删除节点的消融。</p>
+<p>但这里必须踩住刹车。它支持的是“深层 addressed state 被同一个 decoder
+实际使用”，还不能证明“越靠近 root 就是人类可读的摘要”。depth 1 甚至
+比 root-only 差 <code>0.1202</code>，所以曲线不是数学上必然单调。模型原本也在完整
+READ 下训练，截断深度属于分布外干预。source shuffle、学习后的 residual
+地址交换、sibling pair break 和 flat/Transformer 对比仍需后续实验。</p>
+<p>这次纠错最重要的收获不是换了一个公式，而是建立了一条命名纪律：</p>
+<blockquote>
+<p>递归生成过数据，不等于递归参与了计算。只有地址、父子关系和共享 kernel 一起进入 decoder 的移动过程，才是 TreeHeap recursive READ。</p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

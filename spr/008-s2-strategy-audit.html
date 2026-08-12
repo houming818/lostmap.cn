@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器 | LostMap</title>
+<meta name="keywords" content="SPR, S2, ARA, TreeHeap, FoldStack, ProbabilityContainer">
+<meta name="description" content="用 ARA 方式解释 S2 实验：当前 TreeHeap checkpoint 支撑什么、不支撑什么，以及下一步为什么转向 Role Slots 和 Probability Container。">
+<meta name="author" content="nio (Houming818) &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/008-s2-strategy-audit.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/008-s2-strategy-audit.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/008-s2-strategy-audit.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器">
+  <meta property="og:description" content="用 ARA 方式解释 S2 实验：当前 TreeHeap checkpoint 支撑什么、不支撑什么，以及下一步为什么转向 Role Slots 和 Probability Container。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-06-17T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-06-17T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器">
+  <meta name="twitter:description" content="用 ARA 方式解释 S2 实验：当前 TreeHeap checkpoint 支撑什么、不支撑什么，以及下一步为什么转向 Role Slots 和 Probability Container。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器",
+      "item": "https://www.lostmap.cn/spr/008-s2-strategy-audit.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器",
+  "name": "[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器",
+  "description": "用 ARA 方式解释 S2 实验：当前 TreeHeap checkpoint 支撑什么、不支撑什么，以及下一步为什么转向 Role Slots 和 Probability Container。",
+  "keywords": [
+    "SPR", "S2", "ARA", "TreeHeap", "FoldStack", "ProbabilityContainer"
+  ],
+  "articleBody": "S2 策略审计：TreeHeap、Role Slots 和概率容器 这篇文章写给刚接触 SPR 的读者。你只需要有本科计算机水平，知道一点向量、分类器、树和图，就能读下去。\n先说结论：\n当前 S2 最可靠的方向不是： TreeHeap 128D -\u003e 直接能量搜索 -\u003e 正确语法树 而是： 语义向量 -\u003e Role Slot -\u003e 概率容器 -\u003e 延迟坍缩 这句话里有几个词听起来很硬。我们一个一个拆开。\n背景：我们到底想解决什么 普通神经翻译或语言模型经常把句子看成 token 序列，然后用 attention 去找词和词之间的关系。\nSPR 想探索另一条路：\n能不能把语言结构压缩成更明确的路径、槽位和图？ 在 S2 里，我们关心的不是“这个词像不像另一个词”，而是更结构化的问题：\n谁是主语？ 谁是谓语？ 谁是宾语？ 哪个短语修饰哪个短语？ 哪些候选结构应该先保留，不要太早拍死？ 这就是 Fold Stack / Graph Builder 的问题。\nARA 方式 这里先纠正一个容易误解的点：ARA 不是\nArchitecture / Reasoning / Artifact ARA 指的是：\nAgent-Native Research Artifact 它不是一种写作修辞，而是一套面向 AI agent 的研究制品协议。论文《The Last Human-Written Paper: Agent-Native Research Artifacts》把 ARA 拆成四层：\n层 目录 作用 Cognitive Layer /logic 问题、方案、可证伪 claim、实验计划 Physical Layer /src 可执行代码、配置、环境、实现说明 Exploration Graph /trace 研究 DAG、失败路线、pivot、dead end Evidence Layer /evidence 原始输出、日志、指标表、claim 的证据 所以这篇文章只是给人读的说明文；真正的 ARA 内容应该在仓库的这些目录里。\nARA 的原则是：\n一个结论必须绑定证据。 一个强 claim 必须允许被实验推翻。 所以这篇不会说“TreeHeap 已经成功了”。我们只说实验支持了什么，没有支持什么。\n/logic：先预测，再实验 这里还要补一个更重要的点。\nARA 不是：\n先随便跑实验 看到结果 再回头编一个结论 真正的 ARA 顺序应该是：\npredict -\u003e claim -\u003e experiment -\u003e evidence -\u003e trace 翻译成人话：\n1. 先写一个预判：如果我的理论是真的，实验应该看到什么？ 2. 再把这个预判变成一个可以被推翻的 claim。 3. 然后设计实验，专门去验证或打脸这个 claim。 4. 实验输出原始数据，放进 /evidence。 5. 如果实验失败或改方向，把失败路线写进 /trace。 这和普通博客最大的区别是：ARA 不鼓励“事后讲故事”。\n它要求我们在实验前就写清楚：\n我预计会发生什么？ 什么结果算支持？ 什么结果算失败？ 如果失败，架构要怎么改？ 拿这次 t_merge 问题举例。\n我们现在不应该直接写：\nt_merge 失效了。 而应该先写一个 predict：\nP-TM01: 如果 TreeHeap 的 L0 × 背景场参与机制成立， 那么新训练 checkpoint 的 post-merge 向量应该： 1. 不被公共方向完全主导； 2. 保留 L0/token identity； 3. 保留 path/background bucket 信息； 4. 在 role-slot 或 context probe 上优于 L0 baseline； 5. 从 CMul pre-merge 到 post-merge 的距离结构不能大幅丢失。 然后它对应一个 claim：\nC-TM01: TreeHeap 的背景场乘积可以产生一个非坍缩的 token-in-background state。 再对应一个实验：\nE-TM01: 重新训练一个小 checkpoint， 每个 epoch 自动跑 tmerge_diagnostic 和 strategy_audit。 提前写好通过标准：\nPass: - raw/centered cosine 都不过度坍缩； - effective rank 足够高； - path bucket probe 明显高于 chance； - role/context probe 优于 L0 baseline； - CMul -\u003e post-merge distance correlation 保持较高。 Fail: - post-merge 向量仍然被公共方向主导； - role/context probe 不如 L0； - path probe 接近 chance； - 距离结构从 pre 到 post 大幅丢失。 这才是 ARA 的“logic 先行”。\n所以，旧 checkpoint 现在不能为 TreeHeap 原理背书。它只能作为：\nlegacy artifact 用来暴露问题、形成新的 predict。\n真正能给 TreeHeap 背书的 evidence，必须来自按这个 predict 重新设计并训练的新 checkpoint。\n/logic：新的四层理解 目前更清楚的分层是：\nL0: token/path substrate L1: contextual semantic vector L2: role-slot fold structure L3: probability/energy collapse 可以用一个很朴素的比喻理解。\n数字 321 不是简单的：\n[3, 2, 1] 它真正的结构是：\n3 * 百位 + 2 * 十位 + 1 * 个位 这里最重要的不是 3,2,1 本身，而是：\n百位、十位、个位 这些位置就是“位权”。\n放到语言里：\ncat eats fish 不应该只是：\n[cat, eats, fish] 而应该更像：\nSUBJECT = cat ROOT = eats OBJECT = fish 所以 S2 现在要找的不是更深的树，而是：\nRole Slots 也就是“结构槽位”。\n实验一：当前 TreeHeap 128D 是否适合直接做语法能量 我们先测试一个基础问题：\n历史 checkpoint 里的 TreeHeap 128D 向量到底长什么样？ 使用的 checkpoint 是历史遗留模型：\n/mnt/nas/datasets/wmt_massive/checkpoints/anchor_tree_massive_ep3.pt 它不是这次重新训练的模型。\n我们比较四种向量：\n向量 含义 random 随机向量，作为健康基线 L0 checkpoint 里的原始 token embedding TreeHeap L0 + path + t_merge 后的 128D 输出 path token 在 TreeHeap 路径上的位置向量 最重要的指标叫：\noff-diagonal cosine mean 如果你不熟 cosine，可以简单理解成“两个不同词的向量平均有多像”。\n接近 0：不同词分得比较开。 接近 1：不同词几乎都挤在一起。 实验结果：\nVector 不同词平均相似度 解释 random 0.0007 正常随机基线 L0 0.0003 分得很开 TreeHeap 0.9849 几乎全挤在一起 path 0.4937 粗粒度路径簇 这个结果很关键。\n它说明：\n当前 ep3 TreeHeap 输出太坍缩。 也就是说，很多不同 token 经过 TreeHeap 后，方向几乎一样。这样的向量很难直接拿来判断语法结构。\n这不是说 TreeHeap 理论错了，而是说：\n当前历史 checkpoint 的 tree 输出不能背负“语法能量已成立”的 claim。 实验二：非交换张量能不能直接选出正确结构 我们之前讨论过一个想法：\nh1 ⊗ h2 ⊗ h3 这是有序张量。它和普通加法不同。\n普通加法：\ncat + eats + fish = fish + eats + cat 顺序丢了。\n有序张量：\ncat ⊗ eats ⊗ fish != fish ⊗ eats ⊗ cat 顺序保住了。\n所以我们要分清两个问题：\n问题 1：它能不能区分排列？ 问题 2：它能不能把正确语法排到第一？ 实验结论是：\n能区分排列，但 raw energy 还不能稳定选出正确语法。 在 SVO3 任务上，role-slot template 的结果如下：\nMode Top-1 Top-3 Mean gold rank L0 + random role basis 0.509 0.812 2.11 random + onehot role basis 0.464 0.786 2.21 TreeHeap + onehot role basis 0.330 0.723 2.59 这里 Top-1 的意思是：\n正确排列排第一的比例 Top-3 的意思是：\n正确排列出现在前三名的比例 如果 TreeHeap 真的已经天然对齐语法，我们希望它明显赢过 L0 和 random。\n但结果相反：\nTreeHeap 没赢。 所以结论必须收紧：\n非交换张量是必要工具。 但当前 TreeHeap 输出不足以直接做 syntax energy。 实验三：Role Slots 是否真的存在 接下来问一个更实际的问题：\n语言结构是不是适合用少量槽位表达？ 比如 VP 可以写成：\nVP { subject object adverb complement } 而不是强行写成二叉树：\neat ├─ cat └─ NodeX ├─ fish └─ quickly 我们在 12,000 条 WMT massive 英文样本上统计 FoldNode 的子节点数量。\n结果：\nDegree threshold Coverage \u003c= 2 86.1% \u003c= 3 95.8% \u003c= 4 99.0% \u003c= 5 99.8% 这说明：\n绝大多数 FoldNode 用 4 个左右的槽位就够了。 这对架构很重要。\n它支持：\nRole-slotted FoldNode 而不是继续押：\n更深的二叉树 或者 更高叉但无名的树 常见模式也很直观。\nVP 常见模式：\nnsubj dobj dobj + nsubj aux + dobj aux + dobj + nsubj NP 常见模式：\ndet compound amod amod + det poss 翻译成人话：\nVP 常围绕主语、宾语、助动词展开。 NP 常围绕限定词、复合词、形容词、所有格展开。 这就是 Role Slots 的证据。\n实验四：概率容器是否有必要 Graph Builder 过去常做一件事：\n给每个节点选一个最可能的父节点。 这叫过早坍缩。\n但很多结构局部看不出来。\n经典例子：\nI saw the man with a telescope. with a telescope 可以挂到 saw，也可以挂到 man。局部阶段未必应该立刻选死。\n所以我们测试：\n正确父节点是否在 top-k 候选里？ 如果 top-1 不完美，但 top-3 几乎总包含正确答案，那就说明应该保留候选分布，而不是马上 argmax。\n结果：\nMetric Value graphs 8,408 pair rows 195,610 eval child sets 2,758 gold parent in top-1 93.1% gold parent in top-2 99.3% gold parent in top-3 99.9% gold parent in top-5 100.0% 这个结果非常强。\n它说明：\n正确答案几乎总在 top-3 里。 所以 Graph Builder 不应该只输出：\nparent = A 而应该输出：\nParentContainer { A: 0.61 B: 0.27 C: 0.12 } 然后把这个容器传给后续模块，让更大的上下文再决定。\n这就是 Probability Container。\n夜间任务的部分结果 后来我们又启动了一个更大的 8 小时任务，目标是继续查：\n坍缩到底发生在哪里？ 上下文窗口是否稳定提升 role-slot 预测？ 不同 epoch 的 checkpoint 是否不同？ 截至写作时，完整任务还在运行。但第一轮部分结果已经给出一个很有用的信号。\n对 anchor_tree_massive_ep1.pt：\nMode 不同词平均相似度 L0 0.0186 CMul pre-merge 0.0200 Tree output 0.9860 这说明：\n坍缩主要发生在 t_merge 之后。 也就是说，L0 和 CMul 本身没有严重坍缩，但经过 t_merge 之后，向量被挤到很相似的方向。\nRole probe 的部分结果：\nFeature Top-1 L0 only 0.538 L0 + context 0.570 CMul + context 0.559 Tree + context 0.548 path only 0.325 这个结果说明：\n上下文确实有 role-slot 信号。 path 单独很弱。 tree output 不如 L0/CMul 稳。 这些是部分结果，不能替代完整 8 小时任务的最终统计。但方向已经很清楚。\n/logic：我们现在怎么判断 把上面的实验合起来，推理链是：\n1. 当前 TreeHeap tree output 高度坍缩。 2. 坍缩后的向量不适合直接做语法能量。 3. 非交换张量可以区分排列，但不自动等于语法正确。 4. FoldNode 的真实结构高度适合小槽位表达。 5. parent top-k 覆盖非常高，所以概率容器有价值。 6. 上下文能提升 role-slot 预测。 所以下一步不是：\n继续硬做 edge classifier 也不是：\n直接宣布 TreeHeap energy search 成功 而是：\nRole Slots + Probability Container + 更好的 L1/context vector 当前架构决策 继续推进 Role-slotted FoldNode 因为 degree 分布强烈支持小槽位。\nProbability Container 因为 gold parent top-3 覆盖接近满分。\nContext-conditioned role prediction 因为 L0 + context 已经比 L0 only 更好。\n暂停放大的 claim 当前 3-epoch TreeHeap 128D 已经是 syntax vector。 不支持。\n纯 tensor energy 可以替代 Graph Builder。 不支持。\npath 本身编码语法角色。 不支持。\n/evidence：证据在哪里 完整 strategy audit：\nara/s2-translation/evidence/strategy_audit/ 关键文件：\nstrategy_audit_summary.json tensor_energy_rows.csv parent_container_rows.csv role_slot_degree.json README.md 夜间任务部分结果：\nara/s2-translation/evidence/overnight_partial_20260617/ 远端正在运行的完整任务：\nio:/data/homecicd/sametime/logs/s2_overnight_20260617_150111 脚本：\ns2_strategy_audit.py s2_overnight_io.py run_s2_overnight_io.sh 给初学者的最后总结 如果你只记住三句话，记这三句：\n第一，当前 TreeHeap checkpoint 的最终 128D 输出太坍缩，不能直接当语法向量。 第二，语言结构更像“语义向量填入角色槽位”，而不是普通二叉树越堆越深。 第三，Graph Builder 不应该太早选唯一答案，应该保留 top-k 概率容器，让后续上下文再坍缩。 这就是目前 S2 理论建设的位置：\n理论路线更清楚了。 部分方向被实验支持。 部分过强说法被实验降级。 下一步要训练或抽取更好的 L1/context vector，再重跑同一套审计。 License: GPLv3\n",
+  "wordCount" : "928",
+  "inLanguage": "en",
+  "datePublished": "2026-06-17T00:00:00Z",
+  "dateModified": "2026-06-17T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/008-s2-strategy-audit.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item active">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器
+    </h1>
+    <div class="post-description">
+      用 ARA 方式解释 S2 实验：当前 TreeHeap checkpoint 支撑什么、不支撑什么，以及下一步为什么转向 Role Slots 和 Probability Container。
+    </div>
+    <div class="post-meta"><span title='2026-06-17 00:00:00 +0000 UTC'>June 17, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="s2-策略审计treeheaprole-slots-和概率容器">S2 策略审计：TreeHeap、Role Slots 和概率容器<a hidden class="anchor" aria-hidden="true" href="#s2-策略审计treeheaprole-slots-和概率容器">#</a></h1>
+<p>这篇文章写给刚接触 SPR 的读者。你只需要有本科计算机水平，知道一点向量、分类器、树和图，就能读下去。</p>
+<p>先说结论：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>当前 S2 最可靠的方向不是：
+</span></span><span style="display:flex;"><span>TreeHeap 128D -&gt; 直接能量搜索 -&gt; 正确语法树
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>而是：
+</span></span><span style="display:flex;"><span>语义向量 -&gt; Role Slot -&gt; 概率容器 -&gt; 延迟坍缩
+</span></span></code></pre></div><p>这句话里有几个词听起来很硬。我们一个一个拆开。</p>
+<h2 id="背景我们到底想解决什么">背景：我们到底想解决什么<a hidden class="anchor" aria-hidden="true" href="#背景我们到底想解决什么">#</a></h2>
+<p>普通神经翻译或语言模型经常把句子看成 token 序列，然后用 attention 去找词和词之间的关系。</p>
+<p>SPR 想探索另一条路：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>能不能把语言结构压缩成更明确的路径、槽位和图？
+</span></span></code></pre></div><p>在 S2 里，我们关心的不是“这个词像不像另一个词”，而是更结构化的问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>谁是主语？
+</span></span><span style="display:flex;"><span>谁是谓语？
+</span></span><span style="display:flex;"><span>谁是宾语？
+</span></span><span style="display:flex;"><span>哪个短语修饰哪个短语？
+</span></span><span style="display:flex;"><span>哪些候选结构应该先保留，不要太早拍死？
+</span></span></code></pre></div><p>这就是 Fold Stack / Graph Builder 的问题。</p>
+<h2 id="ara-方式">ARA 方式<a hidden class="anchor" aria-hidden="true" href="#ara-方式">#</a></h2>
+<p>这里先纠正一个容易误解的点：ARA 不是</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Architecture / Reasoning / Artifact
+</span></span></code></pre></div><p>ARA 指的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Agent-Native Research Artifact
+</span></span></code></pre></div><p>它不是一种写作修辞，而是一套面向 AI agent 的研究制品协议。论文《The Last Human-Written Paper: Agent-Native Research Artifacts》把 ARA 拆成四层：</p>
+<table>
+  <thead>
+      <tr>
+          <th>层</th>
+          <th>目录</th>
+          <th>作用</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Cognitive Layer</td>
+          <td><code>/logic</code></td>
+          <td>问题、方案、可证伪 claim、实验计划</td>
+      </tr>
+      <tr>
+          <td>Physical Layer</td>
+          <td><code>/src</code></td>
+          <td>可执行代码、配置、环境、实现说明</td>
+      </tr>
+      <tr>
+          <td>Exploration Graph</td>
+          <td><code>/trace</code></td>
+          <td>研究 DAG、失败路线、pivot、dead end</td>
+      </tr>
+      <tr>
+          <td>Evidence Layer</td>
+          <td><code>/evidence</code></td>
+          <td>原始输出、日志、指标表、claim 的证据</td>
+      </tr>
+  </tbody>
+</table>
+<p>所以这篇文章只是给人读的说明文；真正的 ARA 内容应该在仓库的这些目录里。</p>
+<p>ARA 的原则是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个结论必须绑定证据。
+</span></span><span style="display:flex;"><span>一个强 claim 必须允许被实验推翻。
+</span></span></code></pre></div><p>所以这篇不会说“TreeHeap 已经成功了”。我们只说实验支持了什么，没有支持什么。</p>
+<h2 id="logic先预测再实验"><code>/logic</code>：先预测，再实验<a hidden class="anchor" aria-hidden="true" href="#logic先预测再实验">#</a></h2>
+<p>这里还要补一个更重要的点。</p>
+<p>ARA 不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>先随便跑实验
+</span></span><span style="display:flex;"><span>看到结果
+</span></span><span style="display:flex;"><span>再回头编一个结论
+</span></span></code></pre></div><p>真正的 ARA 顺序应该是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>predict -&gt; claim -&gt; experiment -&gt; evidence -&gt; trace
+</span></span></code></pre></div><p>翻译成人话：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1. 先写一个预判：如果我的理论是真的，实验应该看到什么？
+</span></span><span style="display:flex;"><span>2. 再把这个预判变成一个可以被推翻的 claim。
+</span></span><span style="display:flex;"><span>3. 然后设计实验，专门去验证或打脸这个 claim。
+</span></span><span style="display:flex;"><span>4. 实验输出原始数据，放进 /evidence。
+</span></span><span style="display:flex;"><span>5. 如果实验失败或改方向，把失败路线写进 /trace。
+</span></span></code></pre></div><p>这和普通博客最大的区别是：ARA 不鼓励“事后讲故事”。<br>
+它要求我们在实验前就写清楚：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>我预计会发生什么？
+</span></span><span style="display:flex;"><span>什么结果算支持？
+</span></span><span style="display:flex;"><span>什么结果算失败？
+</span></span><span style="display:flex;"><span>如果失败，架构要怎么改？
+</span></span></code></pre></div><p>拿这次 <code>t_merge</code> 问题举例。</p>
+<p>我们现在不应该直接写：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>t_merge 失效了。
+</span></span></code></pre></div><p>而应该先写一个 predict：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P-TM01:
+</span></span><span style="display:flex;"><span>如果 TreeHeap 的 L0 × 背景场参与机制成立，
+</span></span><span style="display:flex;"><span>那么新训练 checkpoint 的 post-merge 向量应该：
+</span></span><span style="display:flex;"><span>1. 不被公共方向完全主导；
+</span></span><span style="display:flex;"><span>2. 保留 L0/token identity；
+</span></span><span style="display:flex;"><span>3. 保留 path/background bucket 信息；
+</span></span><span style="display:flex;"><span>4. 在 role-slot 或 context probe 上优于 L0 baseline；
+</span></span><span style="display:flex;"><span>5. 从 CMul pre-merge 到 post-merge 的距离结构不能大幅丢失。
+</span></span></code></pre></div><p>然后它对应一个 claim：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>C-TM01:
+</span></span><span style="display:flex;"><span>TreeHeap 的背景场乘积可以产生一个非坍缩的 token-in-background state。
+</span></span></code></pre></div><p>再对应一个实验：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>E-TM01:
+</span></span><span style="display:flex;"><span>重新训练一个小 checkpoint，
+</span></span><span style="display:flex;"><span>每个 epoch 自动跑 tmerge_diagnostic 和 strategy_audit。
+</span></span></code></pre></div><p>提前写好通过标准：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Pass:
+</span></span><span style="display:flex;"><span>- raw/centered cosine 都不过度坍缩；
+</span></span><span style="display:flex;"><span>- effective rank 足够高；
+</span></span><span style="display:flex;"><span>- path bucket probe 明显高于 chance；
+</span></span><span style="display:flex;"><span>- role/context probe 优于 L0 baseline；
+</span></span><span style="display:flex;"><span>- CMul -&gt; post-merge distance correlation 保持较高。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Fail:
+</span></span><span style="display:flex;"><span>- post-merge 向量仍然被公共方向主导；
+</span></span><span style="display:flex;"><span>- role/context probe 不如 L0；
+</span></span><span style="display:flex;"><span>- path probe 接近 chance；
+</span></span><span style="display:flex;"><span>- 距离结构从 pre 到 post 大幅丢失。
+</span></span></code></pre></div><p>这才是 ARA 的“logic 先行”。</p>
+<p>所以，旧 checkpoint 现在不能为 TreeHeap 原理背书。它只能作为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>legacy artifact
+</span></span></code></pre></div><p>用来暴露问题、形成新的 predict。<br>
+真正能给 TreeHeap 背书的 evidence，必须来自按这个 predict 重新设计并训练的新 checkpoint。</p>
+<h2 id="logic新的四层理解"><code>/logic</code>：新的四层理解<a hidden class="anchor" aria-hidden="true" href="#logic新的四层理解">#</a></h2>
+<p>目前更清楚的分层是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>L0: token/path substrate
+</span></span><span style="display:flex;"><span>L1: contextual semantic vector
+</span></span><span style="display:flex;"><span>L2: role-slot fold structure
+</span></span><span style="display:flex;"><span>L3: probability/energy collapse
+</span></span></code></pre></div><p>可以用一个很朴素的比喻理解。</p>
+<p>数字 <code>321</code> 不是简单的：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[3, 2, 1]
+</span></span></code></pre></div><p>它真正的结构是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>3 * 百位 + 2 * 十位 + 1 * 个位
+</span></span></code></pre></div><p>这里最重要的不是 <code>3,2,1</code> 本身，而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>百位、十位、个位
+</span></span></code></pre></div><p>这些位置就是“位权”。</p>
+<p>放到语言里：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cat eats fish
+</span></span></code></pre></div><p>不应该只是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[cat, eats, fish]
+</span></span></code></pre></div><p>而应该更像：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>SUBJECT = cat
+</span></span><span style="display:flex;"><span>ROOT    = eats
+</span></span><span style="display:flex;"><span>OBJECT  = fish
+</span></span></code></pre></div><p>所以 S2 现在要找的不是更深的树，而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Role Slots
+</span></span></code></pre></div><p>也就是“结构槽位”。</p>
+<h2 id="实验一当前-treeheap-128d-是否适合直接做语法能量">实验一：当前 TreeHeap 128D 是否适合直接做语法能量<a hidden class="anchor" aria-hidden="true" href="#实验一当前-treeheap-128d-是否适合直接做语法能量">#</a></h2>
+<p>我们先测试一个基础问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>历史 checkpoint 里的 TreeHeap 128D 向量到底长什么样？
+</span></span></code></pre></div><p>使用的 checkpoint 是历史遗留模型：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>/mnt/nas/datasets/wmt_massive/checkpoints/anchor_tree_massive_ep3.pt
+</span></span></code></pre></div><p>它不是这次重新训练的模型。</p>
+<p>我们比较四种向量：</p>
+<table>
+  <thead>
+      <tr>
+          <th>向量</th>
+          <th>含义</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>random</td>
+          <td>随机向量，作为健康基线</td>
+      </tr>
+      <tr>
+          <td>L0</td>
+          <td>checkpoint 里的原始 token embedding</td>
+      </tr>
+      <tr>
+          <td>TreeHeap</td>
+          <td>L0 + path + t_merge 后的 128D 输出</td>
+      </tr>
+      <tr>
+          <td>path</td>
+          <td>token 在 TreeHeap 路径上的位置向量</td>
+      </tr>
+  </tbody>
+</table>
+<p>最重要的指标叫：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>off-diagonal cosine mean
+</span></span></code></pre></div><p>如果你不熟 cosine，可以简单理解成“两个不同词的向量平均有多像”。</p>
+<ul>
+<li>接近 <code>0</code>：不同词分得比较开。</li>
+<li>接近 <code>1</code>：不同词几乎都挤在一起。</li>
+</ul>
+<p>实验结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>Vector</th>
+          <th>不同词平均相似度</th>
+          <th>解释</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>random</td>
+          <td>0.0007</td>
+          <td>正常随机基线</td>
+      </tr>
+      <tr>
+          <td>L0</td>
+          <td>0.0003</td>
+          <td>分得很开</td>
+      </tr>
+      <tr>
+          <td>TreeHeap</td>
+          <td>0.9849</td>
+          <td>几乎全挤在一起</td>
+      </tr>
+      <tr>
+          <td>path</td>
+          <td>0.4937</td>
+          <td>粗粒度路径簇</td>
+      </tr>
+  </tbody>
+</table>
+<p>这个结果很关键。</p>
+<p>它说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>当前 ep3 TreeHeap 输出太坍缩。
+</span></span></code></pre></div><p>也就是说，很多不同 token 经过 TreeHeap 后，方向几乎一样。这样的向量很难直接拿来判断语法结构。</p>
+<p>这不是说 TreeHeap 理论错了，而是说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>当前历史 checkpoint 的 tree 输出不能背负“语法能量已成立”的 claim。
+</span></span></code></pre></div><h2 id="实验二非交换张量能不能直接选出正确结构">实验二：非交换张量能不能直接选出正确结构<a hidden class="anchor" aria-hidden="true" href="#实验二非交换张量能不能直接选出正确结构">#</a></h2>
+<p>我们之前讨论过一个想法：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>h1 ⊗ h2 ⊗ h3
+</span></span></code></pre></div><p>这是有序张量。它和普通加法不同。</p>
+<p>普通加法：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cat + eats + fish
+</span></span><span style="display:flex;"><span>= fish + eats + cat
+</span></span></code></pre></div><p>顺序丢了。</p>
+<p>有序张量：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cat ⊗ eats ⊗ fish
+</span></span><span style="display:flex;"><span>!= fish ⊗ eats ⊗ cat
+</span></span></code></pre></div><p>顺序保住了。</p>
+<p>所以我们要分清两个问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>问题 1：它能不能区分排列？
+</span></span><span style="display:flex;"><span>问题 2：它能不能把正确语法排到第一？
+</span></span></code></pre></div><p>实验结论是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>能区分排列，但 raw energy 还不能稳定选出正确语法。
+</span></span></code></pre></div><p>在 SVO3 任务上，role-slot template 的结果如下：</p>
+<table>
+  <thead>
+      <tr>
+          <th>Mode</th>
+          <th>Top-1</th>
+          <th>Top-3</th>
+          <th>Mean gold rank</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>L0 + random role basis</td>
+          <td>0.509</td>
+          <td>0.812</td>
+          <td>2.11</td>
+      </tr>
+      <tr>
+          <td>random + onehot role basis</td>
+          <td>0.464</td>
+          <td>0.786</td>
+          <td>2.21</td>
+      </tr>
+      <tr>
+          <td>TreeHeap + onehot role basis</td>
+          <td>0.330</td>
+          <td>0.723</td>
+          <td>2.59</td>
+      </tr>
+  </tbody>
+</table>
+<p>这里 Top-1 的意思是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>正确排列排第一的比例
+</span></span></code></pre></div><p>Top-3 的意思是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>正确排列出现在前三名的比例
+</span></span></code></pre></div><p>如果 TreeHeap 真的已经天然对齐语法，我们希望它明显赢过 L0 和 random。</p>
+<p>但结果相反：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 没赢。
+</span></span></code></pre></div><p>所以结论必须收紧：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>非交换张量是必要工具。
+</span></span><span style="display:flex;"><span>但当前 TreeHeap 输出不足以直接做 syntax energy。
+</span></span></code></pre></div><h2 id="实验三role-slots-是否真的存在">实验三：Role Slots 是否真的存在<a hidden class="anchor" aria-hidden="true" href="#实验三role-slots-是否真的存在">#</a></h2>
+<p>接下来问一个更实际的问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>语言结构是不是适合用少量槽位表达？
+</span></span></code></pre></div><p>比如 VP 可以写成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>VP {
+</span></span><span style="display:flex;"><span>  subject
+</span></span><span style="display:flex;"><span>  object
+</span></span><span style="display:flex;"><span>  adverb
+</span></span><span style="display:flex;"><span>  complement
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>而不是强行写成二叉树：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>eat
+</span></span><span style="display:flex;"><span>├─ cat
+</span></span><span style="display:flex;"><span>└─ NodeX
+</span></span><span style="display:flex;"><span>   ├─ fish
+</span></span><span style="display:flex;"><span>   └─ quickly
+</span></span></code></pre></div><p>我们在 12,000 条 WMT massive 英文样本上统计 FoldNode 的子节点数量。</p>
+<p>结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>Degree threshold</th>
+          <th>Coverage</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>&lt;= 2</td>
+          <td>86.1%</td>
+      </tr>
+      <tr>
+          <td>&lt;= 3</td>
+          <td>95.8%</td>
+      </tr>
+      <tr>
+          <td>&lt;= 4</td>
+          <td>99.0%</td>
+      </tr>
+      <tr>
+          <td>&lt;= 5</td>
+          <td>99.8%</td>
+      </tr>
+  </tbody>
+</table>
+<p>这说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>绝大多数 FoldNode 用 4 个左右的槽位就够了。
+</span></span></code></pre></div><p>这对架构很重要。</p>
+<p>它支持：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Role-slotted FoldNode
+</span></span></code></pre></div><p>而不是继续押：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>更深的二叉树
+</span></span><span style="display:flex;"><span>或者
+</span></span><span style="display:flex;"><span>更高叉但无名的树
+</span></span></code></pre></div><p>常见模式也很直观。</p>
+<p>VP 常见模式：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>nsubj
+</span></span><span style="display:flex;"><span>dobj
+</span></span><span style="display:flex;"><span>dobj + nsubj
+</span></span><span style="display:flex;"><span>aux + dobj
+</span></span><span style="display:flex;"><span>aux + dobj + nsubj
+</span></span></code></pre></div><p>NP 常见模式：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>det
+</span></span><span style="display:flex;"><span>compound
+</span></span><span style="display:flex;"><span>amod
+</span></span><span style="display:flex;"><span>amod + det
+</span></span><span style="display:flex;"><span>poss
+</span></span></code></pre></div><p>翻译成人话：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>VP 常围绕主语、宾语、助动词展开。
+</span></span><span style="display:flex;"><span>NP 常围绕限定词、复合词、形容词、所有格展开。
+</span></span></code></pre></div><p>这就是 Role Slots 的证据。</p>
+<h2 id="实验四概率容器是否有必要">实验四：概率容器是否有必要<a hidden class="anchor" aria-hidden="true" href="#实验四概率容器是否有必要">#</a></h2>
+<p>Graph Builder 过去常做一件事：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>给每个节点选一个最可能的父节点。
+</span></span></code></pre></div><p>这叫过早坍缩。</p>
+<p>但很多结构局部看不出来。</p>
+<p>经典例子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>I saw the man with a telescope.
+</span></span></code></pre></div><p><code>with a telescope</code> 可以挂到 <code>saw</code>，也可以挂到 <code>man</code>。局部阶段未必应该立刻选死。</p>
+<p>所以我们测试：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>正确父节点是否在 top-k 候选里？
+</span></span></code></pre></div><p>如果 top-1 不完美，但 top-3 几乎总包含正确答案，那就说明应该保留候选分布，而不是马上 argmax。</p>
+<p>结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>Metric</th>
+          <th>Value</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>graphs</td>
+          <td>8,408</td>
+      </tr>
+      <tr>
+          <td>pair rows</td>
+          <td>195,610</td>
+      </tr>
+      <tr>
+          <td>eval child sets</td>
+          <td>2,758</td>
+      </tr>
+      <tr>
+          <td>gold parent in top-1</td>
+          <td>93.1%</td>
+      </tr>
+      <tr>
+          <td>gold parent in top-2</td>
+          <td>99.3%</td>
+      </tr>
+      <tr>
+          <td>gold parent in top-3</td>
+          <td>99.9%</td>
+      </tr>
+      <tr>
+          <td>gold parent in top-5</td>
+          <td>100.0%</td>
+      </tr>
+  </tbody>
+</table>
+<p>这个结果非常强。</p>
+<p>它说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>正确答案几乎总在 top-3 里。
+</span></span></code></pre></div><p>所以 Graph Builder 不应该只输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>parent = A
+</span></span></code></pre></div><p>而应该输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ParentContainer {
+</span></span><span style="display:flex;"><span>  A: 0.61
+</span></span><span style="display:flex;"><span>  B: 0.27
+</span></span><span style="display:flex;"><span>  C: 0.12
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>然后把这个容器传给后续模块，让更大的上下文再决定。</p>
+<p>这就是 Probability Container。</p>
+<h2 id="夜间任务的部分结果">夜间任务的部分结果<a hidden class="anchor" aria-hidden="true" href="#夜间任务的部分结果">#</a></h2>
+<p>后来我们又启动了一个更大的 8 小时任务，目标是继续查：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>坍缩到底发生在哪里？
+</span></span><span style="display:flex;"><span>上下文窗口是否稳定提升 role-slot 预测？
+</span></span><span style="display:flex;"><span>不同 epoch 的 checkpoint 是否不同？
+</span></span></code></pre></div><p>截至写作时，完整任务还在运行。但第一轮部分结果已经给出一个很有用的信号。</p>
+<p>对 <code>anchor_tree_massive_ep1.pt</code>：</p>
+<table>
+  <thead>
+      <tr>
+          <th>Mode</th>
+          <th>不同词平均相似度</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>L0</td>
+          <td>0.0186</td>
+      </tr>
+      <tr>
+          <td>CMul pre-merge</td>
+          <td>0.0200</td>
+      </tr>
+      <tr>
+          <td>Tree output</td>
+          <td>0.9860</td>
+      </tr>
+  </tbody>
+</table>
+<p>这说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>坍缩主要发生在 t_merge 之后。
+</span></span></code></pre></div><p>也就是说，L0 和 CMul 本身没有严重坍缩，但经过 <code>t_merge</code> 之后，向量被挤到很相似的方向。</p>
+<p>Role probe 的部分结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>Feature</th>
+          <th>Top-1</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>L0 only</td>
+          <td>0.538</td>
+      </tr>
+      <tr>
+          <td>L0 + context</td>
+          <td>0.570</td>
+      </tr>
+      <tr>
+          <td>CMul + context</td>
+          <td>0.559</td>
+      </tr>
+      <tr>
+          <td>Tree + context</td>
+          <td>0.548</td>
+      </tr>
+      <tr>
+          <td>path only</td>
+          <td>0.325</td>
+      </tr>
+  </tbody>
+</table>
+<p>这个结果说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>上下文确实有 role-slot 信号。
+</span></span><span style="display:flex;"><span>path 单独很弱。
+</span></span><span style="display:flex;"><span>tree output 不如 L0/CMul 稳。
+</span></span></code></pre></div><p>这些是部分结果，不能替代完整 8 小时任务的最终统计。但方向已经很清楚。</p>
+<h2 id="logic我们现在怎么判断"><code>/logic</code>：我们现在怎么判断<a hidden class="anchor" aria-hidden="true" href="#logic我们现在怎么判断">#</a></h2>
+<p>把上面的实验合起来，推理链是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1. 当前 TreeHeap tree output 高度坍缩。
+</span></span><span style="display:flex;"><span>2. 坍缩后的向量不适合直接做语法能量。
+</span></span><span style="display:flex;"><span>3. 非交换张量可以区分排列，但不自动等于语法正确。
+</span></span><span style="display:flex;"><span>4. FoldNode 的真实结构高度适合小槽位表达。
+</span></span><span style="display:flex;"><span>5. parent top-k 覆盖非常高，所以概率容器有价值。
+</span></span><span style="display:flex;"><span>6. 上下文能提升 role-slot 预测。
+</span></span></code></pre></div><p>所以下一步不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>继续硬做 edge classifier
+</span></span></code></pre></div><p>也不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>直接宣布 TreeHeap energy search 成功
+</span></span></code></pre></div><p>而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Role Slots + Probability Container + 更好的 L1/context vector
+</span></span></code></pre></div><h2 id="当前架构决策">当前架构决策<a hidden class="anchor" aria-hidden="true" href="#当前架构决策">#</a></h2>
+<h3 id="继续推进">继续推进<a hidden class="anchor" aria-hidden="true" href="#继续推进">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Role-slotted FoldNode
+</span></span></code></pre></div><p>因为 degree 分布强烈支持小槽位。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Probability Container
+</span></span></code></pre></div><p>因为 gold parent top-3 覆盖接近满分。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Context-conditioned role prediction
+</span></span></code></pre></div><p>因为 L0 + context 已经比 L0 only 更好。</p>
+<h3 id="暂停放大的-claim">暂停放大的 claim<a hidden class="anchor" aria-hidden="true" href="#暂停放大的-claim">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>当前 3-epoch TreeHeap 128D 已经是 syntax vector。
+</span></span></code></pre></div><p>不支持。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>纯 tensor energy 可以替代 Graph Builder。
+</span></span></code></pre></div><p>不支持。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>path 本身编码语法角色。
+</span></span></code></pre></div><p>不支持。</p>
+<h2 id="evidence证据在哪里"><code>/evidence</code>：证据在哪里<a hidden class="anchor" aria-hidden="true" href="#evidence证据在哪里">#</a></h2>
+<p>完整 strategy audit：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s2-translation/evidence/strategy_audit/
+</span></span></code></pre></div><p>关键文件：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>strategy_audit_summary.json
+</span></span><span style="display:flex;"><span>tensor_energy_rows.csv
+</span></span><span style="display:flex;"><span>parent_container_rows.csv
+</span></span><span style="display:flex;"><span>role_slot_degree.json
+</span></span><span style="display:flex;"><span>README.md
+</span></span></code></pre></div><p>夜间任务部分结果：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s2-translation/evidence/overnight_partial_20260617/
+</span></span></code></pre></div><p>远端正在运行的完整任务：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>io:/data/homecicd/sametime/logs/s2_overnight_20260617_150111
+</span></span></code></pre></div><p>脚本：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>s2_strategy_audit.py
+</span></span><span style="display:flex;"><span>s2_overnight_io.py
+</span></span><span style="display:flex;"><span>run_s2_overnight_io.sh
+</span></span></code></pre></div><h2 id="给初学者的最后总结">给初学者的最后总结<a hidden class="anchor" aria-hidden="true" href="#给初学者的最后总结">#</a></h2>
+<p>如果你只记住三句话，记这三句：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>第一，当前 TreeHeap checkpoint 的最终 128D 输出太坍缩，不能直接当语法向量。
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>第二，语言结构更像“语义向量填入角色槽位”，而不是普通二叉树越堆越深。
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>第三，Graph Builder 不应该太早选唯一答案，应该保留 top-k 概率容器，让后续上下文再坍缩。
+</span></span></code></pre></div><p>这就是目前 S2 理论建设的位置：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>理论路线更清楚了。
+</span></span><span style="display:flex;"><span>部分方向被实验支持。
+</span></span><span style="display:flex;"><span>部分过强说法被实验降级。
+</span></span><span style="display:flex;"><span>下一步要训练或抽取更好的 L1/context vector，再重跑同一套审计。
+</span></span></code></pre></div><blockquote>
+<p><strong>License: GPLv3</strong></p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

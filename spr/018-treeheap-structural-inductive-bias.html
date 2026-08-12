@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, InductiveBias, Experiment, Architecture">
+<meta name="description" content="修正 TreeHeap 的核心 claim：不是简单 pattern matching，而是学习可搜索、可压缩的编码结构，并用共轭 kernel 完成查询和解码。">
+<meta name="author" content="nio (Houming818) &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/018-treeheap-structural-inductive-bias.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/018-treeheap-structural-inductive-bias.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/018-treeheap-structural-inductive-bias.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel">
+  <meta property="og:description" content="修正 TreeHeap 的核心 claim：不是简单 pattern matching，而是学习可搜索、可压缩的编码结构，并用共轭 kernel 完成查询和解码。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-06-22T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-06-22T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel">
+  <meta name="twitter:description" content="修正 TreeHeap 的核心 claim：不是简单 pattern matching，而是学习可搜索、可压缩的编码结构，并用共轭 kernel 完成查询和解码。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel",
+      "item": "https://www.lostmap.cn/spr/018-treeheap-structural-inductive-bias.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel",
+  "name": "[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel",
+  "description": "修正 TreeHeap 的核心 claim：不是简单 pattern matching，而是学习可搜索、可压缩的编码结构，并用共轭 kernel 完成查询和解码。",
+  "keywords": [
+    "SPR", "TreeHeap", "InductiveBias", "Experiment", "Architecture"
+  ],
+  "articleBody": "TreeHeap 的存在性：编码结构与共轭 Kernel 这篇文章修正一个重要问题。\n上一版 SPR-018 把重点放在了 subheap kernel relocation：\n给定一个人工 pattern， 看 TreeHeap kernel 能不能在新地址找到它。 这个实验有用，但太弱。\n它只能说明：\n显式 subheap kernel 可以做局部模式检测。 它不能证明我们真正关心的东西：\nTreeHeap 能不能自己把输入数据 encode 成一种可搜索、可压缩的结构？ 查询 kernel / 解码 kernel 能不能沿着这个结构工作？ encoder 和 decoder 是否形成一对共轭过程？ 所以现在的 claim 要重新写清楚。\n现在真正的 Claim TreeHeap 不是要证明自己是“完全不同”的东西。\n它应该先证明自己和实数域、MLP、CNN、Transformer 一样，能用于构造预测函数：\n输入 x 参数 theta 预测 y_hat = f_theta(x) loss(y_hat, y) gradient update theta 然后再证明：\n在需要结构编码、路径搜索、前缀压缩、延迟坍缩的问题上， TreeHeap 的显式结构归纳偏置能带来更好的样本效率、外推稳定性或计算效率。 更具体地说，我们现在要证明的不是：\nTreeHeap 会匹配一个 pattern。 而是：\nTreeHeap encoder 能把数据组织成一种结构； TreeHeap decoder/query kernel 能利用这个结构完成搜索或解码。 这就是：\nlearned encoder + conjugate kernel 中文可以叫：\n学习到的编码器 + 共轭查询/解码核 为什么旧 B 实验不够 旧 B 实验是这样的：\npattern: 1 / \\ 2 3 训练时 pattern 出现在：\npositions = {0, 1, 2} 测试时 pattern 出现在：\npositions = {6, 10, 13} 结果：\nmethod accuracy mean min max TreeHeap kernel 1.0000 1.0000 1.0000 flatten MLP 0.4996 0.4258 0.5703 sequence CNN 1.0000 1.0000 1.0000 small Transformer 0.9846 0.6055 1.0000 这个表说明：\n局部 kernel 迁移是有效归纳偏置； MLP 展平后不擅长； CNN 和 TreeHeap kernel 擅长； Transformer 大多能学到，但有失败尾部。 但它不说明：\nTreeHeap 能学习建堆。 TreeHeap 能学习编码。 TreeHeap 能执行查询路径。 TreeHeap 能压缩数据。 所以旧 B 只能作为 smoke test。\n它证明的是：\nkernel 这个方向值得继续。 而不是最终 proof。\n新实验方向一：学习建堆 + 查询搜索 第一个真正应该做的实验是：\nlearned ordered TreeHeap search 也就是：\n输入一组 key/value encoder 把它们建成 TreeHeap query kernel 根据查询 key 在树上走 stop / left / right 最后返回 value 注意关键点：\n树不是人工提前建好的。 树应该由 encoder 学出来。 Toy 数据 给一批 key/value：\n[(8, A), (4, B), (12, C), (2, D), (6, E), (10, F), (14, G)] 查询：\nquery = 6 answer = E 如果 TreeHeap encoder 学到了类似有序树的结构，它可能形成：\n8:A / \\ 4:B 12:C / \\ / \\ 2:D 6:E 10:F 14:G 这个结构不是我们强行塞给模型的目标，而是它为了让查询 kernel 更容易工作，应该自己学出来的中间结构。\n查询 Kernel 查询 kernel 可以很简单：\nquery_kernel(node, query): if query == node.key: return stop if query \u003c node.key: return left if query \u003e node.key: return right 查找 query = 6 的过程：\nstep 1: node = 8:A 6 \u003c 8 action = left step 2: node = 4:B 6 \u003e 4 action = right step 3: node = 6:E 6 == 6 action = stop output = E 路径：\nroot -\u003e left -\u003e right -\u003e stop 地址：\n0 -\u003e 1 -\u003e 4 这就是一个查找算法。\n但在 TreeHeap 视角下，它可以被看成：\nsubheap -\u003e query kernel -\u003e next address -\u003e subheap -\u003e query kernel -\u003e ... 也就是一个局部 kernel 的迭代。\n这里的共轭关系 encoder 和 query kernel 必须配合。\n如果 encoder 学出的结构是乱的：\n10:F / \\ 2:D 6:E 那么简单的 query \u003c root -\u003e left 就可能走错。\n所以训练压力会迫使 encoder 学一种结构，使得 decoder/query kernel 能工作。\n这就是共轭关系：\nencoder 学会如何摆放节点； query kernel 学会如何沿结构读取。 一个好的 proof 应该观察：\n查询准确率是否上升； 路径长度是否接近 log n； 树结构是否接近有序树； OOD key 数量变大时是否还能泛化。 Predict B-new 如果 TreeHeap 的结构归纳偏置成立， TreeHeap encoder 会学习出一种可被局部 query kernel 搜索的结构。 相比 flatten MLP， 它应该更省样本、更容易外推到更多 key。 相比普通 Transformer， 它应该在路径长度、计算量、失败尾部上更稳定。 这才是搜索能力的 proof。\n新实验方向二：加权前缀树 + Huffman-like 解码 第二个方向是你提到的加权树。\n这里最接近的经典对象是 Huffman coding。\nHuffman 编码做的事是：\n高频符号用短路径； 低频符号用长路径； 整棵树是 prefix-free 的； decoder 沿路径还原符号。 TreeHeap 里可以问一个类似问题：\nencoder 能不能学习一棵加权前缀树？ decoder kernel 能不能沿路径把符号还原？ Toy 数据 假设符号频率是：\nA: 0.50 B: 0.25 C: 0.15 D: 0.10 一个理想的 Huffman-like 编码可能是：\nA -\u003e 0 B -\u003e 10 C -\u003e 110 D -\u003e 111 对应树：\nroot ├── 0: A └── 1 ├── 0: B └── 1 ├── 0: C └── 1: D 平均路径长度：\nE[length] = 0.50 * 1 + 0.25 * 2 + 0.15 * 3 + 0.10 * 3 = 1.75 如果不用加权前缀树，而给每个符号固定 2 bit：\nA -\u003e 00 B -\u003e 01 C -\u003e 10 D -\u003e 11 平均长度：\nE[length] = 2.00 这个 toy 里 Huffman-like 树更短。\nEncoder / Decoder TreeHeap encoder 的任务：\n输入符号分布 输出一棵前缀 TreeHeap TreeHeap decoder 的任务：\n输入路径 bits 沿 TreeHeap 走 left/right 遇到 leaf 后输出符号 例如路径：\n110 解码：\nroot -\u003e right -\u003e right -\u003e left output = C 这和前面的搜索任务一样，也是 kernel 迭代：\ncurrent node + next bit -\u003e next node 但这里的目标不是搜索 key，而是还原压缩编码。\n这里的共轭关系 encoder 和 decoder 也是共轭的：\nencoder 决定符号放在哪条路径； decoder 沿路径还原符号。 如果 encoder 把高频符号放得很深，平均路径长度就会变差。\n如果 encoder 生成的树不是 prefix-free，decoder 会混淆。\n所以训练目标可以是：\nreconstruction loss + expected path length penalty + prefix-free constraint penalty Predict C-new 如果 TreeHeap 的加权路径结构成立， encoder 应该能学习一棵接近 Huffman oracle 的前缀树； decoder kernel 应该能沿路径稳定还原符号； 平均路径长度应该低于固定长度编码 baseline。 这才是“路径前缀压缩”的 proof。\n不是简单地数 toy trie 节点。\n这两个实验和机器学习的关系 这两个实验不是手写算法炫技。\n真正的目标是：\n让 encoder 的结构由梯度学习出来。 也就是：\n输入数据 -\u003e TreeHeap encoder(theta) -\u003e 结构状态 H -\u003e query/decoder kernel(phi) -\u003e 输出 -\u003e loss -\u003e gradient update theta, phi 这和 MLP / Transformer 一样，仍然是机器学习。\n区别只是：\nMLP 学的是展平向量上的函数； Transformer 学的是 token 序列上的 attention 函数； TreeHeap 学的是结构编码 + 路径 kernel。 所以 TreeHeap 的存在性不是“完全不同”。\n而是：\n同样做预测函数学习， 但结构归纳偏置不同。 旧 B 表应该怎么使用 旧 B 表还可以保留，但只能作为弱证据。\n它说明：\n显式 kernel 在局部结构迁移任务上是有用的； 这个方向不是空想。 但下一轮 proof 应该升级为：\nB-new: learned encoder builds searchable ordered tree query kernel walks stop/left/right C-new: learned encoder builds weighted prefix tree decoder kernel reconstructs symbols from paths 我们之后要聊的 predict 和 proof，就应该围绕这两个实验设计。\n当前总 Claim 最终 claim 可以写成：\nTreeHeap 是一种和 MLP / CNN / Transformer 同属机器学习家族的计算结构。 它的独特性不是“完全不同”， 而是把结构编码、路径搜索、前缀压缩、概率坍缩显式化。 如果 claim 成立， TreeHeap encoder 应该能学习可搜索/可压缩的结构； 共轭 query/decoder kernel 应该能利用该结构完成搜索和解码； 并在相应结构任务上获得更好的样本效率、外推稳定性或计算效率。 下一步不是继续做 pattern matching。\n下一步是 proof：\n能不能 learn to build the tree? 能不能 learn to search/decode through the tree? 能不能比 MLP / Transformer 更省样本、更稳？ 这才是 TreeHeap 的存在性问题。\nLicense: GPLv3\n",
+  "wordCount" : "769",
+  "inLanguage": "en",
+  "datePublished": "2026-06-22T00:00:00Z",
+  "dateModified": "2026-06-22T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/018-treeheap-structural-inductive-bias.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item active">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel
+    </h1>
+    <div class="post-description">
+      修正 TreeHeap 的核心 claim：不是简单 pattern matching，而是学习可搜索、可压缩的编码结构，并用共轭 kernel 完成查询和解码。
+    </div>
+    <div class="post-meta"><span title='2026-06-22 00:00:00 +0000 UTC'>June 22, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="treeheap-的存在性编码结构与共轭-kernel">TreeHeap 的存在性：编码结构与共轭 Kernel<a hidden class="anchor" aria-hidden="true" href="#treeheap-的存在性编码结构与共轭-kernel">#</a></h1>
+<p>这篇文章修正一个重要问题。</p>
+<p>上一版 <code>SPR-018</code> 把重点放在了 <code>subheap kernel relocation</code>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>给定一个人工 pattern，
+</span></span><span style="display:flex;"><span>看 TreeHeap kernel 能不能在新地址找到它。
+</span></span></code></pre></div><p>这个实验有用，但太弱。</p>
+<p>它只能说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>显式 subheap kernel 可以做局部模式检测。
+</span></span></code></pre></div><p>它不能证明我们真正关心的东西：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 能不能自己把输入数据 encode 成一种可搜索、可压缩的结构？
+</span></span><span style="display:flex;"><span>查询 kernel / 解码 kernel 能不能沿着这个结构工作？
+</span></span><span style="display:flex;"><span>encoder 和 decoder 是否形成一对共轭过程？
+</span></span></code></pre></div><p>所以现在的 claim 要重新写清楚。</p>
+<h2 id="现在真正的-claim">现在真正的 Claim<a hidden class="anchor" aria-hidden="true" href="#现在真正的-claim">#</a></h2>
+<p>TreeHeap 不是要证明自己是“完全不同”的东西。</p>
+<p>它应该先证明自己和实数域、MLP、CNN、Transformer 一样，能用于构造预测函数：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>输入 x
+</span></span><span style="display:flex;"><span>参数 theta
+</span></span><span style="display:flex;"><span>预测 y_hat = f_theta(x)
+</span></span><span style="display:flex;"><span>loss(y_hat, y)
+</span></span><span style="display:flex;"><span>gradient
+</span></span><span style="display:flex;"><span>update theta
+</span></span></code></pre></div><p>然后再证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在需要结构编码、路径搜索、前缀压缩、延迟坍缩的问题上，
+</span></span><span style="display:flex;"><span>TreeHeap 的显式结构归纳偏置能带来更好的样本效率、外推稳定性或计算效率。
+</span></span></code></pre></div><p>更具体地说，我们现在要证明的不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 会匹配一个 pattern。
+</span></span></code></pre></div><p>而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap encoder 能把数据组织成一种结构；
+</span></span><span style="display:flex;"><span>TreeHeap decoder/query kernel 能利用这个结构完成搜索或解码。
+</span></span></code></pre></div><p>这就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>learned encoder + conjugate kernel
+</span></span></code></pre></div><p>中文可以叫：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>学习到的编码器 + 共轭查询/解码核
+</span></span></code></pre></div><h2 id="为什么旧-b-实验不够">为什么旧 B 实验不够<a hidden class="anchor" aria-hidden="true" href="#为什么旧-b-实验不够">#</a></h2>
+<p>旧 B 实验是这样的：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>pattern:
+</span></span><span style="display:flex;"><span>      1
+</span></span><span style="display:flex;"><span>     / \
+</span></span><span style="display:flex;"><span>    2   3
+</span></span></code></pre></div><p>训练时 pattern 出现在：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>positions = {0, 1, 2}
+</span></span></code></pre></div><p>测试时 pattern 出现在：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>positions = {6, 10, 13}
+</span></span></code></pre></div><p>结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th>method</th>
+          <th style="text-align: right">accuracy mean</th>
+          <th style="text-align: right">min</th>
+          <th style="text-align: right">max</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>TreeHeap kernel</td>
+          <td style="text-align: right">1.0000</td>
+          <td style="text-align: right">1.0000</td>
+          <td style="text-align: right">1.0000</td>
+      </tr>
+      <tr>
+          <td>flatten MLP</td>
+          <td style="text-align: right">0.4996</td>
+          <td style="text-align: right">0.4258</td>
+          <td style="text-align: right">0.5703</td>
+      </tr>
+      <tr>
+          <td>sequence CNN</td>
+          <td style="text-align: right">1.0000</td>
+          <td style="text-align: right">1.0000</td>
+          <td style="text-align: right">1.0000</td>
+      </tr>
+      <tr>
+          <td>small Transformer</td>
+          <td style="text-align: right">0.9846</td>
+          <td style="text-align: right">0.6055</td>
+          <td style="text-align: right">1.0000</td>
+      </tr>
+  </tbody>
+</table>
+<p>这个表说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>局部 kernel 迁移是有效归纳偏置；
+</span></span><span style="display:flex;"><span>MLP 展平后不擅长；
+</span></span><span style="display:flex;"><span>CNN 和 TreeHeap kernel 擅长；
+</span></span><span style="display:flex;"><span>Transformer 大多能学到，但有失败尾部。
+</span></span></code></pre></div><p>但它不说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 能学习建堆。
+</span></span><span style="display:flex;"><span>TreeHeap 能学习编码。
+</span></span><span style="display:flex;"><span>TreeHeap 能执行查询路径。
+</span></span><span style="display:flex;"><span>TreeHeap 能压缩数据。
+</span></span></code></pre></div><p>所以旧 B 只能作为 smoke test。</p>
+<p>它证明的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 这个方向值得继续。
+</span></span></code></pre></div><p>而不是最终 proof。</p>
+<h2 id="新实验方向一学习建堆--查询搜索">新实验方向一：学习建堆 + 查询搜索<a hidden class="anchor" aria-hidden="true" href="#新实验方向一学习建堆--查询搜索">#</a></h2>
+<p>第一个真正应该做的实验是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>learned ordered TreeHeap search
+</span></span></code></pre></div><p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>输入一组 key/value
+</span></span><span style="display:flex;"><span>encoder 把它们建成 TreeHeap
+</span></span><span style="display:flex;"><span>query kernel 根据查询 key 在树上走 stop / left / right
+</span></span><span style="display:flex;"><span>最后返回 value
+</span></span></code></pre></div><p>注意关键点：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>树不是人工提前建好的。
+</span></span><span style="display:flex;"><span>树应该由 encoder 学出来。
+</span></span></code></pre></div><h3 id="toy-数据">Toy 数据<a hidden class="anchor" aria-hidden="true" href="#toy-数据">#</a></h3>
+<p>给一批 key/value：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[(8, A), (4, B), (12, C), (2, D), (6, E), (10, F), (14, G)]
+</span></span></code></pre></div><p>查询：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>query = 6
+</span></span><span style="display:flex;"><span>answer = E
+</span></span></code></pre></div><p>如果 TreeHeap encoder 学到了类似有序树的结构，它可能形成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>          8:A
+</span></span><span style="display:flex;"><span>         /   \
+</span></span><span style="display:flex;"><span>      4:B     12:C
+</span></span><span style="display:flex;"><span>     /  \     /   \
+</span></span><span style="display:flex;"><span>  2:D   6:E 10:F 14:G
+</span></span></code></pre></div><p>这个结构不是我们强行塞给模型的目标，而是它为了让查询 kernel 更容易工作，应该自己学出来的中间结构。</p>
+<h3 id="查询-kernel">查询 Kernel<a hidden class="anchor" aria-hidden="true" href="#查询-kernel">#</a></h3>
+<p>查询 kernel 可以很简单：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>query_kernel(node, query):
+</span></span><span style="display:flex;"><span>  if query == node.key:
+</span></span><span style="display:flex;"><span>    return stop
+</span></span><span style="display:flex;"><span>  if query &lt; node.key:
+</span></span><span style="display:flex;"><span>    return left
+</span></span><span style="display:flex;"><span>  if query &gt; node.key:
+</span></span><span style="display:flex;"><span>    return right
+</span></span></code></pre></div><p>查找 <code>query = 6</code> 的过程：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>step 1:
+</span></span><span style="display:flex;"><span>  node = 8:A
+</span></span><span style="display:flex;"><span>  6 &lt; 8
+</span></span><span style="display:flex;"><span>  action = left
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>step 2:
+</span></span><span style="display:flex;"><span>  node = 4:B
+</span></span><span style="display:flex;"><span>  6 &gt; 4
+</span></span><span style="display:flex;"><span>  action = right
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>step 3:
+</span></span><span style="display:flex;"><span>  node = 6:E
+</span></span><span style="display:flex;"><span>  6 == 6
+</span></span><span style="display:flex;"><span>  action = stop
+</span></span><span style="display:flex;"><span>  output = E
+</span></span></code></pre></div><p>路径：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root -&gt; left -&gt; right -&gt; stop
+</span></span></code></pre></div><p>地址：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>0 -&gt; 1 -&gt; 4
+</span></span></code></pre></div><p>这就是一个查找算法。</p>
+<p>但在 TreeHeap 视角下，它可以被看成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>subheap
+</span></span><span style="display:flex;"><span>-&gt; query kernel
+</span></span><span style="display:flex;"><span>-&gt; next address
+</span></span><span style="display:flex;"><span>-&gt; subheap
+</span></span><span style="display:flex;"><span>-&gt; query kernel
+</span></span><span style="display:flex;"><span>-&gt; ...
+</span></span></code></pre></div><p>也就是一个局部 kernel 的迭代。</p>
+<h3 id="这里的共轭关系">这里的共轭关系<a hidden class="anchor" aria-hidden="true" href="#这里的共轭关系">#</a></h3>
+<p>encoder 和 query kernel 必须配合。</p>
+<p>如果 encoder 学出的结构是乱的：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>          10:F
+</span></span><span style="display:flex;"><span>         /    \
+</span></span><span style="display:flex;"><span>      2:D      6:E
+</span></span></code></pre></div><p>那么简单的 <code>query &lt; root -&gt; left</code> 就可能走错。</p>
+<p>所以训练压力会迫使 encoder 学一种结构，使得 decoder/query kernel 能工作。</p>
+<p>这就是共轭关系：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>encoder 学会如何摆放节点；
+</span></span><span style="display:flex;"><span>query kernel 学会如何沿结构读取。
+</span></span></code></pre></div><p>一个好的 proof 应该观察：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>查询准确率是否上升；
+</span></span><span style="display:flex;"><span>路径长度是否接近 log n；
+</span></span><span style="display:flex;"><span>树结构是否接近有序树；
+</span></span><span style="display:flex;"><span>OOD key 数量变大时是否还能泛化。
+</span></span></code></pre></div><h3 id="predict-b-new">Predict B-new<a hidden class="anchor" aria-hidden="true" href="#predict-b-new">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果 TreeHeap 的结构归纳偏置成立，
+</span></span><span style="display:flex;"><span>TreeHeap encoder 会学习出一种可被局部 query kernel 搜索的结构。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>相比 flatten MLP，
+</span></span><span style="display:flex;"><span>它应该更省样本、更容易外推到更多 key。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>相比普通 Transformer，
+</span></span><span style="display:flex;"><span>它应该在路径长度、计算量、失败尾部上更稳定。
+</span></span></code></pre></div><p>这才是搜索能力的 proof。</p>
+<h2 id="新实验方向二加权前缀树--huffman-like-解码">新实验方向二：加权前缀树 + Huffman-like 解码<a hidden class="anchor" aria-hidden="true" href="#新实验方向二加权前缀树--huffman-like-解码">#</a></h2>
+<p>第二个方向是你提到的加权树。</p>
+<p>这里最接近的经典对象是 Huffman coding。</p>
+<p>Huffman 编码做的事是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>高频符号用短路径；
+</span></span><span style="display:flex;"><span>低频符号用长路径；
+</span></span><span style="display:flex;"><span>整棵树是 prefix-free 的；
+</span></span><span style="display:flex;"><span>decoder 沿路径还原符号。
+</span></span></code></pre></div><p>TreeHeap 里可以问一个类似问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>encoder 能不能学习一棵加权前缀树？
+</span></span><span style="display:flex;"><span>decoder kernel 能不能沿路径把符号还原？
+</span></span></code></pre></div><h3 id="toy-数据-1">Toy 数据<a hidden class="anchor" aria-hidden="true" href="#toy-数据-1">#</a></h3>
+<p>假设符号频率是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A: 0.50
+</span></span><span style="display:flex;"><span>B: 0.25
+</span></span><span style="display:flex;"><span>C: 0.15
+</span></span><span style="display:flex;"><span>D: 0.10
+</span></span></code></pre></div><p>一个理想的 Huffman-like 编码可能是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A -&gt; 0
+</span></span><span style="display:flex;"><span>B -&gt; 10
+</span></span><span style="display:flex;"><span>C -&gt; 110
+</span></span><span style="display:flex;"><span>D -&gt; 111
+</span></span></code></pre></div><p>对应树：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root
+</span></span><span style="display:flex;"><span>├── 0: A
+</span></span><span style="display:flex;"><span>└── 1
+</span></span><span style="display:flex;"><span>    ├── 0: B
+</span></span><span style="display:flex;"><span>    └── 1
+</span></span><span style="display:flex;"><span>        ├── 0: C
+</span></span><span style="display:flex;"><span>        └── 1: D
+</span></span></code></pre></div><p>平均路径长度：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>E[length]
+</span></span><span style="display:flex;"><span>= 0.50 * 1
+</span></span><span style="display:flex;"><span>+ 0.25 * 2
+</span></span><span style="display:flex;"><span>+ 0.15 * 3
+</span></span><span style="display:flex;"><span>+ 0.10 * 3
+</span></span><span style="display:flex;"><span>= 1.75
+</span></span></code></pre></div><p>如果不用加权前缀树，而给每个符号固定 2 bit：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A -&gt; 00
+</span></span><span style="display:flex;"><span>B -&gt; 01
+</span></span><span style="display:flex;"><span>C -&gt; 10
+</span></span><span style="display:flex;"><span>D -&gt; 11
+</span></span></code></pre></div><p>平均长度：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>E[length] = 2.00
+</span></span></code></pre></div><p>这个 toy 里 Huffman-like 树更短。</p>
+<h3 id="encoder--decoder">Encoder / Decoder<a hidden class="anchor" aria-hidden="true" href="#encoder--decoder">#</a></h3>
+<p>TreeHeap encoder 的任务：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>输入符号分布
+</span></span><span style="display:flex;"><span>输出一棵前缀 TreeHeap
+</span></span></code></pre></div><p>TreeHeap decoder 的任务：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>输入路径 bits
+</span></span><span style="display:flex;"><span>沿 TreeHeap 走 left/right
+</span></span><span style="display:flex;"><span>遇到 leaf 后输出符号
+</span></span></code></pre></div><p>例如路径：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>110
+</span></span></code></pre></div><p>解码：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root -&gt; right -&gt; right -&gt; left
+</span></span><span style="display:flex;"><span>output = C
+</span></span></code></pre></div><p>这和前面的搜索任务一样，也是 kernel 迭代：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>current node + next bit -&gt; next node
+</span></span></code></pre></div><p>但这里的目标不是搜索 key，而是还原压缩编码。</p>
+<h3 id="这里的共轭关系-1">这里的共轭关系<a hidden class="anchor" aria-hidden="true" href="#这里的共轭关系-1">#</a></h3>
+<p>encoder 和 decoder 也是共轭的：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>encoder 决定符号放在哪条路径；
+</span></span><span style="display:flex;"><span>decoder 沿路径还原符号。
+</span></span></code></pre></div><p>如果 encoder 把高频符号放得很深，平均路径长度就会变差。</p>
+<p>如果 encoder 生成的树不是 prefix-free，decoder 会混淆。</p>
+<p>所以训练目标可以是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>reconstruction loss
+</span></span><span style="display:flex;"><span>+ expected path length penalty
+</span></span><span style="display:flex;"><span>+ prefix-free constraint penalty
+</span></span></code></pre></div><h3 id="predict-c-new">Predict C-new<a hidden class="anchor" aria-hidden="true" href="#predict-c-new">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果 TreeHeap 的加权路径结构成立，
+</span></span><span style="display:flex;"><span>encoder 应该能学习一棵接近 Huffman oracle 的前缀树；
+</span></span><span style="display:flex;"><span>decoder kernel 应该能沿路径稳定还原符号；
+</span></span><span style="display:flex;"><span>平均路径长度应该低于固定长度编码 baseline。
+</span></span></code></pre></div><p>这才是“路径前缀压缩”的 proof。</p>
+<p>不是简单地数 toy trie 节点。</p>
+<h2 id="这两个实验和机器学习的关系">这两个实验和机器学习的关系<a hidden class="anchor" aria-hidden="true" href="#这两个实验和机器学习的关系">#</a></h2>
+<p>这两个实验不是手写算法炫技。</p>
+<p>真正的目标是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>让 encoder 的结构由梯度学习出来。
+</span></span></code></pre></div><p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>输入数据
+</span></span><span style="display:flex;"><span>-&gt; TreeHeap encoder(theta)
+</span></span><span style="display:flex;"><span>-&gt; 结构状态 H
+</span></span><span style="display:flex;"><span>-&gt; query/decoder kernel(phi)
+</span></span><span style="display:flex;"><span>-&gt; 输出
+</span></span><span style="display:flex;"><span>-&gt; loss
+</span></span><span style="display:flex;"><span>-&gt; gradient update theta, phi
+</span></span></code></pre></div><p>这和 MLP / Transformer 一样，仍然是机器学习。</p>
+<p>区别只是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>MLP 学的是展平向量上的函数；
+</span></span><span style="display:flex;"><span>Transformer 学的是 token 序列上的 attention 函数；
+</span></span><span style="display:flex;"><span>TreeHeap 学的是结构编码 + 路径 kernel。
+</span></span></code></pre></div><p>所以 TreeHeap 的存在性不是“完全不同”。</p>
+<p>而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>同样做预测函数学习，
+</span></span><span style="display:flex;"><span>但结构归纳偏置不同。
+</span></span></code></pre></div><h2 id="旧-b-表应该怎么使用">旧 B 表应该怎么使用<a hidden class="anchor" aria-hidden="true" href="#旧-b-表应该怎么使用">#</a></h2>
+<p>旧 B 表还可以保留，但只能作为弱证据。</p>
+<p>它说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>显式 kernel 在局部结构迁移任务上是有用的；
+</span></span><span style="display:flex;"><span>这个方向不是空想。
+</span></span></code></pre></div><p>但下一轮 proof 应该升级为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>B-new:
+</span></span><span style="display:flex;"><span>  learned encoder builds searchable ordered tree
+</span></span><span style="display:flex;"><span>  query kernel walks stop/left/right
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>C-new:
+</span></span><span style="display:flex;"><span>  learned encoder builds weighted prefix tree
+</span></span><span style="display:flex;"><span>  decoder kernel reconstructs symbols from paths
+</span></span></code></pre></div><p>我们之后要聊的 predict 和 proof，就应该围绕这两个实验设计。</p>
+<h2 id="当前总-claim">当前总 Claim<a hidden class="anchor" aria-hidden="true" href="#当前总-claim">#</a></h2>
+<p>最终 claim 可以写成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 是一种和 MLP / CNN / Transformer 同属机器学习家族的计算结构。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>它的独特性不是“完全不同”，
+</span></span><span style="display:flex;"><span>而是把结构编码、路径搜索、前缀压缩、概率坍缩显式化。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>如果 claim 成立，
+</span></span><span style="display:flex;"><span>TreeHeap encoder 应该能学习可搜索/可压缩的结构；
+</span></span><span style="display:flex;"><span>共轭 query/decoder kernel 应该能利用该结构完成搜索和解码；
+</span></span><span style="display:flex;"><span>并在相应结构任务上获得更好的样本效率、外推稳定性或计算效率。
+</span></span></code></pre></div><p>下一步不是继续做 pattern matching。</p>
+<p>下一步是 proof：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>能不能 learn to build the tree?
+</span></span><span style="display:flex;"><span>能不能 learn to search/decode through the tree?
+</span></span><span style="display:flex;"><span>能不能比 MLP / Transformer 更省样本、更稳？
+</span></span></code></pre></div><p>这才是 TreeHeap 的存在性问题。</p>
+<blockquote>
+<p><strong>License: GPLv3</strong></p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

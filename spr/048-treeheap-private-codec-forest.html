@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, S1, Encoder, Huffman, Kernel">
+<meta name="description" content="从经典 Huffman 编码出发，定义 TreeHeap 参数森林、私有编码、并行多头和串行 kernel composition，并说明 scalar loss 如何把数据写入参数树。">
+<meta name="author" content="Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/048-treeheap-private-codec-forest.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/048-treeheap-private-codec-forest.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/048-treeheap-private-codec-forest.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理">
+  <meta property="og:description" content="从经典 Huffman 编码出发，定义 TreeHeap 参数森林、私有编码、并行多头和串行 kernel composition，并说明 scalar loss 如何把数据写入参数树。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-07-09T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-07-09T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理">
+  <meta name="twitter:description" content="从经典 Huffman 编码出发，定义 TreeHeap 参数森林、私有编码、并行多头和串行 kernel composition，并说明 scalar loss 如何把数据写入参数树。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理",
+      "item": "https://www.lostmap.cn/spr/048-treeheap-private-codec-forest.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理",
+  "name": "[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理",
+  "description": "从经典 Huffman 编码出发，定义 TreeHeap 参数森林、私有编码、并行多头和串行 kernel composition，并说明 scalar loss 如何把数据写入参数树。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "S1", "Encoder", "Huffman", "Kernel"
+  ],
+  "articleBody": "TreeHeap 私有编码：多头参数森林与串行推理 这篇文章承接 SPR-046 和 SPR-047，进入新的问题：\n一个空的 TreeHeap 工作区，为什么经过若干 query kernel 的卷积，就能解压出一组数据？这些数据最初又是怎样编码进一棵或多棵参数 TreeHeap 的？\n我们先不讨论自然语言理解，也不假设模型已经知道“食物”“水果”等概念。先建立一个有限、可以计算和证伪的模型。\n1. 从一个具体例子开始 假设执行 food kernel：\nH0 = [0, 0, 0, 0] K_food(H0; Theta) -\u003e [0.1 稻子, 0.3 米浆, 0.5 米饭, 0.6 芒果] 再执行 fruit kernel：\nK_fruit(K_food(H0; Theta); Theta2) -\u003e [0.6 芒果] 这里马上出现一个必须说清楚的事实：\n零数组里没有稻子、米浆、米饭和芒果。 因此，这些信息一定保存在参数 Theta 及其树形组织关系中。H0 只是一次查询使用的工作区。\n本文采用以下术语：\nTheta_forest 长期保存的一组参数 TreeHeap，也就是编码森林 H_query 一次查询产生的运行时状态 K_q 针对 query q 执行的卷积 kernel leaf 可以最终解码出的数据对象 internal 一组叶子共享的前缀状态 2. 经典 Huffman 到底怎样写入和读出 假设四个符号出现的概率为：\n符号 概率 米饭 0.4 米浆 0.3 稻子 0.2 石头 0.1 经典 Huffman 算法不断合并概率最小的两个节点，可能得到：\nroot ├─ 0 -\u003e 米饭 └─ 1 ├─ 10 -\u003e 米浆 └─ 11 ├─ 110 -\u003e 石头 └─ 111 -\u003e 稻子 对应码表：\n米饭 = 0 米浆 = 10 石头 = 110 稻子 = 111 编码：\n米饭 石头 稻子 -\u003e 0 110 111 -\u003e 0110111 解码时，从 root 开始逐位行走。到达叶子便输出符号，然后返回 root。\n这里有两个重要性质：\n高频符号使用较短路径； 任何叶子的编码都不是另一个叶子编码的前缀，因此可以无歧义解码。 但是，经典 Huffman 只根据出现频率压缩。它不会因为“米饭”和“米浆”在语义上相似，就主动让它们共享前缀。\n3. TreeHeap 增加了什么 TreeHeap 的假设是：一棵树不仅可以压缩符号频率，还可以压缩查询规律。\n例如，一棵候选参数树可能是：\nroot └─ food ├─ grain-family │ ├─ 稻子 │ └─ processed │ ├─ 米浆 │ └─ 米饭 └─ fruit └─ 芒果 路径可以写成：\n稻子 = 000 米浆 = 0010 米饭 = 0011 芒果 = 01 现在，不同 query 可以在不同深度停止：\nfood query -\u003e 到达 food -\u003e 解压 food 节点覆盖的全部叶子 fruit query -\u003e 到达 fruit -\u003e 只解压 fruit 节点覆盖的叶子 exact token query -\u003e 一直走到具体叶子 -\u003e 输出米饭或芒果 因此，stop 不一定表示“读到了一个词”。它也可以表示：\n当前内部节点已经包含回答 query 所需的全部信息。\n4. 路径编码和输出概率不是一回事 下面两个对象容易混淆：\nPath(米饭) = 0011 P(米饭 | food) = 0.5 0011 是米饭在参数树中的地址。\n0.5 是当前 query 下米饭的分数或概率。\n如果输出被解释为概率分布，就必须归一化：\n$\n$ \\sum_x P(x\\mid q)=1 $$\n而路径只要求前缀无歧义，不要求数值加和为 1。\n5. Kernel 如何查询一棵树 在节点 \\(i\\) 上，局部 kernel 读取：\n$\n$ K_\\Theta(q,H_i,H_{2i},H_{2i+1}) $$\n并输出一个概率桶：\n$\n$ [p_{\\text{stop}},p_{\\text{left}},p_{\\text{right}}] $$\n例如 fruit query：\nroot: [stop=0.00, left=0.05, right=0.95] food: [stop=0.02, grain=0.03, fruit=0.95] fruit: [stop=0.99, left=0.005, right=0.005] 一条路径的概率是沿途动作概率的乘积：\n$\n$ P(\\pi\\mid q) = \\prod_{i\\in\\pi}P(a_i\\mid q,H_i) $$\n到达某个内部节点并选择 stop 后，decoder 可以读取该节点保存的叶子分布：\n$\n$ Decode(H_i,q)\\rightarrow P(x\\mid q,H_i) $$\n所以完整读出过程是：\nquery -\u003e kernel 在参数树上递归卷积 -\u003e 得到 stop/left/right 概率 -\u003e 形成路径分布 -\u003e 在某个节点停止 -\u003e 解压该节点的叶子分布 硬查询可以每步选择 argmax。软查询则保留多条路径，直到信息足够时再坍缩。\n6. Encoder 面对的原始数据是什么 Encoder 不能从“空”中发现分类。它至少需要观察到查询与结果之间的统计关系。\n一个有限数据集可以表示成矩阵：\nQuery 稻子 米浆 米饭 芒果 food 0.1 0.3 0.5 0.6 fruit 0 0 0 0.6 grain 0.1 0.3 0.5 0 processed 0 0.3 0.5 0 这张表不一定来自人工标签。未来它可以来自语料观察，例如：\n“吃 [MASK]”经常观察到米饭 “喝 [MASK]”经常观察到米浆 “成熟的 [MASK]”经常观察到芒果 但无论来源是什么，encoder 真正看到的是某种有限统计量：\n$\n$ P_D(x\\mid q) $$\n也就是在数据 \\(D\\) 中，query \\(q\\) 对对象 \\(x\\) 的条件分布。\n7. Encoder 不是人工聚类器 一种看似直接的方案是：\n先计算对象之间的相似度； 再人工规定合并距离； 最后按距离构造语义树。 这个方案仍然是研究者替模型设计编码。即使最终树看起来合理，也不能说明 encoder 和 decoder 形成了自己的关联编码。\n本文采用更严格的定义：\n人提供： 有限 TreeHeap 地址 stop/left/right compose/decompose 可微 kernel 人不提供： 哪个节点是 food 哪些对象必须共享前缀 哪个 token 写在哪条路径 每个 head 必须学习什么类别 参数 TreeHeap 从零或随机状态开始：\nTheta[i] = learnable parameters 给定 query \\(q\\)，kernel 对参数树执行卷积：\n$\n$ \\hat Y_q=K_q(\\Theta) $$\n数据提供该 query 的目标结果 \\(Y_q\\)，于是得到一个标量 loss：\n$\n$ L_q=d(\\hat Y_q,Y_q) $$\n多个 query 共同训练参数树：\n$\n$ L(\\Theta)=\\sum_q L_q $$\n梯度直接写入参数 TreeHeap：\n$\n$ \\Theta \\leftarrow \\Theta-\\eta\\frac{\\partial L}{\\partial\\Theta} $$\n因此：\nEncoder： 用 query 产生的 scalar loss，把规律写入参数 TreeHeap。 Decoder： 用 query kernel 从训练后的参数 TreeHeap 解压结果。 内部编码可以不符合人类命名。只要 encode、query、decode 闭合，模型可以形成自己的“笔迹”。\n8. 为什么还需要压缩约束 只优化 query 正确率，模型可能把每个答案分别记在巨大参数表里。它虽然能查询，却没有形成有价值的编码。\n因此还需要限制平均编码成本：\n$\n$ L_{\\text{rate}} = \\mathbb E[-\\log P_\\Theta(path)] $$\n或者先使用简单的期望路径深度：\n$\n$ L_{\\text{depth}} = \\mathbb E[\\operatorname{depth}(path)] $$\n总目标可以写成：\n$\n$ L = L_{\\text{query}} + \\alpha L_{\\text{echo}} + \\beta L_{\\text{rate}} $$\n三部分分别要求：\nquery：能回答问题； echo：私有编码仍能还原原始数据； rate：不要为每个样本建立无限长、互不共享的路径。 这里没有人工规定共享前缀。只有当共享某个子堆能降低总 loss 时，它才应该形成。\n9. 写入究竟发生在哪里 必须区分两种“写入”。\n9.1 训练参数森林 Train(D) -\u003e 修改 Theta_forest -\u003e 改变节点状态、路径概率和 kernel 参数 这相当于学习和更新码本。\n9.2 使用参数森林编码一个样本 Encode(sample, Theta_forest) -\u003e 生成路径或运行时 H_sample 这相当于使用已经存在的码本压缩一条消息，通常不修改长期参数树。\n因此：\nTheta_forest 保存长期规律 H_sample 保存当前样本 H_query 保存本次查询过程 如果 H0=[0,0,0,0] 经过 kernel 能生成具体对象，那么具体对象的信息来自 Theta_forest，不能说它来自零状态。\n10. Encoder 和 Decoder 的共同协议 Transformer 的 encoder、decoder 和 cross-attention 都使用同一种 Attention 数学接口，但通常不共享同一套参数。\nTreeHeap 也可以采用类似的接口纪律，但这只是接口设计，不是 Transformer 有效性向 TreeHeap 的自动迁移。\n共同协议可以定义为：\n$\n$ K(q,H_i,H_{2i},H_{2i+1}) \\rightarrow [p_{\\text{stop}},p_{\\text{left}},p_{\\text{right}}] $$\nEncoder 使用它评估：\n一个对象写入哪个前缀，能让整个数据集更容易重建。 Decoder 使用它完成：\n一个 query 应沿哪条路径读取，并在哪个节点停止。 双方必须共享：\n相同的地址规则 相同的路径含义 相同的节点 compose/decompose 规则 相同的 kernel 输入输出契约 它们不必共享完全相同的权重。\n11. 为什么不要求所有信息写进同一棵树 一棵共享参数树适合表达公共前缀，但它不是 TreeHeap 的理论限制。更一般的参数对象是：\n$\n$ \\Theta_{\\text{forest}} = \\{\\Theta^{(1)},\\Theta^{(2)},\\ldots,\\Theta^{(M)}\\} $$\n每个 head 都是一棵 TreeHeap。它们共享地址和 kernel 协议，但可以拥有不同的节点值、深度和参数。\n11.1 并行多头 多个 head 可以同时观察同一个状态：\n$\n$ H_m=K_m(q,H_0;\\Theta^{(m)}) $$\n再通过明确的 TreeHeap compose 算子合并：\n$\n$ H_{\\text{out}} = \\operatorname{Compose}(H_1,H_2,\\ldots,H_M) $$\n这种结构允许不同参数树保留不同的可学习关系，不要求它们被压进同一个梯度大锅。\n11.2 串行推理 更重要的是 kernel 可以顺序组合：\nH0 = [0,0,0,0] H1 = K_food(H0; Theta_food) = [0.1稻子, 0.3米浆, 0.5米饭, 0.6芒果] H2 = K_fruit(H1; Theta_fruit) = [0.6芒果] 数学上：\n$\n$ H_2 = K_{\\text{fruit}} \\left( K_{\\text{food}}(H_0;\\Theta_{\\text{food}}); \\Theta_{\\text{fruit}} \\right) $$\n也就是：\n$\n$ K_{\\text{fruit}}\\circ K_{\\text{food}} $$\n这使 TreeHeap 不只是保存查询答案，还可能保存可组合的操作。\n12. 连续查表不等于串行推理 如果 Theta_fruit 直接记住：\nfruit query -\u003e 芒果 那么连续执行两个 query 仍然只是两次查表。\n真正的 fruit kernel 应当对不同输入状态执行同一过滤规律：\n[苹果, 石头, 芒果] -\u003e [苹果, 芒果] [稻子, 米饭, 芒果] -\u003e [芒果] [香蕉, 汽车, 梨] -\u003e [香蕉, 梨] 所以必须把以下组合留出训练集：\nK_fruit(K_food(H0)) 分别训练 food head 和 fruit head 后，第一次在测试中组合它们。只有未见组合仍然正确，才能支持“kernel 学会了算子”而不是“参数树记住了答案”。\n13. 一个重要限制：树只能自然表达嵌套集合 如果：\nfruit 是 food 的子集 一棵树可以自然表达。\n但真实世界存在重叠分类：\n番茄在植物学中是水果 番茄在烹饪中又常被视为蔬菜 单棵严格二叉树无法让一个叶子同时拥有两条独立父路径。\n可能的扩展包括：\n多个 TreeHeap 一个叶子对应多条概率路径 TreeHeap DAG 第一阶段不应同时解决这个问题。我们可以先使用严格嵌套的有限数据，验证最基本的编码和解码闭环。\n14. 下一步可证伪实验 第一项实验只需要四到八个对象、四到八种 query，以及两棵小参数 TreeHeap。\nClaim 存在一个有限参数 TreeHeap forest，使 scalar query loss 能把数据写入各参数树，并使独立训练的 kernel 在未见串行组合上正确闭合。\n较低的 query 重建误差 较短的平均编码长度 前缀无歧义的精确 echo 未见 kernel composition 的正确输出 Predict 如果 head 学到的是可迁移算子，那么 fruit kernel 在训练时未见过 food head 输出的情况下，仍应正确过滤 food 的运行时状态。\n如果它只记住 query 到答案的映射，未见组合应当失败。\nProof 1. 将 `Theta_food` 和 `Theta_fruit` 初始化为零或随机参数树； 2. 用各自 query 的 scalar loss 独立训练两棵树； 3. 保存每个节点的 loss、梯度和参数变化； 4. 验证只保存参数森林即可重新解压训练 query； 5. 测试训练时保留的 `K_fruit ∘ K_food` 组合； 6. 与两个独立查找表、单棵共享树和 shuffled control 比较； 7. 清空、打乱或交换子堆，检查查询与组合能力是否下降。 Falsification 以下任一结果都会削弱当前假设：\nquery 或答案被偷偷放进运行时 H； 每个 head 只记住固定输出，不能过滤新输入； 未见串行组合明显失败； 清空或打乱参数树以后结果不变； 扁平查找表在相同存储和计算预算下全面更好。 15. 当前结论 本文没有证明 TreeHeap 已经学会食物、水果或自然语言语义。\n它只把问题缩小为一个可以执行的数学任务：\n给定有限的 query -\u003e result distribution，scalar loss 能否把规律写进一个参数 TreeHeap forest，并让各 head 通过相同代数协议并行观察、串行组合和无歧义解码？\n如果答案是否定的，就不必继续讨论梯度涌现。\n如果答案是肯定的，下一步才是：\n先证明 loss 的梯度确实写入参数树 -\u003e 再证明 encoder/decoder 能形成私有路径编码 -\u003e 再证明独立 head 能完成未见组合 -\u003e 最后研究树结构和 head 数量能否自行形成 TreeHeap 不必只有一棵树，也不必让人类理解内部节点。真正的边界是：信息必须保存在参数树中，query 不能携带答案，kernel 必须在新状态上执行可复用操作，而不是连续查表。\n",
+  "wordCount" : "836",
+  "inLanguage": "en",
+  "datePublished": "2026-07-09T00:00:00Z",
+  "dateModified": "2026-07-09T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/048-treeheap-private-codec-forest.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item active">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-048] TreeHeap 私有编码：多头参数森林与串行推理
+    </h1>
+    <div class="post-description">
+      从经典 Huffman 编码出发，定义 TreeHeap 参数森林、私有编码、并行多头和串行 kernel composition，并说明 scalar loss 如何把数据写入参数树。
+    </div>
+    <div class="post-meta"><span title='2026-07-09 00:00:00 +0000 UTC'>July 9, 2026</span>&nbsp;·&nbsp;<span>Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="treeheap-私有编码多头参数森林与串行推理">TreeHeap 私有编码：多头参数森林与串行推理<a hidden class="anchor" aria-hidden="true" href="#treeheap-私有编码多头参数森林与串行推理">#</a></h1>
+<p>这篇文章承接 SPR-046 和 SPR-047，进入新的问题：</p>
+<blockquote>
+<p>一个空的 TreeHeap 工作区，为什么经过若干 query kernel 的卷积，就能解压出一组数据？这些数据最初又是怎样编码进一棵或多棵参数 TreeHeap 的？</p>
+</blockquote>
+<p>我们先不讨论自然语言理解，也不假设模型已经知道“食物”“水果”等概念。先建立一个有限、可以计算和证伪的模型。</p>
+<h2 id="1-从一个具体例子开始">1. 从一个具体例子开始<a hidden class="anchor" aria-hidden="true" href="#1-从一个具体例子开始">#</a></h2>
+<p>假设执行 <code>food</code> kernel：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H0 = [0, 0, 0, 0]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>K_food(H0; Theta)
+</span></span><span style="display:flex;"><span>  -&gt; [0.1 稻子, 0.3 米浆, 0.5 米饭, 0.6 芒果]
+</span></span></code></pre></div><p>再执行 <code>fruit</code> kernel：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>K_fruit(K_food(H0; Theta); Theta2)
+</span></span><span style="display:flex;"><span>  -&gt; [0.6 芒果]
+</span></span></code></pre></div><p>这里马上出现一个必须说清楚的事实：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>零数组里没有稻子、米浆、米饭和芒果。
+</span></span></code></pre></div><p>因此，这些信息一定保存在参数 <code>Theta</code> 及其树形组织关系中。<code>H0</code> 只是一次查询使用的工作区。</p>
+<p>本文采用以下术语：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Theta_forest 长期保存的一组参数 TreeHeap，也就是编码森林
+</span></span><span style="display:flex;"><span>H_query     一次查询产生的运行时状态
+</span></span><span style="display:flex;"><span>K_q         针对 query q 执行的卷积 kernel
+</span></span><span style="display:flex;"><span>leaf        可以最终解码出的数据对象
+</span></span><span style="display:flex;"><span>internal    一组叶子共享的前缀状态
+</span></span></code></pre></div><h2 id="2-经典-huffman-到底怎样写入和读出">2. 经典 Huffman 到底怎样写入和读出<a hidden class="anchor" aria-hidden="true" href="#2-经典-huffman-到底怎样写入和读出">#</a></h2>
+<p>假设四个符号出现的概率为：</p>
+<table>
+  <thead>
+      <tr>
+          <th>符号</th>
+          <th style="text-align: right">概率</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>米饭</td>
+          <td style="text-align: right">0.4</td>
+      </tr>
+      <tr>
+          <td>米浆</td>
+          <td style="text-align: right">0.3</td>
+      </tr>
+      <tr>
+          <td>稻子</td>
+          <td style="text-align: right">0.2</td>
+      </tr>
+      <tr>
+          <td>石头</td>
+          <td style="text-align: right">0.1</td>
+      </tr>
+  </tbody>
+</table>
+<p>经典 Huffman 算法不断合并概率最小的两个节点，可能得到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root
+</span></span><span style="display:flex;"><span>├─ 0   -&gt; 米饭
+</span></span><span style="display:flex;"><span>└─ 1
+</span></span><span style="display:flex;"><span>   ├─ 10  -&gt; 米浆
+</span></span><span style="display:flex;"><span>   └─ 11
+</span></span><span style="display:flex;"><span>      ├─ 110 -&gt; 石头
+</span></span><span style="display:flex;"><span>      └─ 111 -&gt; 稻子
+</span></span></code></pre></div><p>对应码表：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>米饭 = 0
+</span></span><span style="display:flex;"><span>米浆 = 10
+</span></span><span style="display:flex;"><span>石头 = 110
+</span></span><span style="display:flex;"><span>稻子 = 111
+</span></span></code></pre></div><p>编码：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>米饭 石头 稻子
+</span></span><span style="display:flex;"><span>-&gt; 0 110 111
+</span></span><span style="display:flex;"><span>-&gt; 0110111
+</span></span></code></pre></div><p>解码时，从 root 开始逐位行走。到达叶子便输出符号，然后返回 root。</p>
+<p>这里有两个重要性质：</p>
+<ol>
+<li>高频符号使用较短路径；</li>
+<li>任何叶子的编码都不是另一个叶子编码的前缀，因此可以无歧义解码。</li>
+</ol>
+<p>但是，经典 Huffman 只根据出现频率压缩。它不会因为“米饭”和“米浆”在语义上相似，就主动让它们共享前缀。</p>
+<h2 id="3-treeheap-增加了什么">3. TreeHeap 增加了什么<a hidden class="anchor" aria-hidden="true" href="#3-treeheap-增加了什么">#</a></h2>
+<p>TreeHeap 的假设是：一棵树不仅可以压缩符号频率，还可以压缩查询规律。</p>
+<p>例如，一棵候选参数树可能是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root
+</span></span><span style="display:flex;"><span>└─ food
+</span></span><span style="display:flex;"><span>   ├─ grain-family
+</span></span><span style="display:flex;"><span>   │  ├─ 稻子
+</span></span><span style="display:flex;"><span>   │  └─ processed
+</span></span><span style="display:flex;"><span>   │     ├─ 米浆
+</span></span><span style="display:flex;"><span>   │     └─ 米饭
+</span></span><span style="display:flex;"><span>   └─ fruit
+</span></span><span style="display:flex;"><span>      └─ 芒果
+</span></span></code></pre></div><p>路径可以写成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>稻子 = 000
+</span></span><span style="display:flex;"><span>米浆 = 0010
+</span></span><span style="display:flex;"><span>米饭 = 0011
+</span></span><span style="display:flex;"><span>芒果 = 01
+</span></span></code></pre></div><p>现在，不同 query 可以在不同深度停止：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>food query
+</span></span><span style="display:flex;"><span>  -&gt; 到达 food
+</span></span><span style="display:flex;"><span>  -&gt; 解压 food 节点覆盖的全部叶子
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>fruit query
+</span></span><span style="display:flex;"><span>  -&gt; 到达 fruit
+</span></span><span style="display:flex;"><span>  -&gt; 只解压 fruit 节点覆盖的叶子
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>exact token query
+</span></span><span style="display:flex;"><span>  -&gt; 一直走到具体叶子
+</span></span><span style="display:flex;"><span>  -&gt; 输出米饭或芒果
+</span></span></code></pre></div><p>因此，<code>stop</code> 不一定表示“读到了一个词”。它也可以表示：</p>
+<blockquote>
+<p>当前内部节点已经包含回答 query 所需的全部信息。</p>
+</blockquote>
+<h2 id="4-路径编码和输出概率不是一回事">4. 路径编码和输出概率不是一回事<a hidden class="anchor" aria-hidden="true" href="#4-路径编码和输出概率不是一回事">#</a></h2>
+<p>下面两个对象容易混淆：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Path(米饭) = 0011
+</span></span><span style="display:flex;"><span>P(米饭 | food) = 0.5
+</span></span></code></pre></div><p><code>0011</code> 是米饭在参数树中的地址。</p>
+<p><code>0.5</code> 是当前 query 下米饭的分数或概率。</p>
+<p>如果输出被解释为概率分布，就必须归一化：</p>
+<p>$</p>
+$ \sum_x P(x\mid q)=1 $<p>$</p>
+<p>而路径只要求前缀无歧义，不要求数值加和为 1。</p>
+<h2 id="5-kernel-如何查询一棵树">5. Kernel 如何查询一棵树<a hidden class="anchor" aria-hidden="true" href="#5-kernel-如何查询一棵树">#</a></h2>
+<p>在节点 \(i\) 上，局部 kernel 读取：</p>
+<p>$</p>
+$ K_\Theta(q,H_i,H_{2i},H_{2i+1}) $<p>$</p>
+<p>并输出一个概率桶：</p>
+<p>$</p>
+$ [p_{\text{stop}},p_{\text{left}},p_{\text{right}}] $<p>$</p>
+<p>例如 <code>fruit</code> query：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root:
+</span></span><span style="display:flex;"><span>  [stop=0.00, left=0.05, right=0.95]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>food:
+</span></span><span style="display:flex;"><span>  [stop=0.02, grain=0.03, fruit=0.95]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>fruit:
+</span></span><span style="display:flex;"><span>  [stop=0.99, left=0.005, right=0.005]
+</span></span></code></pre></div><p>一条路径的概率是沿途动作概率的乘积：</p>
+<p>$</p>
+$ P(\pi\mid q) = \prod_{i\in\pi}P(a_i\mid q,H_i) $<p>$</p>
+<p>到达某个内部节点并选择 <code>stop</code> 后，decoder 可以读取该节点保存的叶子分布：</p>
+<p>$</p>
+$ Decode(H_i,q)\rightarrow P(x\mid q,H_i) $<p>$</p>
+<p>所以完整读出过程是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>query
+</span></span><span style="display:flex;"><span>-&gt; kernel 在参数树上递归卷积
+</span></span><span style="display:flex;"><span>-&gt; 得到 stop/left/right 概率
+</span></span><span style="display:flex;"><span>-&gt; 形成路径分布
+</span></span><span style="display:flex;"><span>-&gt; 在某个节点停止
+</span></span><span style="display:flex;"><span>-&gt; 解压该节点的叶子分布
+</span></span></code></pre></div><p>硬查询可以每步选择 <code>argmax</code>。软查询则保留多条路径，直到信息足够时再坍缩。</p>
+<h2 id="6-encoder-面对的原始数据是什么">6. Encoder 面对的原始数据是什么<a hidden class="anchor" aria-hidden="true" href="#6-encoder-面对的原始数据是什么">#</a></h2>
+<p>Encoder 不能从“空”中发现分类。它至少需要观察到查询与结果之间的统计关系。</p>
+<p>一个有限数据集可以表示成矩阵：</p>
+<table>
+  <thead>
+      <tr>
+          <th>Query</th>
+          <th style="text-align: right">稻子</th>
+          <th style="text-align: right">米浆</th>
+          <th style="text-align: right">米饭</th>
+          <th style="text-align: right">芒果</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>food</td>
+          <td style="text-align: right">0.1</td>
+          <td style="text-align: right">0.3</td>
+          <td style="text-align: right">0.5</td>
+          <td style="text-align: right">0.6</td>
+      </tr>
+      <tr>
+          <td>fruit</td>
+          <td style="text-align: right">0</td>
+          <td style="text-align: right">0</td>
+          <td style="text-align: right">0</td>
+          <td style="text-align: right">0.6</td>
+      </tr>
+      <tr>
+          <td>grain</td>
+          <td style="text-align: right">0.1</td>
+          <td style="text-align: right">0.3</td>
+          <td style="text-align: right">0.5</td>
+          <td style="text-align: right">0</td>
+      </tr>
+      <tr>
+          <td>processed</td>
+          <td style="text-align: right">0</td>
+          <td style="text-align: right">0.3</td>
+          <td style="text-align: right">0.5</td>
+          <td style="text-align: right">0</td>
+      </tr>
+  </tbody>
+</table>
+<p>这张表不一定来自人工标签。未来它可以来自语料观察，例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>“吃 [MASK]”经常观察到米饭
+</span></span><span style="display:flex;"><span>“喝 [MASK]”经常观察到米浆
+</span></span><span style="display:flex;"><span>“成熟的 [MASK]”经常观察到芒果
+</span></span></code></pre></div><p>但无论来源是什么，encoder 真正看到的是某种有限统计量：</p>
+<p>$</p>
+$ P_D(x\mid q) $<p>$</p>
+<p>也就是在数据 \(D\) 中，query \(q\) 对对象 \(x\) 的条件分布。</p>
+<h2 id="7-encoder-不是人工聚类器">7. Encoder 不是人工聚类器<a hidden class="anchor" aria-hidden="true" href="#7-encoder-不是人工聚类器">#</a></h2>
+<p>一种看似直接的方案是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>先计算对象之间的相似度；
+</span></span><span style="display:flex;"><span>再人工规定合并距离；
+</span></span><span style="display:flex;"><span>最后按距离构造语义树。
+</span></span></code></pre></div><p>这个方案仍然是研究者替模型设计编码。即使最终树看起来合理，也不能说明 encoder 和 decoder 形成了自己的关联编码。</p>
+<p>本文采用更严格的定义：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>人提供：
+</span></span><span style="display:flex;"><span>  有限 TreeHeap 地址
+</span></span><span style="display:flex;"><span>  stop/left/right
+</span></span><span style="display:flex;"><span>  compose/decompose
+</span></span><span style="display:flex;"><span>  可微 kernel
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>人不提供：
+</span></span><span style="display:flex;"><span>  哪个节点是 food
+</span></span><span style="display:flex;"><span>  哪些对象必须共享前缀
+</span></span><span style="display:flex;"><span>  哪个 token 写在哪条路径
+</span></span><span style="display:flex;"><span>  每个 head 必须学习什么类别
+</span></span></code></pre></div><p>参数 TreeHeap 从零或随机状态开始：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Theta[i] = learnable parameters
+</span></span></code></pre></div><p>给定 query \(q\)，kernel 对参数树执行卷积：</p>
+<p>$</p>
+$ \hat Y_q=K_q(\Theta) $<p>$</p>
+<p>数据提供该 query 的目标结果 \(Y_q\)，于是得到一个标量 loss：</p>
+<p>$</p>
+$ L_q=d(\hat Y_q,Y_q) $<p>$</p>
+<p>多个 query 共同训练参数树：</p>
+<p>$</p>
+$ L(\Theta)=\sum_q L_q $<p>$</p>
+<p>梯度直接写入参数 TreeHeap：</p>
+<p>$</p>
+$ \Theta \leftarrow \Theta-\eta\frac{\partial L}{\partial\Theta} $<p>$</p>
+<p>因此：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Encoder：
+</span></span><span style="display:flex;"><span>  用 query 产生的 scalar loss，把规律写入参数 TreeHeap。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Decoder：
+</span></span><span style="display:flex;"><span>  用 query kernel 从训练后的参数 TreeHeap 解压结果。
+</span></span></code></pre></div><p>内部编码可以不符合人类命名。只要 encode、query、decode 闭合，模型可以形成自己的“笔迹”。</p>
+<h2 id="8-为什么还需要压缩约束">8. 为什么还需要压缩约束<a hidden class="anchor" aria-hidden="true" href="#8-为什么还需要压缩约束">#</a></h2>
+<p>只优化 query 正确率，模型可能把每个答案分别记在巨大参数表里。它虽然能查询，却没有形成有价值的编码。</p>
+<p>因此还需要限制平均编码成本：</p>
+<p>$</p>
+$ L_{\text{rate}} = \mathbb E[-\log P_\Theta(path)] $<p>$</p>
+<p>或者先使用简单的期望路径深度：</p>
+<p>$</p>
+$ L_{\text{depth}} = \mathbb E[\operatorname{depth}(path)] $<p>$</p>
+<p>总目标可以写成：</p>
+<p>$</p>
+$ L = L_{\text{query}} + \alpha L_{\text{echo}} + \beta L_{\text{rate}} $<p>$</p>
+<p>三部分分别要求：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>query：能回答问题；
+</span></span><span style="display:flex;"><span>echo：私有编码仍能还原原始数据；
+</span></span><span style="display:flex;"><span>rate：不要为每个样本建立无限长、互不共享的路径。
+</span></span></code></pre></div><p>这里没有人工规定共享前缀。只有当共享某个子堆能降低总 loss 时，它才应该形成。</p>
+<h2 id="9-写入究竟发生在哪里">9. 写入究竟发生在哪里<a hidden class="anchor" aria-hidden="true" href="#9-写入究竟发生在哪里">#</a></h2>
+<p>必须区分两种“写入”。</p>
+<h3 id="91-训练参数森林">9.1 训练参数森林<a hidden class="anchor" aria-hidden="true" href="#91-训练参数森林">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Train(D)
+</span></span><span style="display:flex;"><span>-&gt; 修改 Theta_forest
+</span></span><span style="display:flex;"><span>-&gt; 改变节点状态、路径概率和 kernel 参数
+</span></span></code></pre></div><p>这相当于学习和更新码本。</p>
+<h3 id="92-使用参数森林编码一个样本">9.2 使用参数森林编码一个样本<a hidden class="anchor" aria-hidden="true" href="#92-使用参数森林编码一个样本">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Encode(sample, Theta_forest)
+</span></span><span style="display:flex;"><span>-&gt; 生成路径或运行时 H_sample
+</span></span></code></pre></div><p>这相当于使用已经存在的码本压缩一条消息，通常不修改长期参数树。</p>
+<p>因此：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Theta_forest 保存长期规律
+</span></span><span style="display:flex;"><span>H_sample 保存当前样本
+</span></span><span style="display:flex;"><span>H_query 保存本次查询过程
+</span></span></code></pre></div><p>如果 <code>H0=[0,0,0,0]</code> 经过 kernel 能生成具体对象，那么具体对象的信息来自 <code>Theta_forest</code>，不能说它来自零状态。</p>
+<h2 id="10-encoder-和-decoder-的共同协议">10. Encoder 和 Decoder 的共同协议<a hidden class="anchor" aria-hidden="true" href="#10-encoder-和-decoder-的共同协议">#</a></h2>
+<p>Transformer 的 encoder、decoder 和 cross-attention 都使用同一种 Attention 数学接口，但通常不共享同一套参数。</p>
+<p>TreeHeap 也可以采用类似的接口纪律，但这只是接口设计，不是 Transformer 有效性向 TreeHeap 的自动迁移。</p>
+<p>共同协议可以定义为：</p>
+<p>$</p>
+$ K(q,H_i,H_{2i},H_{2i+1}) \rightarrow [p_{\text{stop}},p_{\text{left}},p_{\text{right}}] $<p>$</p>
+<p>Encoder 使用它评估：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个对象写入哪个前缀，能让整个数据集更容易重建。
+</span></span></code></pre></div><p>Decoder 使用它完成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个 query 应沿哪条路径读取，并在哪个节点停止。
+</span></span></code></pre></div><p>双方必须共享：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>相同的地址规则
+</span></span><span style="display:flex;"><span>相同的路径含义
+</span></span><span style="display:flex;"><span>相同的节点 compose/decompose 规则
+</span></span><span style="display:flex;"><span>相同的 kernel 输入输出契约
+</span></span></code></pre></div><p>它们不必共享完全相同的权重。</p>
+<h2 id="11-为什么不要求所有信息写进同一棵树">11. 为什么不要求所有信息写进同一棵树<a hidden class="anchor" aria-hidden="true" href="#11-为什么不要求所有信息写进同一棵树">#</a></h2>
+<p>一棵共享参数树适合表达公共前缀，但它不是 TreeHeap 的理论限制。更一般的参数对象是：</p>
+<p>$</p>
+$ \Theta_{\text{forest}} = \{\Theta^{(1)},\Theta^{(2)},\ldots,\Theta^{(M)}\} $<p>$</p>
+<p>每个 head 都是一棵 TreeHeap。它们共享地址和 kernel 协议，但可以拥有不同的节点值、深度和参数。</p>
+<h3 id="111-并行多头">11.1 并行多头<a hidden class="anchor" aria-hidden="true" href="#111-并行多头">#</a></h3>
+<p>多个 head 可以同时观察同一个状态：</p>
+<p>$</p>
+$ H_m=K_m(q,H_0;\Theta^{(m)}) $<p>$</p>
+<p>再通过明确的 TreeHeap compose 算子合并：</p>
+<p>$</p>
+$ H_{\text{out}} = \operatorname{Compose}(H_1,H_2,\ldots,H_M) $<p>$</p>
+<p>这种结构允许不同参数树保留不同的可学习关系，不要求它们被压进同一个梯度大锅。</p>
+<h3 id="112-串行推理">11.2 串行推理<a hidden class="anchor" aria-hidden="true" href="#112-串行推理">#</a></h3>
+<p>更重要的是 kernel 可以顺序组合：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H0 = [0,0,0,0]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>H1 = K_food(H0; Theta_food)
+</span></span><span style="display:flex;"><span>   = [0.1稻子, 0.3米浆, 0.5米饭, 0.6芒果]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>H2 = K_fruit(H1; Theta_fruit)
+</span></span><span style="display:flex;"><span>   = [0.6芒果]
+</span></span></code></pre></div><p>数学上：</p>
+<p>$</p>
+$ H_2 = K_{\text{fruit}} \left( K_{\text{food}}(H_0;\Theta_{\text{food}}); \Theta_{\text{fruit}} \right) $<p>$</p>
+<p>也就是：</p>
+<p>$</p>
+$ K_{\text{fruit}}\circ K_{\text{food}} $<p>$</p>
+<p>这使 TreeHeap 不只是保存查询答案，还可能保存可组合的操作。</p>
+<h2 id="12-连续查表不等于串行推理">12. 连续查表不等于串行推理<a hidden class="anchor" aria-hidden="true" href="#12-连续查表不等于串行推理">#</a></h2>
+<p>如果 <code>Theta_fruit</code> 直接记住：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>fruit query -&gt; 芒果
+</span></span></code></pre></div><p>那么连续执行两个 query 仍然只是两次查表。</p>
+<p>真正的 <code>fruit</code> kernel 应当对不同输入状态执行同一过滤规律：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[苹果, 石头, 芒果] -&gt; [苹果, 芒果]
+</span></span><span style="display:flex;"><span>[稻子, 米饭, 芒果] -&gt; [芒果]
+</span></span><span style="display:flex;"><span>[香蕉, 汽车, 梨]   -&gt; [香蕉, 梨]
+</span></span></code></pre></div><p>所以必须把以下组合留出训练集：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>K_fruit(K_food(H0))
+</span></span></code></pre></div><p>分别训练 <code>food</code> head 和 <code>fruit</code> head 后，第一次在测试中组合它们。只有未见组合仍然正确，才能支持“kernel 学会了算子”而不是“参数树记住了答案”。</p>
+<h2 id="13-一个重要限制树只能自然表达嵌套集合">13. 一个重要限制：树只能自然表达嵌套集合<a hidden class="anchor" aria-hidden="true" href="#13-一个重要限制树只能自然表达嵌套集合">#</a></h2>
+<p>如果：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>fruit 是 food 的子集
+</span></span></code></pre></div><p>一棵树可以自然表达。</p>
+<p>但真实世界存在重叠分类：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>番茄在植物学中是水果
+</span></span><span style="display:flex;"><span>番茄在烹饪中又常被视为蔬菜
+</span></span></code></pre></div><p>单棵严格二叉树无法让一个叶子同时拥有两条独立父路径。</p>
+<p>可能的扩展包括：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>多个 TreeHeap
+</span></span><span style="display:flex;"><span>一个叶子对应多条概率路径
+</span></span><span style="display:flex;"><span>TreeHeap DAG
+</span></span></code></pre></div><p>第一阶段不应同时解决这个问题。我们可以先使用严格嵌套的有限数据，验证最基本的编码和解码闭环。</p>
+<h2 id="14-下一步可证伪实验">14. 下一步可证伪实验<a hidden class="anchor" aria-hidden="true" href="#14-下一步可证伪实验">#</a></h2>
+<p>第一项实验只需要四到八个对象、四到八种 query，以及两棵小参数 TreeHeap。</p>
+<h3 id="claim">Claim<a hidden class="anchor" aria-hidden="true" href="#claim">#</a></h3>
+<p>存在一个有限参数 TreeHeap forest，使 scalar query loss 能把数据写入各参数树，并使独立训练的 kernel 在未见串行组合上正确闭合。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>较低的 query 重建误差
+</span></span><span style="display:flex;"><span>较短的平均编码长度
+</span></span><span style="display:flex;"><span>前缀无歧义的精确 echo
+</span></span><span style="display:flex;"><span>未见 kernel composition 的正确输出
+</span></span></code></pre></div><h3 id="predict">Predict<a hidden class="anchor" aria-hidden="true" href="#predict">#</a></h3>
+<p>如果 head 学到的是可迁移算子，那么 <code>fruit</code> kernel 在训练时未见过 <code>food</code> head 输出的情况下，仍应正确过滤 <code>food</code> 的运行时状态。</p>
+<p>如果它只记住 query 到答案的映射，未见组合应当失败。</p>
+<h3 id="proof">Proof<a hidden class="anchor" aria-hidden="true" href="#proof">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1. 将 `Theta_food` 和 `Theta_fruit` 初始化为零或随机参数树；
+</span></span><span style="display:flex;"><span>2. 用各自 query 的 scalar loss 独立训练两棵树；
+</span></span><span style="display:flex;"><span>3. 保存每个节点的 loss、梯度和参数变化；
+</span></span><span style="display:flex;"><span>4. 验证只保存参数森林即可重新解压训练 query；
+</span></span><span style="display:flex;"><span>5. 测试训练时保留的 `K_fruit ∘ K_food` 组合；
+</span></span><span style="display:flex;"><span>6. 与两个独立查找表、单棵共享树和 shuffled control 比较；
+</span></span><span style="display:flex;"><span>7. 清空、打乱或交换子堆，检查查询与组合能力是否下降。
+</span></span></code></pre></div><h3 id="falsification">Falsification<a hidden class="anchor" aria-hidden="true" href="#falsification">#</a></h3>
+<p>以下任一结果都会削弱当前假设：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>query 或答案被偷偷放进运行时 H；
+</span></span><span style="display:flex;"><span>每个 head 只记住固定输出，不能过滤新输入；
+</span></span><span style="display:flex;"><span>未见串行组合明显失败；
+</span></span><span style="display:flex;"><span>清空或打乱参数树以后结果不变；
+</span></span><span style="display:flex;"><span>扁平查找表在相同存储和计算预算下全面更好。
+</span></span></code></pre></div><h2 id="15-当前结论">15. 当前结论<a hidden class="anchor" aria-hidden="true" href="#15-当前结论">#</a></h2>
+<p>本文没有证明 TreeHeap 已经学会食物、水果或自然语言语义。</p>
+<p>它只把问题缩小为一个可以执行的数学任务：</p>
+<blockquote>
+<p>给定有限的 <code>query -&gt; result distribution</code>，scalar loss 能否把规律写进一个参数 TreeHeap forest，并让各 head 通过相同代数协议并行观察、串行组合和无歧义解码？</p>
+</blockquote>
+<p>如果答案是否定的，就不必继续讨论梯度涌现。</p>
+<p>如果答案是肯定的，下一步才是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>先证明 loss 的梯度确实写入参数树
+</span></span><span style="display:flex;"><span>-&gt; 再证明 encoder/decoder 能形成私有路径编码
+</span></span><span style="display:flex;"><span>-&gt; 再证明独立 head 能完成未见组合
+</span></span><span style="display:flex;"><span>-&gt; 最后研究树结构和 head 数量能否自行形成
+</span></span></code></pre></div><p>TreeHeap 不必只有一棵树，也不必让人类理解内部节点。真正的边界是：信息必须保存在参数树中，query 不能携带答案，kernel 必须在新状态上执行可复用操作，而不是连续查表。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

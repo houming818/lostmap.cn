@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>PAPERS 专题——AI 论文发布系统 on LostMap</title>
+    <link>https://www.lostmap.cn/papers/index.html</link>
+    <description>Recent content in PAPERS 专题——AI 论文发布系统 on LostMap</description>
+    <generator>Hugo</generator>
+    <language>zh-CN</language>
+    <lastBuildDate>Tue, 19 May 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://www.lostmap.cn/papers/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</title>
+      <link>https://www.lostmap.cn/papers/001-ai-publishing-system.html</link>
+      <pubDate>Tue, 19 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://www.lostmap.cn/papers/001-ai-publishing-system.html</guid>
+      <description>本博客采用的发布规范: role declarations, license, content traceability, review records, full-text RSS.</description>
+    </item>
+  </channel>
+</rss>

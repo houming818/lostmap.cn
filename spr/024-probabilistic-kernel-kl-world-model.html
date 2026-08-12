@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, Kernel, Probability, KL">
+<meta name="description" content="把 TreeHeap kernel 拆成代数 kernel 与概率 kernel：前者证明操作定义正确，后者用 KL 散度和交叉熵证明模型是否学到了世界模型中的操作分布。">
+<meta name="author" content="nio (Houming818) &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/024-probabilistic-kernel-kl-world-model.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/024-probabilistic-kernel-kl-world-model.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/024-probabilistic-kernel-kl-world-model.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型">
+  <meta property="og:description" content="把 TreeHeap kernel 拆成代数 kernel 与概率 kernel：前者证明操作定义正确，后者用 KL 散度和交叉熵证明模型是否学到了世界模型中的操作分布。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-06-24T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-06-24T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型">
+  <meta name="twitter:description" content="把 TreeHeap kernel 拆成代数 kernel 与概率 kernel：前者证明操作定义正确，后者用 KL 散度和交叉熵证明模型是否学到了世界模型中的操作分布。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型",
+      "item": "https://www.lostmap.cn/spr/024-probabilistic-kernel-kl-world-model.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型",
+  "name": "[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型",
+  "description": "把 TreeHeap kernel 拆成代数 kernel 与概率 kernel：前者证明操作定义正确，后者用 KL 散度和交叉熵证明模型是否学到了世界模型中的操作分布。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "Kernel", "Probability", "KL"
+  ],
+  "articleBody": "概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型 上一篇 SPR-023 证明了一件很基础的事：\nTreeHeap 的 search / plus / conjugate 可以统一理解成 kernel 在树形内存态上的卷积。 但 Houming818 进一步指出：\nkernel 也要分类型。 有的 kernel 是代数的，100% 确定； 有的 kernel 是概率的，像 softmax 一样输出分布。 这个拆分非常重要。\n因为它可以直接回答 GLM 对 C08 的批评：\nconjugate proof 是 by construction。 是的。\n如果一个 kernel 是代数 kernel，它本来就应该 by construction。 它证明的是：\n操作定义是否正确。 不是证明：\n模型是否学会了这个操作。 如果要证明“学会了”，就必须进入第二类：\n概率 kernel proof。 而概率 kernel proof 需要一个新的量尺。\n这个量尺就是：\nKL 散度。 两类 Kernel TreeHeap kernel 现在应该拆成两层。\n1. Algebraic Kernel 2. Probabilistic Kernel 它们分别回答不同问题。\nAlgebraic Kernel：证明操作空间 代数 kernel 是确定性的。\n它像数学函数：\n$\n$ K(H) \\to H' $$\n只要输入相同，输出就相同。\n例如：\nmirror kernel path shift kernel subheap extract kernel exact match kernel compose kernel decompose kernel conjugate kernel 这些 kernel 的目标不是学习。\n它们的目标是证明：\nTreeHeap 操作空间定义良好。 例如镜像：\nL \u003c-\u003e R 如果路径：\nLRL 镜像后应该是：\nRLR 这不是概率问题。\n这是代数定义。\n如果写成公式：\n$\n$ \\sigma(LRL)=RLR $$\n那 proof 应该要求：\n$\n$ \\sigma^{-1}(\\sigma(a)) = a $$\n也就是：\n镜像两次回到原路径。 这类 proof 的指标应该是：\nclosure_ok = true mirror_error = 0 equiv_error = 0 compose_consistency = true 它对应：\n数学正确性。 所以 SPR-023 的 C08 更准确地说属于：\nAlgebraic Kernel Proof 它证明：\nsearch / plus / conjugate 可以被统一定义成 kernel convolution。 它不证明：\n模型从数据里学会了 search / plus / conjugate。 Probabilistic Kernel：证明选择机制 概率 kernel 不直接输出一个确定结果。\n它输出一个分布：\n$\n$ P_\\theta(a \\mid H,q) $$\n其中：\n符号 含义 \\(H\\) 当前 TreeHeap 内存态 \\(q\\) query \\(a\\) 候选操作或候选地址 \\(\\theta\\) 可学习参数 例如 route kernel：\nstop: 0.1 left: 0.8 right: 0.1 例如 write kernel：\nLL: 0.05 LR: 0.82 RL: 0.07 RR: 0.06 例如 decompose kernel：\nA+B: 0.55 C+D: 0.35 other: 0.10 这才进入学习问题。\n它问的是：\n模型输出的概率分布， 是否接近世界模型里的真实概率分布？ 世界模型里的概率分布 我们先定义一个世界模型。\n世界模型不是玄学。\n在 proof 里，它可以是一个明确的数据生成器：\nWorldModel W 它给出：\n$\n$ P_W(a \\mid H,q) $$\n意思是：\n在 TreeHeap 状态 H 和 query q 下， 世界模型认为每个操作 a 的真实概率是多少。 例如：\nP_W(stop, left, right) = [0.1, 0.8, 0.1] 模型输出：\nP_\\theta(stop, left, right) = [0.3, 0.4, 0.3] 这时我们就可以问：\n模型离世界模型有多远？ 这个距离就用 KL 散度衡量。\nKL 散度是什么 KL 散度的定义是：\n$\n$ D_{\\rm KL}(P \\parallel Q) = \\sum_x P(x)\\log \\frac{P(x)}{Q(x)} $$\n在我们这里：\nP = 世界模型分布 Q = TreeHeap kernel 学到的分布 所以：\n$\n$ D_{\\rm KL} \\big( P_W(a \\mid H,q) \\parallel P_\\theta(a \\mid H,q) \\big) = \\sum_a P_W(a \\mid H,q) \\log \\frac{ P_W(a \\mid H,q) }{ P_\\theta(a \\mid H,q) } $$\n人话解释：\n如果真实世界按 P_W 运行， 但模型用 P_theta 去解释， 会多付出多少信息代价？ 如果：\n$\n$ P_\\theta = P_W $$\n那么：\n$\n$ D_{\\rm KL}(P_W \\parallel P_\\theta)=0 $$\n越接近 0，说明模型越像世界模型。\nKL 与交叉熵 KL 可以展开：\n$\n$ D_{\\rm KL}(P \\parallel Q) = H(P,Q)-H(P) $$\n其中：\n$\n$ H(P,Q) = -\\sum_x P(x)\\log Q(x) $$\n是交叉熵。\n因为 \\(H(P)\\) 是世界模型自己的熵，对模型参数 \\(\\theta\\) 来说是常数。\n所以训练时：\n$\n$ \\min_\\theta D_{\\rm KL}(P_W \\parallel P_\\theta) $$\n等价于：\n$\n$ \\min_\\theta H(P_W, P_\\theta) $$\n这就是为什么机器学习经常用 cross entropy。\n如果 \\(P_W\\) 是 one-hot：\nleft = 1.0 其他 = 0.0 那就是普通分类。\n如果 \\(P_W\\) 是 soft distribution：\nstop = 0.1 left = 0.8 right = 0.1 那就是概率模仿。\nTreeHeap 的概率 kernel 更应该从 soft distribution 开始。\n因为 TreeHeap 的核心思想之一是：\n信息不足时不要过早坍缩。 TreeHeap 的概率 Kernel 训练目标 一个概率 TreeHeap kernel 可以写成：\n$\n$ P_\\theta(a \\mid H,q) = \\operatorname{softmax}(K_\\theta(H,q))_a $$\n世界模型给：\n$\n$ P_W(a \\mid H,q) $$\n训练 loss：\n$\n$ L(\\theta) = \\mathbb{E}_{(H,q)\\sim \\mathcal{D}} \\left[ D_{\\rm KL} \\big( P_W(a \\mid H,q) \\parallel P_\\theta(a \\mid H,q) \\big) \\right] $$\n人话：\n在很多 TreeHeap 状态和 query 上， 让模型输出的操作分布接近世界模型的操作分布。 这可以训练：\nroute kernel write kernel merge kernel decompose kernel collapse kernel plus 的两层定义 现在 plus 可以拆成两层。\n第一层是代数候选：\n$\n$ \\{\\operatorname{Plus}_a(H,x)\\}_{a\\in A} $$\n意思是：\n对每个地址 a， 如果把 x plus 到那里， 都会得到一个合法候选 TreeHeap。 这是代数 kernel 的部分。\n第二层是概率选择：\n$\n$ P_\\theta(a \\mid H,x) $$\n意思是：\n模型认为这次应该写到哪个地址。 Soft Plus 是两者合起来：\n$\n$ H_{t+1} = \\sum_a P_\\theta(a \\mid H,x) \\operatorname{Plus}_a(H,x) $$\n如果 \\(P_\\theta\\) 最后坍缩成 one-hot：\nP_theta(LR)=1.0 其他 = 0.0 那它就回到 hard plus。\n所以：\n代数 kernel 定义可以做什么； 概率 kernel 学习什么时候做什么。 这是这篇最重要的一句话。\n一个 Toy 世界模型 为了证明概率 kernel 能学到世界模型，我们需要先设计一个可控世界。\n例如定义一个路由世界：\n如果 query 和左子堆更相似： P_W(left)=0.8, P_W(right)=0.1, P_W(stop)=0.1 如果 query 和右子堆更相似： P_W(right)=0.8, P_W(left)=0.1, P_W(stop)=0.1 如果当前节点已经足够匹配： P_W(stop)=0.8, P_W(left)=0.1, P_W(right)=0.1 注意这里不是 hard label。\n不是：\nleft = 1 而是：\nleft = 0.8 这样才能测试 Probability Container。\n模型输出：\n$\n$ P_\\theta(stop,left,right \\mid H,q) $$\n训练目标：\n$\n$ D_{\\rm KL}(P_W \\parallel P_\\theta) $$\n如果训练成功，应该看到：\ntrain_KL 下降 test_KL 下降 OOD_KL 仍然较低 这才说明：\n模型不是只记住训练样本。 它学到了世界模型分布里的规律。 为什么要看 OOD KL 只看训练集 KL 不够。\n因为模型可能死记：\n这个样本就是 left。 那个样本就是 right。 所以必须设计 OOD 测试。\n例如：\n训练： depth \u003c= 3 path 只出现 L 开头 测试： depth \u003e= 5 path 出现 R 开头镜像结构 如果：\ntrain_KL 低 test_KL 高 说明模型只是记忆。\n如果：\ntrain_KL 低 test_KL 低 OOD_KL 也低 才说明：\n模型学到了可迁移的世界模型概率规律。 实验设计：P-SOFT05-KL 我建议下一步 predict 写成：\nP-SOFT05-KL: TreeHeap probabilistic kernel should learn a world-model operation distribution with lower OOD KL than flat baselines. 中文：\n如果 TreeHeap 概率 kernel 真的有结构归纳偏置， 它应该能用更少样本学到世界模型的操作概率分布， 并在未见过的地址、深度、镜像结构上保持较低 KL。 数据 构造 TreeHeap toy world：\nH = full binary TreeHeap q = query pattern a = {stop, left, right} 或候选 write addresses 世界模型生成：\nP_W(a | H,q) 例如：\nP_W(a | H,q) = softmax(-distance(query, subheap_a) / temperature) 这里 distance 是世界模型内部规则。\n训练模型不知道这个公式。\n模型只能看到：\nraw query raw subheap path/topology metadata 目标分布 P_W 模型对照 模型 输入 目的 flat MLP 展平 TreeHeap + query 测普通函数逼近 linear kernel raw query + raw patch 测线性是否足够 MLP raw kernel raw query + raw patch 测非线性比较能力 TreeHeap prob kernel raw query + raw patch + path/topology 测结构归纳偏置 oracle fixed kernel 世界模型公式 上限参考，不算学习 指标 主要指标：\ntrain_KL test_KL OOD_KL 辅助指标：\ncross_entropy entropy_error top1_agreement calibration_error sample_efficiency collapse_accuracy_tau_low 其中：\nentropy_error 衡量模型有没有把世界模型的不确定性学出来。\n例如世界模型很犹豫：\n[0.45, 0.45, 0.10] 模型不应该强行输出：\n[0.99, 0.01, 0.00] 否则它虽然 top1 可能对，但概率世界模型学错了。\n预期结果 如果 TreeHeap 概率 kernel 成立，我们希望看到：\nTreeHeap prob kernel: train_KL 低 test_KL 低 OOD_KL 低 calibration 好 sample_efficiency 高 flat MLP: train_KL 可以低 但 OOD_KL 更高 linear kernel: 多 pattern 下 KL 较高 oracle fixed kernel: KL 接近 0 作为上限参考 如果结果相反：\nflat MLP 的 OOD_KL 和 TreeHeap 一样低， 或者 TreeHeap 需要更多样本， 或者 TreeHeap calibration 更差， 那就说明：\nTreeHeap 概率 kernel 暂时没有显示结构收益。 这就是 falsification。\n和 Transformer 的类比 Transformer 学到的不是：\n矩阵本身很神秘。 而是：\n通过梯度下降，把 token 共现、上下文相关性、 query-key-value 关系压进参数矩阵。 它可以被理解为学习：\n$\n$ P(token_j \\mid token_i, context) $$\nTreeHeap 概率 kernel 要学的是：\n$\n$ P(operation \\mid query, subheap, path, topology, context) $$\n也就是：\n在某个树形状态下， 应该 stop、left、right、write、merge、decompose 的概率是多少。 这才是 TreeHeap 的概率学习对象。\n这篇的结论 现在 TreeHeap kernel proof 应该分成两条线。\n第一条：\nAlgebraic Kernel Proof 证明：\nTreeHeap 操作空间定义正确。 指标：\nclosure equivariance mirror error compose consistency 第二条：\nProbabilistic Kernel Proof 证明：\n模型能从数据中学习世界模型的操作概率分布。 指标：\nKL divergence cross entropy calibration OOD KL sample efficiency 最终一句话：\n代数 kernel 定义 TreeHeap 能做什么； 概率 kernel 学习 TreeHeap 什么时候应该做什么。 下一步实验就应该从 KL proof 开始。\n",
+  "wordCount" : "989",
+  "inLanguage": "en",
+  "datePublished": "2026-06-24T00:00:00Z",
+  "dateModified": "2026-06-24T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/024-probabilistic-kernel-kl-world-model.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item active">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型
+    </h1>
+    <div class="post-description">
+      把 TreeHeap kernel 拆成代数 kernel 与概率 kernel：前者证明操作定义正确，后者用 KL 散度和交叉熵证明模型是否学到了世界模型中的操作分布。
+    </div>
+    <div class="post-meta"><span title='2026-06-24 00:00:00 +0000 UTC'>June 24, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="概率-kernel用-kl-散度衡量-treeheap-是否学到世界模型">概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型<a hidden class="anchor" aria-hidden="true" href="#概率-kernel用-kl-散度衡量-treeheap-是否学到世界模型">#</a></h1>
+<p>上一篇 <code>SPR-023</code> 证明了一件很基础的事：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的 search / plus / conjugate
+</span></span><span style="display:flex;"><span>可以统一理解成 kernel 在树形内存态上的卷积。
+</span></span></code></pre></div><p>但 Houming818 进一步指出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 也要分类型。
+</span></span><span style="display:flex;"><span>有的 kernel 是代数的，100% 确定；
+</span></span><span style="display:flex;"><span>有的 kernel 是概率的，像 softmax 一样输出分布。
+</span></span></code></pre></div><p>这个拆分非常重要。</p>
+<p>因为它可以直接回答 GLM 对 C08 的批评：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>conjugate proof 是 by construction。
+</span></span></code></pre></div><p>是的。</p>
+<p>如果一个 kernel 是代数 kernel，它本来就应该 by construction。
+它证明的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>操作定义是否正确。
+</span></span></code></pre></div><p>不是证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型是否学会了这个操作。
+</span></span></code></pre></div><p>如果要证明“学会了”，就必须进入第二类：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>概率 kernel proof。
+</span></span></code></pre></div><p>而概率 kernel proof 需要一个新的量尺。</p>
+<p>这个量尺就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>KL 散度。
+</span></span></code></pre></div><h2 id="两类-kernel">两类 Kernel<a hidden class="anchor" aria-hidden="true" href="#两类-kernel">#</a></h2>
+<p>TreeHeap kernel 现在应该拆成两层。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1. Algebraic Kernel
+</span></span><span style="display:flex;"><span>2. Probabilistic Kernel
+</span></span></code></pre></div><p>它们分别回答不同问题。</p>
+<h2 id="algebraic-kernel证明操作空间">Algebraic Kernel：证明操作空间<a hidden class="anchor" aria-hidden="true" href="#algebraic-kernel证明操作空间">#</a></h2>
+<p>代数 kernel 是确定性的。</p>
+<p>它像数学函数：</p>
+<p>$</p>
+$ K(H) \to H' $<p>$</p>
+<p>只要输入相同，输出就相同。</p>
+<p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>mirror kernel
+</span></span><span style="display:flex;"><span>path shift kernel
+</span></span><span style="display:flex;"><span>subheap extract kernel
+</span></span><span style="display:flex;"><span>exact match kernel
+</span></span><span style="display:flex;"><span>compose kernel
+</span></span><span style="display:flex;"><span>decompose kernel
+</span></span><span style="display:flex;"><span>conjugate kernel
+</span></span></code></pre></div><p>这些 kernel 的目标不是学习。</p>
+<p>它们的目标是证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 操作空间定义良好。
+</span></span></code></pre></div><p>例如镜像：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>L &lt;-&gt; R
+</span></span></code></pre></div><p>如果路径：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>LRL
+</span></span></code></pre></div><p>镜像后应该是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>RLR
+</span></span></code></pre></div><p>这不是概率问题。</p>
+<p>这是代数定义。</p>
+<p>如果写成公式：</p>
+<p>$</p>
+$ \sigma(LRL)=RLR $<p>$</p>
+<p>那 proof 应该要求：</p>
+<p>$</p>
+$ \sigma^{-1}(\sigma(a)) = a $<p>$</p>
+<p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>镜像两次回到原路径。
+</span></span></code></pre></div><p>这类 proof 的指标应该是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>closure_ok = true
+</span></span><span style="display:flex;"><span>mirror_error = 0
+</span></span><span style="display:flex;"><span>equiv_error = 0
+</span></span><span style="display:flex;"><span>compose_consistency = true
+</span></span></code></pre></div><p>它对应：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>数学正确性。
+</span></span></code></pre></div><p>所以 <code>SPR-023</code> 的 C08 更准确地说属于：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Algebraic Kernel Proof
+</span></span></code></pre></div><p>它证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>search / plus / conjugate 可以被统一定义成 kernel convolution。
+</span></span></code></pre></div><p>它不证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型从数据里学会了 search / plus / conjugate。
+</span></span></code></pre></div><h2 id="probabilistic-kernel证明选择机制">Probabilistic Kernel：证明选择机制<a hidden class="anchor" aria-hidden="true" href="#probabilistic-kernel证明选择机制">#</a></h2>
+<p>概率 kernel 不直接输出一个确定结果。</p>
+<p>它输出一个分布：</p>
+<p>$</p>
+$ P_\theta(a \mid H,q) $<p>$</p>
+<p>其中：</p>
+<table>
+  <thead>
+      <tr>
+          <th>符号</th>
+          <th>含义</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>\(H\)</td>
+          <td>当前 TreeHeap 内存态</td>
+      </tr>
+      <tr>
+          <td>\(q\)</td>
+          <td>query</td>
+      </tr>
+      <tr>
+          <td>\(a\)</td>
+          <td>候选操作或候选地址</td>
+      </tr>
+      <tr>
+          <td>\(\theta\)</td>
+          <td>可学习参数</td>
+      </tr>
+  </tbody>
+</table>
+<p>例如 route kernel：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>stop: 0.1
+</span></span><span style="display:flex;"><span>left: 0.8
+</span></span><span style="display:flex;"><span>right: 0.1
+</span></span></code></pre></div><p>例如 write kernel：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>LL: 0.05
+</span></span><span style="display:flex;"><span>LR: 0.82
+</span></span><span style="display:flex;"><span>RL: 0.07
+</span></span><span style="display:flex;"><span>RR: 0.06
+</span></span></code></pre></div><p>例如 decompose kernel：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A+B: 0.55
+</span></span><span style="display:flex;"><span>C+D: 0.35
+</span></span><span style="display:flex;"><span>other: 0.10
+</span></span></code></pre></div><p>这才进入学习问题。</p>
+<p>它问的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型输出的概率分布，
+</span></span><span style="display:flex;"><span>是否接近世界模型里的真实概率分布？
+</span></span></code></pre></div><h2 id="世界模型里的概率分布">世界模型里的概率分布<a hidden class="anchor" aria-hidden="true" href="#世界模型里的概率分布">#</a></h2>
+<p>我们先定义一个世界模型。</p>
+<p>世界模型不是玄学。</p>
+<p>在 proof 里，它可以是一个明确的数据生成器：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>WorldModel W
+</span></span></code></pre></div><p>它给出：</p>
+<p>$</p>
+$ P_W(a \mid H,q) $<p>$</p>
+<p>意思是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在 TreeHeap 状态 H 和 query q 下，
+</span></span><span style="display:flex;"><span>世界模型认为每个操作 a 的真实概率是多少。
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P_W(stop, left, right)
+</span></span><span style="display:flex;"><span>=
+</span></span><span style="display:flex;"><span>[0.1, 0.8, 0.1]
+</span></span></code></pre></div><p>模型输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P_\theta(stop, left, right)
+</span></span><span style="display:flex;"><span>=
+</span></span><span style="display:flex;"><span>[0.3, 0.4, 0.3]
+</span></span></code></pre></div><p>这时我们就可以问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型离世界模型有多远？
+</span></span></code></pre></div><p>这个距离就用 KL 散度衡量。</p>
+<h2 id="kl-散度是什么">KL 散度是什么<a hidden class="anchor" aria-hidden="true" href="#kl-散度是什么">#</a></h2>
+<p>KL 散度的定义是：</p>
+<p>$</p>
+$ D_{\rm KL}(P \parallel Q) = \sum_x P(x)\log \frac{P(x)}{Q(x)} $<p>$</p>
+<p>在我们这里：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P = 世界模型分布
+</span></span><span style="display:flex;"><span>Q = TreeHeap kernel 学到的分布
+</span></span></code></pre></div><p>所以：</p>
+<p>$</p>
+$ D_{\rm KL} \big( P_W(a \mid H,q) \parallel P_\theta(a \mid H,q) \big) = \sum_a P_W(a \mid H,q) \log \frac{ P_W(a \mid H,q) }{ P_\theta(a \mid H,q) } $<p>$</p>
+<p>人话解释：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果真实世界按 P_W 运行，
+</span></span><span style="display:flex;"><span>但模型用 P_theta 去解释，
+</span></span><span style="display:flex;"><span>会多付出多少信息代价？
+</span></span></code></pre></div><p>如果：</p>
+<p>$</p>
+$ P_\theta = P_W $<p>$</p>
+<p>那么：</p>
+<p>$</p>
+$ D_{\rm KL}(P_W \parallel P_\theta)=0 $<p>$</p>
+<p>越接近 0，说明模型越像世界模型。</p>
+<h2 id="kl-与交叉熵">KL 与交叉熵<a hidden class="anchor" aria-hidden="true" href="#kl-与交叉熵">#</a></h2>
+<p>KL 可以展开：</p>
+<p>$</p>
+$ D_{\rm KL}(P \parallel Q) = H(P,Q)-H(P) $<p>$</p>
+<p>其中：</p>
+<p>$</p>
+$ H(P,Q) = -\sum_x P(x)\log Q(x) $<p>$</p>
+<p>是交叉熵。</p>
+<p>因为 \(H(P)\) 是世界模型自己的熵，对模型参数 \(\theta\) 来说是常数。</p>
+<p>所以训练时：</p>
+<p>$</p>
+$ \min_\theta D_{\rm KL}(P_W \parallel P_\theta) $<p>$</p>
+<p>等价于：</p>
+<p>$</p>
+$ \min_\theta H(P_W, P_\theta) $<p>$</p>
+<p>这就是为什么机器学习经常用 cross entropy。</p>
+<p>如果 \(P_W\) 是 one-hot：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>left = 1.0
+</span></span><span style="display:flex;"><span>其他 = 0.0
+</span></span></code></pre></div><p>那就是普通分类。</p>
+<p>如果 \(P_W\) 是 soft distribution：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>stop = 0.1
+</span></span><span style="display:flex;"><span>left = 0.8
+</span></span><span style="display:flex;"><span>right = 0.1
+</span></span></code></pre></div><p>那就是概率模仿。</p>
+<p>TreeHeap 的概率 kernel 更应该从 soft distribution 开始。</p>
+<p>因为 TreeHeap 的核心思想之一是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>信息不足时不要过早坍缩。
+</span></span></code></pre></div><h2 id="treeheap-的概率-kernel-训练目标">TreeHeap 的概率 Kernel 训练目标<a hidden class="anchor" aria-hidden="true" href="#treeheap-的概率-kernel-训练目标">#</a></h2>
+<p>一个概率 TreeHeap kernel 可以写成：</p>
+<p>$</p>
+$ P_\theta(a \mid H,q) = \operatorname{softmax}(K_\theta(H,q))_a $<p>$</p>
+<p>世界模型给：</p>
+<p>$</p>
+$ P_W(a \mid H,q) $<p>$</p>
+<p>训练 loss：</p>
+<p>$</p>
+$ L(\theta) = \mathbb{E}_{(H,q)\sim \mathcal{D}} \left[ D_{\rm KL} \big( P_W(a \mid H,q) \parallel P_\theta(a \mid H,q) \big) \right] $<p>$</p>
+<p>人话：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在很多 TreeHeap 状态和 query 上，
+</span></span><span style="display:flex;"><span>让模型输出的操作分布接近世界模型的操作分布。
+</span></span></code></pre></div><p>这可以训练：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>route kernel
+</span></span><span style="display:flex;"><span>write kernel
+</span></span><span style="display:flex;"><span>merge kernel
+</span></span><span style="display:flex;"><span>decompose kernel
+</span></span><span style="display:flex;"><span>collapse kernel
+</span></span></code></pre></div><h2 id="plus-的两层定义">plus 的两层定义<a hidden class="anchor" aria-hidden="true" href="#plus-的两层定义">#</a></h2>
+<p>现在 plus 可以拆成两层。</p>
+<p>第一层是代数候选：</p>
+<p>$</p>
+$ \{\operatorname{Plus}_a(H,x)\}_{a\in A} $<p>$</p>
+<p>意思是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>对每个地址 a，
+</span></span><span style="display:flex;"><span>如果把 x plus 到那里，
+</span></span><span style="display:flex;"><span>都会得到一个合法候选 TreeHeap。
+</span></span></code></pre></div><p>这是代数 kernel 的部分。</p>
+<p>第二层是概率选择：</p>
+<p>$</p>
+$ P_\theta(a \mid H,x) $<p>$</p>
+<p>意思是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型认为这次应该写到哪个地址。
+</span></span></code></pre></div><p>Soft Plus 是两者合起来：</p>
+<p>$</p>
+$ H_{t+1} = \sum_a P_\theta(a \mid H,x) \operatorname{Plus}_a(H,x) $<p>$</p>
+<p>如果 \(P_\theta\) 最后坍缩成 one-hot：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P_theta(LR)=1.0
+</span></span><span style="display:flex;"><span>其他 = 0.0
+</span></span></code></pre></div><p>那它就回到 hard plus。</p>
+<p>所以：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>代数 kernel 定义可以做什么；
+</span></span><span style="display:flex;"><span>概率 kernel 学习什么时候做什么。
+</span></span></code></pre></div><p>这是这篇最重要的一句话。</p>
+<h2 id="一个-toy-世界模型">一个 Toy 世界模型<a hidden class="anchor" aria-hidden="true" href="#一个-toy-世界模型">#</a></h2>
+<p>为了证明概率 kernel 能学到世界模型，我们需要先设计一个可控世界。</p>
+<p>例如定义一个路由世界：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果 query 和左子堆更相似：
+</span></span><span style="display:flex;"><span>  P_W(left)=0.8, P_W(right)=0.1, P_W(stop)=0.1
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>如果 query 和右子堆更相似：
+</span></span><span style="display:flex;"><span>  P_W(right)=0.8, P_W(left)=0.1, P_W(stop)=0.1
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>如果当前节点已经足够匹配：
+</span></span><span style="display:flex;"><span>  P_W(stop)=0.8, P_W(left)=0.1, P_W(right)=0.1
+</span></span></code></pre></div><p>注意这里不是 hard label。</p>
+<p>不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>left = 1
+</span></span></code></pre></div><p>而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>left = 0.8
+</span></span></code></pre></div><p>这样才能测试 Probability Container。</p>
+<p>模型输出：</p>
+<p>$</p>
+$ P_\theta(stop,left,right \mid H,q) $<p>$</p>
+<p>训练目标：</p>
+<p>$</p>
+$ D_{\rm KL}(P_W \parallel P_\theta) $<p>$</p>
+<p>如果训练成功，应该看到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>train_KL 下降
+</span></span><span style="display:flex;"><span>test_KL 下降
+</span></span><span style="display:flex;"><span>OOD_KL 仍然较低
+</span></span></code></pre></div><p>这才说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型不是只记住训练样本。
+</span></span><span style="display:flex;"><span>它学到了世界模型分布里的规律。
+</span></span></code></pre></div><h2 id="为什么要看-ood-kl">为什么要看 OOD KL<a hidden class="anchor" aria-hidden="true" href="#为什么要看-ood-kl">#</a></h2>
+<p>只看训练集 KL 不够。</p>
+<p>因为模型可能死记：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这个样本就是 left。
+</span></span><span style="display:flex;"><span>那个样本就是 right。
+</span></span></code></pre></div><p>所以必须设计 OOD 测试。</p>
+<p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>训练：
+</span></span><span style="display:flex;"><span>  depth &lt;= 3
+</span></span><span style="display:flex;"><span>  path 只出现 L 开头
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>测试：
+</span></span><span style="display:flex;"><span>  depth &gt;= 5
+</span></span><span style="display:flex;"><span>  path 出现 R 开头镜像结构
+</span></span></code></pre></div><p>如果：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>train_KL 低
+</span></span><span style="display:flex;"><span>test_KL 高
+</span></span></code></pre></div><p>说明模型只是记忆。</p>
+<p>如果：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>train_KL 低
+</span></span><span style="display:flex;"><span>test_KL 低
+</span></span><span style="display:flex;"><span>OOD_KL 也低
+</span></span></code></pre></div><p>才说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型学到了可迁移的世界模型概率规律。
+</span></span></code></pre></div><h2 id="实验设计p-soft05-kl">实验设计：P-SOFT05-KL<a hidden class="anchor" aria-hidden="true" href="#实验设计p-soft05-kl">#</a></h2>
+<p>我建议下一步 predict 写成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P-SOFT05-KL:
+</span></span><span style="display:flex;"><span>TreeHeap probabilistic kernel should learn a world-model operation
+</span></span><span style="display:flex;"><span>distribution with lower OOD KL than flat baselines.
+</span></span></code></pre></div><p>中文：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果 TreeHeap 概率 kernel 真的有结构归纳偏置，
+</span></span><span style="display:flex;"><span>它应该能用更少样本学到世界模型的操作概率分布，
+</span></span><span style="display:flex;"><span>并在未见过的地址、深度、镜像结构上保持较低 KL。
+</span></span></code></pre></div><h3 id="数据">数据<a hidden class="anchor" aria-hidden="true" href="#数据">#</a></h3>
+<p>构造 TreeHeap toy world：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H = full binary TreeHeap
+</span></span><span style="display:flex;"><span>q = query pattern
+</span></span><span style="display:flex;"><span>a = {stop, left, right} 或候选 write addresses
+</span></span></code></pre></div><p>世界模型生成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P_W(a | H,q)
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P_W(a | H,q)
+</span></span><span style="display:flex;"><span>=
+</span></span><span style="display:flex;"><span>softmax(-distance(query, subheap_a) / temperature)
+</span></span></code></pre></div><p>这里 distance 是世界模型内部规则。</p>
+<p>训练模型不知道这个公式。</p>
+<p>模型只能看到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>raw query
+</span></span><span style="display:flex;"><span>raw subheap
+</span></span><span style="display:flex;"><span>path/topology metadata
+</span></span><span style="display:flex;"><span>目标分布 P_W
+</span></span></code></pre></div><h3 id="模型对照">模型对照<a hidden class="anchor" aria-hidden="true" href="#模型对照">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>模型</th>
+          <th>输入</th>
+          <th>目的</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>flat MLP</td>
+          <td>展平 TreeHeap + query</td>
+          <td>测普通函数逼近</td>
+      </tr>
+      <tr>
+          <td>linear kernel</td>
+          <td>raw query + raw patch</td>
+          <td>测线性是否足够</td>
+      </tr>
+      <tr>
+          <td>MLP raw kernel</td>
+          <td>raw query + raw patch</td>
+          <td>测非线性比较能力</td>
+      </tr>
+      <tr>
+          <td>TreeHeap prob kernel</td>
+          <td>raw query + raw patch + path/topology</td>
+          <td>测结构归纳偏置</td>
+      </tr>
+      <tr>
+          <td>oracle fixed kernel</td>
+          <td>世界模型公式</td>
+          <td>上限参考，不算学习</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="指标">指标<a hidden class="anchor" aria-hidden="true" href="#指标">#</a></h3>
+<p>主要指标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>train_KL
+</span></span><span style="display:flex;"><span>test_KL
+</span></span><span style="display:flex;"><span>OOD_KL
+</span></span></code></pre></div><p>辅助指标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cross_entropy
+</span></span><span style="display:flex;"><span>entropy_error
+</span></span><span style="display:flex;"><span>top1_agreement
+</span></span><span style="display:flex;"><span>calibration_error
+</span></span><span style="display:flex;"><span>sample_efficiency
+</span></span><span style="display:flex;"><span>collapse_accuracy_tau_low
+</span></span></code></pre></div><p>其中：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>entropy_error
+</span></span></code></pre></div><p>衡量模型有没有把世界模型的不确定性学出来。</p>
+<p>例如世界模型很犹豫：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[0.45, 0.45, 0.10]
+</span></span></code></pre></div><p>模型不应该强行输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[0.99, 0.01, 0.00]
+</span></span></code></pre></div><p>否则它虽然 top1 可能对，但概率世界模型学错了。</p>
+<h2 id="预期结果">预期结果<a hidden class="anchor" aria-hidden="true" href="#预期结果">#</a></h2>
+<p>如果 TreeHeap 概率 kernel 成立，我们希望看到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap prob kernel:
+</span></span><span style="display:flex;"><span>  train_KL 低
+</span></span><span style="display:flex;"><span>  test_KL 低
+</span></span><span style="display:flex;"><span>  OOD_KL 低
+</span></span><span style="display:flex;"><span>  calibration 好
+</span></span><span style="display:flex;"><span>  sample_efficiency 高
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>flat MLP:
+</span></span><span style="display:flex;"><span>  train_KL 可以低
+</span></span><span style="display:flex;"><span>  但 OOD_KL 更高
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>linear kernel:
+</span></span><span style="display:flex;"><span>  多 pattern 下 KL 较高
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>oracle fixed kernel:
+</span></span><span style="display:flex;"><span>  KL 接近 0
+</span></span><span style="display:flex;"><span>  作为上限参考
+</span></span></code></pre></div><p>如果结果相反：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>flat MLP 的 OOD_KL 和 TreeHeap 一样低，
+</span></span><span style="display:flex;"><span>或者 TreeHeap 需要更多样本，
+</span></span><span style="display:flex;"><span>或者 TreeHeap calibration 更差，
+</span></span></code></pre></div><p>那就说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 概率 kernel 暂时没有显示结构收益。
+</span></span></code></pre></div><p>这就是 falsification。</p>
+<h2 id="和-transformer-的类比">和 Transformer 的类比<a hidden class="anchor" aria-hidden="true" href="#和-transformer-的类比">#</a></h2>
+<p>Transformer 学到的不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>矩阵本身很神秘。
+</span></span></code></pre></div><p>而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>通过梯度下降，把 token 共现、上下文相关性、
+</span></span><span style="display:flex;"><span>query-key-value 关系压进参数矩阵。
+</span></span></code></pre></div><p>它可以被理解为学习：</p>
+<p>$</p>
+$ P(token_j \mid token_i, context) $<p>$</p>
+<p>TreeHeap 概率 kernel 要学的是：</p>
+<p>$</p>
+$ P(operation \mid query, subheap, path, topology, context) $<p>$</p>
+<p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在某个树形状态下，
+</span></span><span style="display:flex;"><span>应该 stop、left、right、write、merge、decompose 的概率是多少。
+</span></span></code></pre></div><p>这才是 TreeHeap 的概率学习对象。</p>
+<h2 id="这篇的结论">这篇的结论<a hidden class="anchor" aria-hidden="true" href="#这篇的结论">#</a></h2>
+<p>现在 TreeHeap kernel proof 应该分成两条线。</p>
+<p>第一条：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Algebraic Kernel Proof
+</span></span></code></pre></div><p>证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 操作空间定义正确。
+</span></span></code></pre></div><p>指标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>closure
+</span></span><span style="display:flex;"><span>equivariance
+</span></span><span style="display:flex;"><span>mirror error
+</span></span><span style="display:flex;"><span>compose consistency
+</span></span></code></pre></div><p>第二条：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Probabilistic Kernel Proof
+</span></span></code></pre></div><p>证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型能从数据中学习世界模型的操作概率分布。
+</span></span></code></pre></div><p>指标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>KL divergence
+</span></span><span style="display:flex;"><span>cross entropy
+</span></span><span style="display:flex;"><span>calibration
+</span></span><span style="display:flex;"><span>OOD KL
+</span></span><span style="display:flex;"><span>sample efficiency
+</span></span></code></pre></div><p>最终一句话：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>代数 kernel 定义 TreeHeap 能做什么；
+</span></span><span style="display:flex;"><span>概率 kernel 学习 TreeHeap 什么时候应该做什么。
+</span></span></code></pre></div><p>下一步实验就应该从 KL proof 开始。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, Algebra, Convolution, Topology">
+<meta name="description" content="把矩阵卷积里的局部核匹配，改写成 TreeHeap 的 SubHeap Kernel Search：一种拓扑搜索和局部推理操作。">
+<meta name="author" content="nio (Houming818) &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/012-subheap-kernel-search.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/012-subheap-kernel-search.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/012-subheap-kernel-search.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理">
+  <meta property="og:description" content="把矩阵卷积里的局部核匹配，改写成 TreeHeap 的 SubHeap Kernel Search：一种拓扑搜索和局部推理操作。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-06-18T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-06-18T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理">
+  <meta name="twitter:description" content="把矩阵卷积里的局部核匹配，改写成 TreeHeap 的 SubHeap Kernel Search：一种拓扑搜索和局部推理操作。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理",
+      "item": "https://www.lostmap.cn/spr/012-subheap-kernel-search.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理",
+  "name": "[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理",
+  "description": "把矩阵卷积里的局部核匹配，改写成 TreeHeap 的 SubHeap Kernel Search：一种拓扑搜索和局部推理操作。",
+  "keywords": [
+    "SPR", "TreeHeap", "Algebra", "Convolution", "Topology"
+  ],
+  "articleBody": "子堆核搜索：TreeHeap 里的卷积式推理 上一篇文章讲了 TreeHeap Algebra：\ncompose decompose transpose project unproject energy probability container 但这里还少了一个很重要的操作。\n用户提出了一个矩阵卷积的类比：\n1 0 1 0 1 0 1 0 1 如果我们有这样一个卷积核，就可以在一张矩阵或图像上滑动它。 哪里局部模式相同，哪里就会有高响应。\n这件事表面上是卷积。\n但本质上是：\n用一个局部模式，在大结构里搜索对应部分。 这已经很接近推理。\n因为推理很多时候不是“生成一个 token”，而是：\n在当前结构里找到一个已知模式。 所以这篇文章把这个操作整理成 TreeHeap 的新代数操作：\nSubHeap Kernel Search 中文可以叫：\n子堆核搜索 对应的公开实验仓：\nhttps://github.com/houming818/sametime 其中 ARA 记录入口是：\nara/s2-translation/logic/predicts.md ara/s2-translation/logic/solution/treeheap_algebra.md ara/s2-translation/trace/research_dag.yaml 当前 TreeHeap 没有这个操作 先说清楚：\n当前实现里还没有子堆核搜索。 现在实现更多是：\nL0(token) x path/world -\u003e CMul -\u003e t_merge 这是点级变换。\n也就是说，它主要回答：\n这个 token 进入某个背景以后，向量怎么变？ 但子堆核搜索要回答的是：\n整个 TreeHeap 里，哪里出现了某个局部结构模式？ 这不是同一类问题。\nCMul 像是把一个点放进背景场。\nSubHeap Kernel Search 像是在一整个结构里找模式。\n图像卷积在做什么 先用图像理解。\n假设有一个 kernel：\n1 0 1 0 1 0 1 0 1 它在图像上滑动。\n每到一个位置，就问：\n这里的局部形状像不像这个 kernel？ 像，就高响应。\n不像，就低响应。\n这就是：\nlocal pattern matching 中文可以说：\n局部模式匹配 线性秩序和取模周期 这里还有一个更底层的理解。\n矩阵卷积不一定要先被看成神秘的二维图像操作。\n它也可以被看成：\n线性秩序 + 局部窗口 + 取模位移 + 同一个 kernel 的重复作用 例如一个一维序列：\nx[0], x[1], x[2], ..., x[n-1] 如果使用周期边界，那么位置可以这样移动：\ni + 1 mod n i - 1 mod n 这就形成了一个循环结构。\n二维矩阵也可以被展平成一维地址：\nindex = row * width + col 然后用固定偏移找邻居：\nleft = index - 1 right = index + 1 up = index - width down = index + width 如果加上边界取模：\nrow = row mod height col = col mod width 就得到一个周期性空间。\n所以卷积的核心可以说是：\n在一个有秩序的地址空间里， 用固定偏移定义邻域， 再用同一个 kernel 反复测试局部模式。 这对 TreeHeap 很重要。\n因为它提醒我们：\nTreeHeap kernel 不是一上来就必须是复杂语法树。 它可以先从更基础的东西开始：\nTreeHeap traversal order + heap address + parent/child offset + sibling offset + modular or cyclic neighborhood 也就是说，TreeHeap 需要先定义自己的“地址代数”。\n矩阵里有：\n(row, col) 序列里有：\ni mod n TreeHeap 里可能需要：\npath parent(path) left(path) right(path) sibling(path) next_dfs(path) mod N next_bfs(path) mod N 这样 kernel 才知道自己在什么空间里移动。\n换句话说：\n卷积核不是单独成立的。 它依赖一个可移动、可取邻域、可重复作用的地址空间。 这也把 SubHeap Kernel Search 拆成两个问题：\n1. TreeHeap 地址空间怎么定义？ 2. kernel 如何在这个地址空间里做局部匹配？ 这个拆分很有价值。\n因为如果地址空间都没定义好，直接谈复杂的子树匹配，就容易跳太快。\nTreeHeap 里没有规则网格 TreeHeap 不是二维矩阵。\n它更像：\n树 堆 图 槽位结构 概率容器 所以 kernel 不能像 3x3 那样滑动。\nTreeHeap 的 kernel 应该长这样：\nK = event { center: action-like slot_1: agent-like slot_2: object-like slot_3: location-like } 它不是像素模板。\n它是一个局部结构模板。\n例如：\neat_event { agent = ? object = ? } 或者：\nmove_event { mover = ? source = ? target = ? } 这就是 SubHeap Kernel。\n子堆核搜索怎么定义 可以定义一个操作：\nmatch_subheap(H, K) -\u003e ProbabilityContainer[SubHeap] 其中：\nH = 整个 TreeHeap K = 一个局部子堆核 输出不是一个硬位置。\n输出应该是概率容器：\n{ subheap_12: 0.71 subheap_4: 0.18 subheap_29: 0.07 } 这表示：\nK 最可能匹配 subheap_12， 但 subheap_4 和 subheap_29 也有可能。 这和 TreeHeap 的概率容器思想一致：\n信息不足时，不要过早 argmax。 为什么这是推理搜索 考虑三句话：\ncat eats fish fish is eaten by the cat the cat quickly eats fish 表面顺序不同。\n但它们共享一个事件结构：\neat_event { agent = cat object = fish } 如果我们有一个 kernel：\nK = action(agent, object) 那么它应该在三句话里都找到这个事件。\n这就是推理。\n因为系统没有只看：\ncat 是否在 eats 左边 而是在看：\n谁在 action 的 agent 槽位？ 谁在 object 槽位？ 这个局部结构是否等价？ 这就是拓扑搜索。\n和普通 attention 有什么不同 Transformer attention 可以让 token 互相看。\n但 attention 本身不一定显式告诉你：\n这里有一个 action(agent, object) kernel 匹配成功。 SubHeap Kernel Search 更像显式结构操作：\n给定一个 kernel， 在 TreeHeap 里找对应的子堆。 所以它更接近：\n结构检索 图模式匹配 局部推理模板匹配 它不是替代 attention。\n它是给 TreeHeap 代数增加一种可解释操作。\n这个操作需要处理什么困难 普通卷积很简单，因为图像是规则网格。\nTreeHeap 更麻烦。\n它至少要处理：\n1. 树/图不是规则网格。 2. child 顺序有时重要，有时不重要。 3. slot 顺序可能重要。 4. 有些 child 可以缺省。 5. 主动/被动会改变方向。 6. 中文和英文的表达顺序不同。 7. 匹配应该允许近似，而不是严格相等。 所以它更像：\ntree kernel graph kernel slot kernel subgraph matching message passing 但我们不要一上来做复杂。\n先做最小实验。\n新 predict：P-ALG02 可以写下：\nP-ALG02: 如果 TreeHeap 支持拓扑级推理， 那么同一个 SubHeap Kernel 应该能在不同表面顺序中， 找到等价的局部结构。 换句话说：\n同一个推理核， 应该能匹配不同说法里的同一个结构。 例如：\ncat eats fish fish is eaten by the cat the cat quickly eats fish 都应该激活：\neat_event(agent=cat, object=fish) E-ALG05: kernel invariance 第一个实验叫：\nE-ALG05 kernel invariance 测试：\n同一个 kernel， 不同表面顺序， 是否找到同一个子堆。 例子：\ncat eats fish fish is eaten by the cat the cat quickly eats fish 成功标准：\nactive/passive/paraphrase variants rank the same event subheap in top-k 失败标准：\n只对 token 顺序敏感。 只匹配表面邻近。 主动变被动就失败。 E-ALG06: kernel selectivity 第二个实验叫：\nE-ALG06 kernel selectivity 测试：\n同样的词，角色换了以后，分数应该下降。 例如：\ncat eats fish fish eats cat 它们词一样，但结构不一样。\n我们希望：\nscore(agent=cat, object=fish) \u003e score(agent=fish, object=cat) 如果两个分数差不多，说明 kernel 只是看到了词，没有看懂角色。\nE-ALG07: cross-lingual kernel transfer 第三个实验叫：\nE-ALG07 cross-lingual kernel transfer 测试：\n中文里的事件 kernel， 能不能对应到英文里的等价事件子堆。 例如：\n猫吃鱼 the cat eats fish 或者更复杂：\n鱼被猫吃了 the fish was eaten by the cat 如果 TreeHeap 真的要服务 WMT/S2，这个实验很关键。\n因为翻译本质不是词对词。\n翻译是：\n源语言局部拓扑 映射到 目标语言局部拓扑 SubHeap Kernel Search 正好可以测这件事。\n和前面代数操作的关系 SubHeap Kernel Search 不是孤立的。\n它会用到前面几种操作：\nproject: 把子堆放到某个参考系里解释。 transpose: 处理主动/被动、parent/child 方向变化。 energy: 给候选匹配排序。 probability container: 保留多个可能匹配。 decompose: 从 parent 里找可能 children。 所以它可以看作 TreeHeap Algebra 的第一个“推理搜索操作”。\n工程上怎么先做 最小实现不用大模型。\n可以先做 controlled toy set：\ncat eats fish fish is eaten by cat dog chases cat cat is chased by dog 用 spaCy 或手写 proxy 结构先构造小 TreeHeap。\n然后定义 kernel：\nK_action_object K_agent_action_object K_action_location 再比较：\ngold subheap score shuffled-role score surface-nearest score random subheap score 如果连这个都跑不出来，就不应该直接上 WMT。\n这对项目推进有什么意义 之前我们一直在问：\nTreeHeap 是否学出了世界模型？ 这个问题太大。\n现在可以拆小：\nTreeHeap 能不能定义一个局部结构核？ 这个核能不能在大堆里找等价子堆？ 这个匹配能不能跨主动/被动？ 这个匹配能不能跨语言？ 这比直接问“能不能翻译”更可测。\n如果 P-ALG02 成立，下一步 S2 会更清楚：\nsource sentence -\u003e SubHeap kernels find source reasoning structure -\u003e project/transpose to target frame -\u003e target SubHeap kernels recover target structure -\u003e decoder realizes surface text 如果 P-ALG02 失败，那也很清楚：\nTreeHeap 还没有 topology search 能力。 不要急着把它接到 WMT decoder。 当前状态 新增 predict：\nP-ALG02: SubHeap kernel search 新增实验计划：\nE-ALG05 kernel invariance E-ALG06 kernel selectivity E-ALG07 cross-lingual kernel transfer 计划实现：\nara/s2-translation/src/subheap_kernel_probe.py ara/s2-translation/evidence/subheap_kernel_probe/ 状态：\nDesign phase. 还没有 claim。\n最后一句话 CMul 是点进入背景。\nTreeHeap Algebra 是对象之间的数学操作。\nSubHeap Kernel Search 则是：\n在高维堆里寻找局部推理模式。 这可能是 TreeHeap 从“保存信息”走向“结构推理”的关键一步。\nLicense: GPLv3\n",
+  "wordCount" : "776",
+  "inLanguage": "en",
+  "datePublished": "2026-06-18T00:00:00Z",
+  "dateModified": "2026-06-18T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/012-subheap-kernel-search.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item active">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理
+    </h1>
+    <div class="post-description">
+      把矩阵卷积里的局部核匹配，改写成 TreeHeap 的 SubHeap Kernel Search：一种拓扑搜索和局部推理操作。
+    </div>
+    <div class="post-meta"><span title='2026-06-18 00:00:00 +0000 UTC'>June 18, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="子堆核搜索treeheap-里的卷积式推理">子堆核搜索：TreeHeap 里的卷积式推理<a hidden class="anchor" aria-hidden="true" href="#子堆核搜索treeheap-里的卷积式推理">#</a></h1>
+<p>上一篇文章讲了 TreeHeap Algebra：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>compose
+</span></span><span style="display:flex;"><span>decompose
+</span></span><span style="display:flex;"><span>transpose
+</span></span><span style="display:flex;"><span>project
+</span></span><span style="display:flex;"><span>unproject
+</span></span><span style="display:flex;"><span>energy
+</span></span><span style="display:flex;"><span>probability container
+</span></span></code></pre></div><p>但这里还少了一个很重要的操作。</p>
+<p>用户提出了一个矩阵卷积的类比：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1 0 1
+</span></span><span style="display:flex;"><span>0 1 0
+</span></span><span style="display:flex;"><span>1 0 1
+</span></span></code></pre></div><p>如果我们有这样一个卷积核，就可以在一张矩阵或图像上滑动它。
+哪里局部模式相同，哪里就会有高响应。</p>
+<p>这件事表面上是卷积。</p>
+<p>但本质上是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>用一个局部模式，在大结构里搜索对应部分。
+</span></span></code></pre></div><p>这已经很接近推理。</p>
+<p>因为推理很多时候不是“生成一个 token”，而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在当前结构里找到一个已知模式。
+</span></span></code></pre></div><p>所以这篇文章把这个操作整理成 TreeHeap 的新代数操作：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>SubHeap Kernel Search
+</span></span></code></pre></div><p>中文可以叫：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>子堆核搜索
+</span></span></code></pre></div><p>对应的公开实验仓：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>https://github.com/houming818/sametime
+</span></span></code></pre></div><p>其中 ARA 记录入口是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s2-translation/logic/predicts.md
+</span></span><span style="display:flex;"><span>ara/s2-translation/logic/solution/treeheap_algebra.md
+</span></span><span style="display:flex;"><span>ara/s2-translation/trace/research_dag.yaml
+</span></span></code></pre></div><h2 id="当前-treeheap-没有这个操作">当前 TreeHeap 没有这个操作<a hidden class="anchor" aria-hidden="true" href="#当前-treeheap-没有这个操作">#</a></h2>
+<p>先说清楚：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>当前实现里还没有子堆核搜索。
+</span></span></code></pre></div><p>现在实现更多是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>L0(token)
+</span></span><span style="display:flex;"><span>  x path/world
+</span></span><span style="display:flex;"><span>  -&gt; CMul
+</span></span><span style="display:flex;"><span>  -&gt; t_merge
+</span></span></code></pre></div><p>这是点级变换。</p>
+<p>也就是说，它主要回答：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这个 token 进入某个背景以后，向量怎么变？
+</span></span></code></pre></div><p>但子堆核搜索要回答的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>整个 TreeHeap 里，哪里出现了某个局部结构模式？
+</span></span></code></pre></div><p>这不是同一类问题。</p>
+<p>CMul 像是把一个点放进背景场。</p>
+<p>SubHeap Kernel Search 像是在一整个结构里找模式。</p>
+<h2 id="图像卷积在做什么">图像卷积在做什么<a hidden class="anchor" aria-hidden="true" href="#图像卷积在做什么">#</a></h2>
+<p>先用图像理解。</p>
+<p>假设有一个 kernel：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1 0 1
+</span></span><span style="display:flex;"><span>0 1 0
+</span></span><span style="display:flex;"><span>1 0 1
+</span></span></code></pre></div><p>它在图像上滑动。</p>
+<p>每到一个位置，就问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这里的局部形状像不像这个 kernel？
+</span></span></code></pre></div><p>像，就高响应。</p>
+<p>不像，就低响应。</p>
+<p>这就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>local pattern matching
+</span></span></code></pre></div><p>中文可以说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>局部模式匹配
+</span></span></code></pre></div><h2 id="线性秩序和取模周期">线性秩序和取模周期<a hidden class="anchor" aria-hidden="true" href="#线性秩序和取模周期">#</a></h2>
+<p>这里还有一个更底层的理解。</p>
+<p>矩阵卷积不一定要先被看成神秘的二维图像操作。</p>
+<p>它也可以被看成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>线性秩序
+</span></span><span style="display:flex;"><span>+ 局部窗口
+</span></span><span style="display:flex;"><span>+ 取模位移
+</span></span><span style="display:flex;"><span>+ 同一个 kernel 的重复作用
+</span></span></code></pre></div><p>例如一个一维序列：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x[0], x[1], x[2], ..., x[n-1]
+</span></span></code></pre></div><p>如果使用周期边界，那么位置可以这样移动：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>i + 1 mod n
+</span></span><span style="display:flex;"><span>i - 1 mod n
+</span></span></code></pre></div><p>这就形成了一个循环结构。</p>
+<p>二维矩阵也可以被展平成一维地址：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>index = row * width + col
+</span></span></code></pre></div><p>然后用固定偏移找邻居：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>left  = index - 1
+</span></span><span style="display:flex;"><span>right = index + 1
+</span></span><span style="display:flex;"><span>up    = index - width
+</span></span><span style="display:flex;"><span>down  = index + width
+</span></span></code></pre></div><p>如果加上边界取模：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>row = row mod height
+</span></span><span style="display:flex;"><span>col = col mod width
+</span></span></code></pre></div><p>就得到一个周期性空间。</p>
+<p>所以卷积的核心可以说是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在一个有秩序的地址空间里，
+</span></span><span style="display:flex;"><span>用固定偏移定义邻域，
+</span></span><span style="display:flex;"><span>再用同一个 kernel 反复测试局部模式。
+</span></span></code></pre></div><p>这对 TreeHeap 很重要。</p>
+<p>因为它提醒我们：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap kernel 不是一上来就必须是复杂语法树。
+</span></span></code></pre></div><p>它可以先从更基础的东西开始：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap traversal order
+</span></span><span style="display:flex;"><span>+ heap address
+</span></span><span style="display:flex;"><span>+ parent/child offset
+</span></span><span style="display:flex;"><span>+ sibling offset
+</span></span><span style="display:flex;"><span>+ modular or cyclic neighborhood
+</span></span></code></pre></div><p>也就是说，TreeHeap 需要先定义自己的“地址代数”。</p>
+<p>矩阵里有：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>(row, col)
+</span></span></code></pre></div><p>序列里有：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>i mod n
+</span></span></code></pre></div><p>TreeHeap 里可能需要：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>path
+</span></span><span style="display:flex;"><span>parent(path)
+</span></span><span style="display:flex;"><span>left(path)
+</span></span><span style="display:flex;"><span>right(path)
+</span></span><span style="display:flex;"><span>sibling(path)
+</span></span><span style="display:flex;"><span>next_dfs(path) mod N
+</span></span><span style="display:flex;"><span>next_bfs(path) mod N
+</span></span></code></pre></div><p>这样 kernel 才知道自己在什么空间里移动。</p>
+<p>换句话说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>卷积核不是单独成立的。
+</span></span><span style="display:flex;"><span>它依赖一个可移动、可取邻域、可重复作用的地址空间。
+</span></span></code></pre></div><p>这也把 SubHeap Kernel Search 拆成两个问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1. TreeHeap 地址空间怎么定义？
+</span></span><span style="display:flex;"><span>2. kernel 如何在这个地址空间里做局部匹配？
+</span></span></code></pre></div><p>这个拆分很有价值。</p>
+<p>因为如果地址空间都没定义好，直接谈复杂的子树匹配，就容易跳太快。</p>
+<h2 id="treeheap-里没有规则网格">TreeHeap 里没有规则网格<a hidden class="anchor" aria-hidden="true" href="#treeheap-里没有规则网格">#</a></h2>
+<p>TreeHeap 不是二维矩阵。</p>
+<p>它更像：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>树
+</span></span><span style="display:flex;"><span>堆
+</span></span><span style="display:flex;"><span>图
+</span></span><span style="display:flex;"><span>槽位结构
+</span></span><span style="display:flex;"><span>概率容器
+</span></span></code></pre></div><p>所以 kernel 不能像 3x3 那样滑动。</p>
+<p>TreeHeap 的 kernel 应该长这样：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>K = event {
+</span></span><span style="display:flex;"><span>  center: action-like
+</span></span><span style="display:flex;"><span>  slot_1: agent-like
+</span></span><span style="display:flex;"><span>  slot_2: object-like
+</span></span><span style="display:flex;"><span>  slot_3: location-like
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>它不是像素模板。</p>
+<p>它是一个局部结构模板。</p>
+<p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>eat_event {
+</span></span><span style="display:flex;"><span>  agent = ?
+</span></span><span style="display:flex;"><span>  object = ?
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>或者：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>move_event {
+</span></span><span style="display:flex;"><span>  mover = ?
+</span></span><span style="display:flex;"><span>  source = ?
+</span></span><span style="display:flex;"><span>  target = ?
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>这就是 SubHeap Kernel。</p>
+<h2 id="子堆核搜索怎么定义">子堆核搜索怎么定义<a hidden class="anchor" aria-hidden="true" href="#子堆核搜索怎么定义">#</a></h2>
+<p>可以定义一个操作：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>match_subheap(H, K) -&gt; ProbabilityContainer[SubHeap]
+</span></span></code></pre></div><p>其中：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H = 整个 TreeHeap
+</span></span><span style="display:flex;"><span>K = 一个局部子堆核
+</span></span></code></pre></div><p>输出不是一个硬位置。</p>
+<p>输出应该是概率容器：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  subheap_12: 0.71
+</span></span><span style="display:flex;"><span>  subheap_4:  0.18
+</span></span><span style="display:flex;"><span>  subheap_29: 0.07
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>这表示：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>K 最可能匹配 subheap_12，
+</span></span><span style="display:flex;"><span>但 subheap_4 和 subheap_29 也有可能。
+</span></span></code></pre></div><p>这和 TreeHeap 的概率容器思想一致：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>信息不足时，不要过早 argmax。
+</span></span></code></pre></div><h2 id="为什么这是推理搜索">为什么这是推理搜索<a hidden class="anchor" aria-hidden="true" href="#为什么这是推理搜索">#</a></h2>
+<p>考虑三句话：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cat eats fish
+</span></span><span style="display:flex;"><span>fish is eaten by the cat
+</span></span><span style="display:flex;"><span>the cat quickly eats fish
+</span></span></code></pre></div><p>表面顺序不同。</p>
+<p>但它们共享一个事件结构：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>eat_event {
+</span></span><span style="display:flex;"><span>  agent = cat
+</span></span><span style="display:flex;"><span>  object = fish
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>如果我们有一个 kernel：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>K = action(agent, object)
+</span></span></code></pre></div><p>那么它应该在三句话里都找到这个事件。</p>
+<p>这就是推理。</p>
+<p>因为系统没有只看：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cat 是否在 eats 左边
+</span></span></code></pre></div><p>而是在看：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>谁在 action 的 agent 槽位？
+</span></span><span style="display:flex;"><span>谁在 object 槽位？
+</span></span><span style="display:flex;"><span>这个局部结构是否等价？
+</span></span></code></pre></div><p>这就是拓扑搜索。</p>
+<h2 id="和普通-attention-有什么不同">和普通 attention 有什么不同<a hidden class="anchor" aria-hidden="true" href="#和普通-attention-有什么不同">#</a></h2>
+<p>Transformer attention 可以让 token 互相看。</p>
+<p>但 attention 本身不一定显式告诉你：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这里有一个 action(agent, object) kernel 匹配成功。
+</span></span></code></pre></div><p>SubHeap Kernel Search 更像显式结构操作：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>给定一个 kernel，
+</span></span><span style="display:flex;"><span>在 TreeHeap 里找对应的子堆。
+</span></span></code></pre></div><p>所以它更接近：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>结构检索
+</span></span><span style="display:flex;"><span>图模式匹配
+</span></span><span style="display:flex;"><span>局部推理模板匹配
+</span></span></code></pre></div><p>它不是替代 attention。</p>
+<p>它是给 TreeHeap 代数增加一种可解释操作。</p>
+<h2 id="这个操作需要处理什么困难">这个操作需要处理什么困难<a hidden class="anchor" aria-hidden="true" href="#这个操作需要处理什么困难">#</a></h2>
+<p>普通卷积很简单，因为图像是规则网格。</p>
+<p>TreeHeap 更麻烦。</p>
+<p>它至少要处理：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1. 树/图不是规则网格。
+</span></span><span style="display:flex;"><span>2. child 顺序有时重要，有时不重要。
+</span></span><span style="display:flex;"><span>3. slot 顺序可能重要。
+</span></span><span style="display:flex;"><span>4. 有些 child 可以缺省。
+</span></span><span style="display:flex;"><span>5. 主动/被动会改变方向。
+</span></span><span style="display:flex;"><span>6. 中文和英文的表达顺序不同。
+</span></span><span style="display:flex;"><span>7. 匹配应该允许近似，而不是严格相等。
+</span></span></code></pre></div><p>所以它更像：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>tree kernel
+</span></span><span style="display:flex;"><span>graph kernel
+</span></span><span style="display:flex;"><span>slot kernel
+</span></span><span style="display:flex;"><span>subgraph matching
+</span></span><span style="display:flex;"><span>message passing
+</span></span></code></pre></div><p>但我们不要一上来做复杂。</p>
+<p>先做最小实验。</p>
+<h2 id="新-predictp-alg02">新 predict：P-ALG02<a hidden class="anchor" aria-hidden="true" href="#新-predictp-alg02">#</a></h2>
+<p>可以写下：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P-ALG02:
+</span></span><span style="display:flex;"><span>如果 TreeHeap 支持拓扑级推理，
+</span></span><span style="display:flex;"><span>那么同一个 SubHeap Kernel 应该能在不同表面顺序中，
+</span></span><span style="display:flex;"><span>找到等价的局部结构。
+</span></span></code></pre></div><p>换句话说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>同一个推理核，
+</span></span><span style="display:flex;"><span>应该能匹配不同说法里的同一个结构。
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cat eats fish
+</span></span><span style="display:flex;"><span>fish is eaten by the cat
+</span></span><span style="display:flex;"><span>the cat quickly eats fish
+</span></span></code></pre></div><p>都应该激活：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>eat_event(agent=cat, object=fish)
+</span></span></code></pre></div><h2 id="e-alg05-kernel-invariance">E-ALG05: kernel invariance<a hidden class="anchor" aria-hidden="true" href="#e-alg05-kernel-invariance">#</a></h2>
+<p>第一个实验叫：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>E-ALG05 kernel invariance
+</span></span></code></pre></div><p>测试：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>同一个 kernel，
+</span></span><span style="display:flex;"><span>不同表面顺序，
+</span></span><span style="display:flex;"><span>是否找到同一个子堆。
+</span></span></code></pre></div><p>例子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cat eats fish
+</span></span><span style="display:flex;"><span>fish is eaten by the cat
+</span></span><span style="display:flex;"><span>the cat quickly eats fish
+</span></span></code></pre></div><p>成功标准：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>active/passive/paraphrase variants
+</span></span><span style="display:flex;"><span>rank the same event subheap in top-k
+</span></span></code></pre></div><p>失败标准：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>只对 token 顺序敏感。
+</span></span><span style="display:flex;"><span>只匹配表面邻近。
+</span></span><span style="display:flex;"><span>主动变被动就失败。
+</span></span></code></pre></div><h2 id="e-alg06-kernel-selectivity">E-ALG06: kernel selectivity<a hidden class="anchor" aria-hidden="true" href="#e-alg06-kernel-selectivity">#</a></h2>
+<p>第二个实验叫：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>E-ALG06 kernel selectivity
+</span></span></code></pre></div><p>测试：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>同样的词，角色换了以后，分数应该下降。
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cat eats fish
+</span></span><span style="display:flex;"><span>fish eats cat
+</span></span></code></pre></div><p>它们词一样，但结构不一样。</p>
+<p>我们希望：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>score(agent=cat, object=fish)
+</span></span><span style="display:flex;"><span>&gt;
+</span></span><span style="display:flex;"><span>score(agent=fish, object=cat)
+</span></span></code></pre></div><p>如果两个分数差不多，说明 kernel 只是看到了词，没有看懂角色。</p>
+<h2 id="e-alg07-cross-lingual-kernel-transfer">E-ALG07: cross-lingual kernel transfer<a hidden class="anchor" aria-hidden="true" href="#e-alg07-cross-lingual-kernel-transfer">#</a></h2>
+<p>第三个实验叫：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>E-ALG07 cross-lingual kernel transfer
+</span></span></code></pre></div><p>测试：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>中文里的事件 kernel，
+</span></span><span style="display:flex;"><span>能不能对应到英文里的等价事件子堆。
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>猫吃鱼
+</span></span><span style="display:flex;"><span>the cat eats fish
+</span></span></code></pre></div><p>或者更复杂：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>鱼被猫吃了
+</span></span><span style="display:flex;"><span>the fish was eaten by the cat
+</span></span></code></pre></div><p>如果 TreeHeap 真的要服务 WMT/S2，这个实验很关键。</p>
+<p>因为翻译本质不是词对词。</p>
+<p>翻译是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>源语言局部拓扑
+</span></span><span style="display:flex;"><span>映射到
+</span></span><span style="display:flex;"><span>目标语言局部拓扑
+</span></span></code></pre></div><p>SubHeap Kernel Search 正好可以测这件事。</p>
+<h2 id="和前面代数操作的关系">和前面代数操作的关系<a hidden class="anchor" aria-hidden="true" href="#和前面代数操作的关系">#</a></h2>
+<p>SubHeap Kernel Search 不是孤立的。</p>
+<p>它会用到前面几种操作：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>project:
+</span></span><span style="display:flex;"><span>  把子堆放到某个参考系里解释。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>transpose:
+</span></span><span style="display:flex;"><span>  处理主动/被动、parent/child 方向变化。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>energy:
+</span></span><span style="display:flex;"><span>  给候选匹配排序。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>probability container:
+</span></span><span style="display:flex;"><span>  保留多个可能匹配。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>decompose:
+</span></span><span style="display:flex;"><span>  从 parent 里找可能 children。
+</span></span></code></pre></div><p>所以它可以看作 TreeHeap Algebra 的第一个“推理搜索操作”。</p>
+<h2 id="工程上怎么先做">工程上怎么先做<a hidden class="anchor" aria-hidden="true" href="#工程上怎么先做">#</a></h2>
+<p>最小实现不用大模型。</p>
+<p>可以先做 controlled toy set：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>cat eats fish
+</span></span><span style="display:flex;"><span>fish is eaten by cat
+</span></span><span style="display:flex;"><span>dog chases cat
+</span></span><span style="display:flex;"><span>cat is chased by dog
+</span></span></code></pre></div><p>用 spaCy 或手写 proxy 结构先构造小 TreeHeap。</p>
+<p>然后定义 kernel：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>K_action_object
+</span></span><span style="display:flex;"><span>K_agent_action_object
+</span></span><span style="display:flex;"><span>K_action_location
+</span></span></code></pre></div><p>再比较：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>gold subheap score
+</span></span><span style="display:flex;"><span>shuffled-role score
+</span></span><span style="display:flex;"><span>surface-nearest score
+</span></span><span style="display:flex;"><span>random subheap score
+</span></span></code></pre></div><p>如果连这个都跑不出来，就不应该直接上 WMT。</p>
+<h2 id="这对项目推进有什么意义">这对项目推进有什么意义<a hidden class="anchor" aria-hidden="true" href="#这对项目推进有什么意义">#</a></h2>
+<p>之前我们一直在问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 是否学出了世界模型？
+</span></span></code></pre></div><p>这个问题太大。</p>
+<p>现在可以拆小：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 能不能定义一个局部结构核？
+</span></span><span style="display:flex;"><span>这个核能不能在大堆里找等价子堆？
+</span></span><span style="display:flex;"><span>这个匹配能不能跨主动/被动？
+</span></span><span style="display:flex;"><span>这个匹配能不能跨语言？
+</span></span></code></pre></div><p>这比直接问“能不能翻译”更可测。</p>
+<p>如果 P-ALG02 成立，下一步 S2 会更清楚：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>source sentence
+</span></span><span style="display:flex;"><span>-&gt; SubHeap kernels find source reasoning structure
+</span></span><span style="display:flex;"><span>-&gt; project/transpose to target frame
+</span></span><span style="display:flex;"><span>-&gt; target SubHeap kernels recover target structure
+</span></span><span style="display:flex;"><span>-&gt; decoder realizes surface text
+</span></span></code></pre></div><p>如果 P-ALG02 失败，那也很清楚：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 还没有 topology search 能力。
+</span></span><span style="display:flex;"><span>不要急着把它接到 WMT decoder。
+</span></span></code></pre></div><h2 id="当前状态">当前状态<a hidden class="anchor" aria-hidden="true" href="#当前状态">#</a></h2>
+<p>新增 predict：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>P-ALG02: SubHeap kernel search
+</span></span></code></pre></div><p>新增实验计划：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>E-ALG05 kernel invariance
+</span></span><span style="display:flex;"><span>E-ALG06 kernel selectivity
+</span></span><span style="display:flex;"><span>E-ALG07 cross-lingual kernel transfer
+</span></span></code></pre></div><p>计划实现：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s2-translation/src/subheap_kernel_probe.py
+</span></span><span style="display:flex;"><span>ara/s2-translation/evidence/subheap_kernel_probe/
+</span></span></code></pre></div><p>状态：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Design phase.
+</span></span></code></pre></div><p>还没有 claim。</p>
+<h2 id="最后一句话">最后一句话<a hidden class="anchor" aria-hidden="true" href="#最后一句话">#</a></h2>
+<p>CMul 是点进入背景。</p>
+<p>TreeHeap Algebra 是对象之间的数学操作。</p>
+<p>SubHeap Kernel Search 则是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在高维堆里寻找局部推理模式。
+</span></span></code></pre></div><p>这可能是 TreeHeap 从“保存信息”走向“结构推理”的关键一步。</p>
+<blockquote>
+<p><strong>License: GPLv3</strong></p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

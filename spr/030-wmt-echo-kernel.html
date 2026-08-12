@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, S1, WMT, Kernel, Echo">
+<meta name="description" content="这次不直接做翻译，而是用 WMT 真语料做短序列 echo，验证 TreeHeap kernel 是否能把真实 SentencePiece token 写入树堆地址，再稳定读出。">
+<meta name="author" content="nio (Houming818) &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/030-wmt-echo-kernel.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/030-wmt-echo-kernel.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/030-wmt-echo-kernel.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列">
+  <meta property="og:description" content="这次不直接做翻译，而是用 WMT 真语料做短序列 echo，验证 TreeHeap kernel 是否能把真实 SentencePiece token 写入树堆地址，再稳定读出。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-06-25T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-06-25T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列">
+  <meta name="twitter:description" content="这次不直接做翻译，而是用 WMT 真语料做短序列 echo，验证 TreeHeap kernel 是否能把真实 SentencePiece token 写入树堆地址，再稳定读出。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列",
+      "item": "https://www.lostmap.cn/spr/030-wmt-echo-kernel.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列",
+  "name": "[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列",
+  "description": "这次不直接做翻译，而是用 WMT 真语料做短序列 echo，验证 TreeHeap kernel 是否能把真实 SentencePiece token 写入树堆地址，再稳定读出。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "S1", "WMT", "Kernel", "Echo"
+  ],
+  "articleBody": "用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列 这次我们回到 Houming818 一直强调的问题：\nTreeHeap 怎么把真实数据写进自己的高维结构？ 如果连真实语料的 token 序列都不能稳定写入、读出，那么后面谈翻译、世界模型、概率坍缩都太早。\n所以 SPR-030 不直接做 WMT 翻译。 它先做一个更低一级、但更必要的实验：\nWMT 真语料 -\u003e SentencePiece BPE token -\u003e TreeHeap kernel 写入 -\u003e TreeHeap kernel 读出 -\u003e 和原 token 序列比较 这叫 echo 实验。\n它不是翻译。 它测试的是：\nTreeHeap kernel 是否能处理真实语料的离散 token 序列。 为什么不是马上做翻译？ 翻译任务太复杂。\n一句英文到一句中文，中间至少包含：\n词义 语序 短语结构 跨语言对齐 生成概率 目标语言流畅性 如果直接上 WMT BLEU，结果不好时我们不知道问题在哪里。\n可能是 encoder 不行。 可能是 decoder 不行。 可能是 kernel 不行。 可能是 loss 不行。 也可能只是训练规模太小。\n所以这次先拆开：\n第一步：真实 token 能不能写入 TreeHeap？ 第二步：写入后能不能读出来？ 第三步：结构化 kernel 是否比普通 flat 模型更适合这个问题？ 这就是 S1 echo 的意义。\n数据来自哪里？ 实验使用 io 上的 WMT17 数据：\nsource file: /mnt/nas/datasets/wmt17/train.zh-en SentencePiece model: /mnt/nas/datasets/wmt17/sp_bpe.model 我们取英文侧文本，然后用 SentencePiece 切成 BPE token。\n实验只取短序列：\ntoken length = 3..8 samples = 3000 train/test/ood = 2400/300/300 vocab limit including PAD = 2048 average non-pad length = 5.9533 为什么先限制长度？\n因为这次不是要证明长文本翻译。 这次要先验证最小写入机制：\n一个真实 BPE 序列，能不能被 TreeHeap 地址结构保存。 Echo 任务具体是什么？ 输入是一段 BPE token：\n[t1, t2, t3, ...] 目标输出还是它自己：\n[t1, t2, t3, ...] 这看起来很简单，但它能测出一个关键点：\n模型是否保存了 token 的位置、顺序、地址。 如果模型只是知道句子里有哪些 token，但不知道顺序，就会失败。\n例如：\n[A, B, C] 和：\n[C, B, A] bag-of-words 看起来差不多，但 echo 必须区分它们。\n所以 echo 不是语义任务，却是结构写入任务。\n三个模型对比 这次比较三个模型。\nModel 含义 bow_linear 只看 token 集合，不看顺序 seq_mlp 把固定位置拼平，交给普通 MLP treeheap_kernel_echo 把 token 写到 TreeHeap 叶子地址，再用共享 kernel 自底向上 compose 1. bow_linear bow_linear 看到的是：\n这个句子里出现过哪些 token 它不知道 token 在第几个位置。\n所以它适合作为反例 baseline：\n如果 BoW 也能做好 echo，那说明任务太简单。 2. seq_mlp seq_mlp 是普通 flat MLP。\n它看到的是固定位置展开后的向量：\nposition 1 token position 2 token position 3 token ... 它有顺序信息。 但它没有显式树地址、子结构、compose kernel。\n可以理解为：\n把序列压平成一张大表，然后学习 input -\u003e output。 3. treeheap_kernel_echo TreeHeap 模型做的是：\ntoken id -\u003e shared token embedding position -\u003e fixed heap leaf address internal nodes -\u003e shared bottom-up compose kernel leaf readout -\u003e shared decoder 换成人话：\n每个 token 先写到树堆的一个叶子地址上。 然后树里的父节点用同一个 compose kernel 汇总左右孩子。 最后从叶子状态读回 token。 关键点是：\n模型必须利用 TreeHeap 的地址结构。 它不是把整个句子拼成一个大向量随便读。 它被迫经过：\n叶子地址 子结构 自底向上 compose 共享 decoder 这就是 kernel 设计的意义。\n实验结果 脚本：\nara/s1-echo/src/s1_wmt_echo_kernel_probe.py 证据：\nara/s1-echo/evidence/s1_wmt_echo_kernel_probe/ 执行主机：\nio.grepcode.cn 结果如下：\nModel Params Test token Test exact OOD token OOD exact bow_linear 33,570,816 0.1679 0.0033 0.1659 0.0033 seq_mlp 16,794,112 0.5801 0.0567 0.5986 0.0533 treeheap_kernel_echo 423,104 0.9818 0.8900 0.9818 0.9000 这里有两个指标：\ntoken accuracy: 每个位置的 token 是否预测正确。 exact: 整个序列是否完全预测正确。 exact 更严格。 只要一个位置错了，整个序列就算错。\n结果说明什么？ 第一，BoW 几乎失败。\nOOD exact = 0.0033 这说明任务不是只靠 token 集合就能完成。 顺序和地址确实重要。\n第二，flat MLP 训练集可以学会，但 OOD 很差。\nseq_mlp OOD exact = 0.0533 它有 16,794,112 个参数，比 TreeHeap 多很多。 但它在新样本上不能稳定复制完整序列。\n第三，TreeHeap kernel 表现明显更好。\ntreeheap_kernel_echo OOD token = 0.9818 treeheap_kernel_echo OOD exact = 0.9000 而且参数更少：\nTreeHeap params = 423,104 seq_mlp params = 16,794,112 大约是：\nTreeHeap 参数量约为 seq_mlp 的 2.5% 这支持一个小 claim：\n在真实 WMT 短 BPE echo 任务上， TreeHeap kernel 可以更有效地利用地址和路径结构。 这和 kernel 设计有什么关系？ 前面我们反复讨论：\nTreeHeap 的核心操作不是普通矩阵拼接， 而是 kernel 在树结构上的卷积。 这次实验里的 kernel 很朴素：\nleaf write kernel: 把 token embedding 写到固定叶子地址。 compose kernel: 对每个内部节点，用同一个函数合并 left/right child。 read kernel: 从叶子状态预测原 token。 它像一维 CNN 里的卷积核，但滑动对象不是平面像素，而是 TreeHeap 子结构。\nCNN 的 3x3 kernel 看局部像素。 TreeHeap kernel 看局部树堆：\nparent ├── left child └── right child 所以它天然带着：\n地址 路径 子结构 组合 分解 这些信息。\n这正是 flat MLP 没有显式拥有的归纳偏置。\n这次 claim 是什么？ ARA 里记录为：\nS1-WMT-ECHO-C01 claim：\nA structured TreeHeap kernel can write and read real WMT SentencePiece short sequences in an echo setting, using tree addresses and shared compose/read kernels rather than only a flat memorization map. 状态：\nsupported pilot 用中文说：\n结构化 TreeHeap kernel 能在真实 WMT 短 BPE 序列上完成写入和读出。 这个结果支持 TreeHeap 的地址/路径结构是有用的。 这没有证明什么？ 边界要说清楚。\n这次没有证明：\nTreeHeap 已经会翻译。 TreeHeap 已经有语义世界模型。 TreeHeap 已经能压缩长文本。 TreeHeap 已经解决长距离句法。 TreeHeap 已经击败 Transformer。 它只证明一件更基础的事：\n真实 WMT token 可以被 TreeHeap kernel 稳定写入和读出。 这对 S1 是有意义的。 但离 S2/S3 还有距离。\n下一步怎么做？ 下一步不是立刻喊胜利。 应该继续加难度。\n1. 更长序列 现在是：\nlength = 3..8 下一步要测：\nlength = 8..16 length = 16..32 如果长度一长就崩，说明 TreeHeap kernel 还只是短序列技巧。\n2. 噪声 echo 普通 echo 是原样复制。\n下一步可以做：\nmask 一个 token，让模型恢复。 drop 一个 token，让模型恢复。 swap 两个 token，让模型判断并修正。 这开始接近推理。\n因为模型不能只照抄，它必须利用上下文。\n3. subheap query 不要总是读整个句子。 可以问：\n读左子树。 读右子树。 读某个短语窗口。 读某条路径下的 token。 这能测试 TreeHeap 的子结构是否真的可查询。\n4. 更公平的 baseline 这次的 seq_mlp 不是最强序列模型。\n下一步要加：\npointer/copy baseline small Transformer tiny RNN/GRU matched parameter sequence model 如果这些模型在相同参数和数据预算下追上 TreeHeap，那么 claim 要收缩。\n总结 SPR-030 的结论是：\n可以用 WMT 真语料做 echo。 TreeHeap kernel 在短 BPE 序列写入/读出上表现很好。 它用更少参数，明显超过 BoW 和 flat seq MLP。 这说明：\nkernel 设计是关键。 TreeHeap 的存在性不能只靠抽象代数。 它必须在具体任务上显示：\n地址有用。 路径有用。 子结构有用。 组合/分解有用。 这次只是第一块真实语料证据。 下一步要从：\n短序列 echo 推进到：\n长序列 echo 噪声恢复 subheap query copy/pointer baseline battle 如果这些也成立，S1 才能更稳地往 S2 翻译折叠推进。\n",
+  "wordCount" : "656",
+  "inLanguage": "en",
+  "datePublished": "2026-06-25T00:00:00Z",
+  "dateModified": "2026-06-25T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/030-wmt-echo-kernel.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item active">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列
+    </h1>
+    <div class="post-description">
+      这次不直接做翻译，而是用 WMT 真语料做短序列 echo，验证 TreeHeap kernel 是否能把真实 SentencePiece token 写入树堆地址，再稳定读出。
+    </div>
+    <div class="post-meta"><span title='2026-06-25 00:00:00 +0000 UTC'>June 25, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="用-wmt-真语料做-echo先证明-treeheap-kernel-能写入真实-bpe-序列">用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列<a hidden class="anchor" aria-hidden="true" href="#用-wmt-真语料做-echo先证明-treeheap-kernel-能写入真实-bpe-序列">#</a></h1>
+<p>这次我们回到 Houming818 一直强调的问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 怎么把真实数据写进自己的高维结构？
+</span></span></code></pre></div><p>如果连真实语料的 token 序列都不能稳定写入、读出，那么后面谈翻译、世界模型、概率坍缩都太早。</p>
+<p>所以 <code>SPR-030</code> 不直接做 WMT 翻译。
+它先做一个更低一级、但更必要的实验：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>WMT 真语料
+</span></span><span style="display:flex;"><span>-&gt; SentencePiece BPE token
+</span></span><span style="display:flex;"><span>-&gt; TreeHeap kernel 写入
+</span></span><span style="display:flex;"><span>-&gt; TreeHeap kernel 读出
+</span></span><span style="display:flex;"><span>-&gt; 和原 token 序列比较
+</span></span></code></pre></div><p>这叫 echo 实验。</p>
+<p>它不是翻译。
+它测试的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap kernel 是否能处理真实语料的离散 token 序列。
+</span></span></code></pre></div><h2 id="为什么不是马上做翻译">为什么不是马上做翻译？<a hidden class="anchor" aria-hidden="true" href="#为什么不是马上做翻译">#</a></h2>
+<p>翻译任务太复杂。</p>
+<p>一句英文到一句中文，中间至少包含：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>词义
+</span></span><span style="display:flex;"><span>语序
+</span></span><span style="display:flex;"><span>短语结构
+</span></span><span style="display:flex;"><span>跨语言对齐
+</span></span><span style="display:flex;"><span>生成概率
+</span></span><span style="display:flex;"><span>目标语言流畅性
+</span></span></code></pre></div><p>如果直接上 WMT BLEU，结果不好时我们不知道问题在哪里。</p>
+<p>可能是 encoder 不行。
+可能是 decoder 不行。
+可能是 kernel 不行。
+可能是 loss 不行。
+也可能只是训练规模太小。</p>
+<p>所以这次先拆开：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>第一步：真实 token 能不能写入 TreeHeap？
+</span></span><span style="display:flex;"><span>第二步：写入后能不能读出来？
+</span></span><span style="display:flex;"><span>第三步：结构化 kernel 是否比普通 flat 模型更适合这个问题？
+</span></span></code></pre></div><p>这就是 S1 echo 的意义。</p>
+<h2 id="数据来自哪里">数据来自哪里？<a hidden class="anchor" aria-hidden="true" href="#数据来自哪里">#</a></h2>
+<p>实验使用 io 上的 WMT17 数据：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>source file:
+</span></span><span style="display:flex;"><span>/mnt/nas/datasets/wmt17/train.zh-en
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>SentencePiece model:
+</span></span><span style="display:flex;"><span>/mnt/nas/datasets/wmt17/sp_bpe.model
+</span></span></code></pre></div><p>我们取英文侧文本，然后用 SentencePiece 切成 BPE token。</p>
+<p>实验只取短序列：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token length = 3..8
+</span></span><span style="display:flex;"><span>samples = 3000
+</span></span><span style="display:flex;"><span>train/test/ood = 2400/300/300
+</span></span><span style="display:flex;"><span>vocab limit including PAD = 2048
+</span></span><span style="display:flex;"><span>average non-pad length = 5.9533
+</span></span></code></pre></div><p>为什么先限制长度？</p>
+<p>因为这次不是要证明长文本翻译。
+这次要先验证最小写入机制：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个真实 BPE 序列，能不能被 TreeHeap 地址结构保存。
+</span></span></code></pre></div><h2 id="echo-任务具体是什么">Echo 任务具体是什么？<a hidden class="anchor" aria-hidden="true" href="#echo-任务具体是什么">#</a></h2>
+<p>输入是一段 BPE token：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[t1, t2, t3, ...]
+</span></span></code></pre></div><p>目标输出还是它自己：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[t1, t2, t3, ...]
+</span></span></code></pre></div><p>这看起来很简单，但它能测出一个关键点：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型是否保存了 token 的位置、顺序、地址。
+</span></span></code></pre></div><p>如果模型只是知道句子里有哪些 token，但不知道顺序，就会失败。</p>
+<p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[A, B, C]
+</span></span></code></pre></div><p>和：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[C, B, A]
+</span></span></code></pre></div><p>bag-of-words 看起来差不多，但 echo 必须区分它们。</p>
+<p>所以 echo 不是语义任务，却是结构写入任务。</p>
+<h2 id="三个模型对比">三个模型对比<a hidden class="anchor" aria-hidden="true" href="#三个模型对比">#</a></h2>
+<p>这次比较三个模型。</p>
+<table>
+  <thead>
+      <tr>
+          <th>Model</th>
+          <th>含义</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>bow_linear</code></td>
+          <td>只看 token 集合，不看顺序</td>
+      </tr>
+      <tr>
+          <td><code>seq_mlp</code></td>
+          <td>把固定位置拼平，交给普通 MLP</td>
+      </tr>
+      <tr>
+          <td><code>treeheap_kernel_echo</code></td>
+          <td>把 token 写到 TreeHeap 叶子地址，再用共享 kernel 自底向上 compose</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="1-bow_linear">1. bow_linear<a hidden class="anchor" aria-hidden="true" href="#1-bow_linear">#</a></h3>
+<p><code>bow_linear</code> 看到的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这个句子里出现过哪些 token
+</span></span></code></pre></div><p>它不知道 token 在第几个位置。</p>
+<p>所以它适合作为反例 baseline：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果 BoW 也能做好 echo，那说明任务太简单。
+</span></span></code></pre></div><h3 id="2-seq_mlp">2. seq_mlp<a hidden class="anchor" aria-hidden="true" href="#2-seq_mlp">#</a></h3>
+<p><code>seq_mlp</code> 是普通 flat MLP。</p>
+<p>它看到的是固定位置展开后的向量：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>position 1 token
+</span></span><span style="display:flex;"><span>position 2 token
+</span></span><span style="display:flex;"><span>position 3 token
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>它有顺序信息。
+但它没有显式树地址、子结构、compose kernel。</p>
+<p>可以理解为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>把序列压平成一张大表，然后学习 input -&gt; output。
+</span></span></code></pre></div><h3 id="3-treeheap_kernel_echo">3. treeheap_kernel_echo<a hidden class="anchor" aria-hidden="true" href="#3-treeheap_kernel_echo">#</a></h3>
+<p>TreeHeap 模型做的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token id -&gt; shared token embedding
+</span></span><span style="display:flex;"><span>position -&gt; fixed heap leaf address
+</span></span><span style="display:flex;"><span>internal nodes -&gt; shared bottom-up compose kernel
+</span></span><span style="display:flex;"><span>leaf readout -&gt; shared decoder
+</span></span></code></pre></div><p>换成人话：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>每个 token 先写到树堆的一个叶子地址上。
+</span></span><span style="display:flex;"><span>然后树里的父节点用同一个 compose kernel 汇总左右孩子。
+</span></span><span style="display:flex;"><span>最后从叶子状态读回 token。
+</span></span></code></pre></div><p>关键点是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型必须利用 TreeHeap 的地址结构。
+</span></span></code></pre></div><p>它不是把整个句子拼成一个大向量随便读。
+它被迫经过：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>叶子地址
+</span></span><span style="display:flex;"><span>子结构
+</span></span><span style="display:flex;"><span>自底向上 compose
+</span></span><span style="display:flex;"><span>共享 decoder
+</span></span></code></pre></div><p>这就是 kernel 设计的意义。</p>
+<h2 id="实验结果">实验结果<a hidden class="anchor" aria-hidden="true" href="#实验结果">#</a></h2>
+<p>脚本：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s1-echo/src/s1_wmt_echo_kernel_probe.py
+</span></span></code></pre></div><p>证据：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s1-echo/evidence/s1_wmt_echo_kernel_probe/
+</span></span></code></pre></div><p>执行主机：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>io.grepcode.cn
+</span></span></code></pre></div><p>结果如下：</p>
+<table>
+  <thead>
+      <tr>
+          <th>Model</th>
+          <th style="text-align: right">Params</th>
+          <th style="text-align: right">Test token</th>
+          <th style="text-align: right">Test exact</th>
+          <th style="text-align: right">OOD token</th>
+          <th style="text-align: right">OOD exact</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>bow_linear</code></td>
+          <td style="text-align: right">33,570,816</td>
+          <td style="text-align: right">0.1679</td>
+          <td style="text-align: right">0.0033</td>
+          <td style="text-align: right">0.1659</td>
+          <td style="text-align: right">0.0033</td>
+      </tr>
+      <tr>
+          <td><code>seq_mlp</code></td>
+          <td style="text-align: right">16,794,112</td>
+          <td style="text-align: right">0.5801</td>
+          <td style="text-align: right">0.0567</td>
+          <td style="text-align: right">0.5986</td>
+          <td style="text-align: right">0.0533</td>
+      </tr>
+      <tr>
+          <td><code>treeheap_kernel_echo</code></td>
+          <td style="text-align: right">423,104</td>
+          <td style="text-align: right">0.9818</td>
+          <td style="text-align: right">0.8900</td>
+          <td style="text-align: right">0.9818</td>
+          <td style="text-align: right">0.9000</td>
+      </tr>
+  </tbody>
+</table>
+<p>这里有两个指标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token accuracy:
+</span></span><span style="display:flex;"><span>  每个位置的 token 是否预测正确。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>exact:
+</span></span><span style="display:flex;"><span>  整个序列是否完全预测正确。
+</span></span></code></pre></div><p>exact 更严格。
+只要一个位置错了，整个序列就算错。</p>
+<h2 id="结果说明什么">结果说明什么？<a hidden class="anchor" aria-hidden="true" href="#结果说明什么">#</a></h2>
+<p>第一，BoW 几乎失败。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>OOD exact = 0.0033
+</span></span></code></pre></div><p>这说明任务不是只靠 token 集合就能完成。
+顺序和地址确实重要。</p>
+<p>第二，flat MLP 训练集可以学会，但 OOD 很差。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>seq_mlp OOD exact = 0.0533
+</span></span></code></pre></div><p>它有 16,794,112 个参数，比 TreeHeap 多很多。
+但它在新样本上不能稳定复制完整序列。</p>
+<p>第三，TreeHeap kernel 表现明显更好。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>treeheap_kernel_echo OOD token = 0.9818
+</span></span><span style="display:flex;"><span>treeheap_kernel_echo OOD exact = 0.9000
+</span></span></code></pre></div><p>而且参数更少：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap params = 423,104
+</span></span><span style="display:flex;"><span>seq_mlp params  = 16,794,112
+</span></span></code></pre></div><p>大约是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 参数量约为 seq_mlp 的 2.5%
+</span></span></code></pre></div><p>这支持一个小 claim：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在真实 WMT 短 BPE echo 任务上，
+</span></span><span style="display:flex;"><span>TreeHeap kernel 可以更有效地利用地址和路径结构。
+</span></span></code></pre></div><h2 id="这和-kernel-设计有什么关系">这和 kernel 设计有什么关系？<a hidden class="anchor" aria-hidden="true" href="#这和-kernel-设计有什么关系">#</a></h2>
+<p>前面我们反复讨论：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的核心操作不是普通矩阵拼接，
+</span></span><span style="display:flex;"><span>而是 kernel 在树结构上的卷积。
+</span></span></code></pre></div><p>这次实验里的 kernel 很朴素：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>leaf write kernel:
+</span></span><span style="display:flex;"><span>  把 token embedding 写到固定叶子地址。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>compose kernel:
+</span></span><span style="display:flex;"><span>  对每个内部节点，用同一个函数合并 left/right child。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>read kernel:
+</span></span><span style="display:flex;"><span>  从叶子状态预测原 token。
+</span></span></code></pre></div><p>它像一维 CNN 里的卷积核，但滑动对象不是平面像素，而是 TreeHeap 子结构。</p>
+<p>CNN 的 3x3 kernel 看局部像素。
+TreeHeap kernel 看局部树堆：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>parent
+</span></span><span style="display:flex;"><span>├── left child
+</span></span><span style="display:flex;"><span>└── right child
+</span></span></code></pre></div><p>所以它天然带着：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>地址
+</span></span><span style="display:flex;"><span>路径
+</span></span><span style="display:flex;"><span>子结构
+</span></span><span style="display:flex;"><span>组合
+</span></span><span style="display:flex;"><span>分解
+</span></span></code></pre></div><p>这些信息。</p>
+<p>这正是 flat MLP 没有显式拥有的归纳偏置。</p>
+<h2 id="这次-claim-是什么">这次 claim 是什么？<a hidden class="anchor" aria-hidden="true" href="#这次-claim-是什么">#</a></h2>
+<p>ARA 里记录为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>S1-WMT-ECHO-C01
+</span></span></code></pre></div><p>claim：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A structured TreeHeap kernel can write and read real WMT SentencePiece short
+</span></span><span style="display:flex;"><span>sequences in an echo setting, using tree addresses and shared compose/read
+</span></span><span style="display:flex;"><span>kernels rather than only a flat memorization map.
+</span></span></code></pre></div><p>状态：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>supported pilot
+</span></span></code></pre></div><p>用中文说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>结构化 TreeHeap kernel 能在真实 WMT 短 BPE 序列上完成写入和读出。
+</span></span><span style="display:flex;"><span>这个结果支持 TreeHeap 的地址/路径结构是有用的。
+</span></span></code></pre></div><h2 id="这没有证明什么">这没有证明什么？<a hidden class="anchor" aria-hidden="true" href="#这没有证明什么">#</a></h2>
+<p>边界要说清楚。</p>
+<p>这次没有证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 已经会翻译。
+</span></span><span style="display:flex;"><span>TreeHeap 已经有语义世界模型。
+</span></span><span style="display:flex;"><span>TreeHeap 已经能压缩长文本。
+</span></span><span style="display:flex;"><span>TreeHeap 已经解决长距离句法。
+</span></span><span style="display:flex;"><span>TreeHeap 已经击败 Transformer。
+</span></span></code></pre></div><p>它只证明一件更基础的事：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>真实 WMT token 可以被 TreeHeap kernel 稳定写入和读出。
+</span></span></code></pre></div><p>这对 S1 是有意义的。
+但离 S2/S3 还有距离。</p>
+<h2 id="下一步怎么做">下一步怎么做？<a hidden class="anchor" aria-hidden="true" href="#下一步怎么做">#</a></h2>
+<p>下一步不是立刻喊胜利。
+应该继续加难度。</p>
+<h3 id="1-更长序列">1. 更长序列<a hidden class="anchor" aria-hidden="true" href="#1-更长序列">#</a></h3>
+<p>现在是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>length = 3..8
+</span></span></code></pre></div><p>下一步要测：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>length = 8..16
+</span></span><span style="display:flex;"><span>length = 16..32
+</span></span></code></pre></div><p>如果长度一长就崩，说明 TreeHeap kernel 还只是短序列技巧。</p>
+<h3 id="2-噪声-echo">2. 噪声 echo<a hidden class="anchor" aria-hidden="true" href="#2-噪声-echo">#</a></h3>
+<p>普通 echo 是原样复制。</p>
+<p>下一步可以做：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>mask 一个 token，让模型恢复。
+</span></span><span style="display:flex;"><span>drop 一个 token，让模型恢复。
+</span></span><span style="display:flex;"><span>swap 两个 token，让模型判断并修正。
+</span></span></code></pre></div><p>这开始接近推理。</p>
+<p>因为模型不能只照抄，它必须利用上下文。</p>
+<h3 id="3-subheap-query">3. subheap query<a hidden class="anchor" aria-hidden="true" href="#3-subheap-query">#</a></h3>
+<p>不要总是读整个句子。
+可以问：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>读左子树。
+</span></span><span style="display:flex;"><span>读右子树。
+</span></span><span style="display:flex;"><span>读某个短语窗口。
+</span></span><span style="display:flex;"><span>读某条路径下的 token。
+</span></span></code></pre></div><p>这能测试 TreeHeap 的子结构是否真的可查询。</p>
+<h3 id="4-更公平的-baseline">4. 更公平的 baseline<a hidden class="anchor" aria-hidden="true" href="#4-更公平的-baseline">#</a></h3>
+<p>这次的 <code>seq_mlp</code> 不是最强序列模型。</p>
+<p>下一步要加：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>pointer/copy baseline
+</span></span><span style="display:flex;"><span>small Transformer
+</span></span><span style="display:flex;"><span>tiny RNN/GRU
+</span></span><span style="display:flex;"><span>matched parameter sequence model
+</span></span></code></pre></div><p>如果这些模型在相同参数和数据预算下追上 TreeHeap，那么 claim 要收缩。</p>
+<h2 id="总结">总结<a hidden class="anchor" aria-hidden="true" href="#总结">#</a></h2>
+<p><code>SPR-030</code> 的结论是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>可以用 WMT 真语料做 echo。
+</span></span><span style="display:flex;"><span>TreeHeap kernel 在短 BPE 序列写入/读出上表现很好。
+</span></span><span style="display:flex;"><span>它用更少参数，明显超过 BoW 和 flat seq MLP。
+</span></span></code></pre></div><p>这说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel 设计是关键。
+</span></span></code></pre></div><p>TreeHeap 的存在性不能只靠抽象代数。
+它必须在具体任务上显示：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>地址有用。
+</span></span><span style="display:flex;"><span>路径有用。
+</span></span><span style="display:flex;"><span>子结构有用。
+</span></span><span style="display:flex;"><span>组合/分解有用。
+</span></span></code></pre></div><p>这次只是第一块真实语料证据。
+下一步要从：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>短序列 echo
+</span></span></code></pre></div><p>推进到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>长序列 echo
+</span></span><span style="display:flex;"><span>噪声恢复
+</span></span><span style="display:flex;"><span>subheap query
+</span></span><span style="display:flex;"><span>copy/pointer baseline battle
+</span></span></code></pre></div><p>如果这些也成立，S1 才能更稳地往 S2 翻译折叠推进。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

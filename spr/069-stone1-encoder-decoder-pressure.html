@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, STONE-1, Encoder, Decoder, Recursive Routing, WMT, NLL, BLEU">
+<meta name="description" content="从 C01 到 C05 复盘 STONE-1：TreeHeap encoder 如何把路径信息压入 root，为什么 decoder 长期只读 root，以及冻结 encoder、强制打开递归水管后得到的正式证据。">
+<meta name="author" content="Houming818 &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/069-stone1-encoder-decoder-pressure.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/069-stone1-encoder-decoder-pressure.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/069-stone1-encoder-decoder-pressure.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通">
+  <meta property="og:description" content="从 C01 到 C05 复盘 STONE-1：TreeHeap encoder 如何把路径信息压入 root，为什么 decoder 长期只读 root，以及冻结 encoder、强制打开递归水管后得到的正式证据。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-07-23T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-07-23T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通">
+  <meta name="twitter:description" content="从 C01 到 C05 复盘 STONE-1：TreeHeap encoder 如何把路径信息压入 root，为什么 decoder 长期只读 root，以及冻结 encoder、强制打开递归水管后得到的正式证据。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通",
+      "item": "https://www.lostmap.cn/spr/069-stone1-encoder-decoder-pressure.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通",
+  "name": "[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通",
+  "description": "从 C01 到 C05 复盘 STONE-1：TreeHeap encoder 如何把路径信息压入 root，为什么 decoder 长期只读 root，以及冻结 encoder、强制打开递归水管后得到的正式证据。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "STONE-1", "Encoder", "Decoder", "Recursive Routing", "WMT", "NLL", "BLEU"
+  ],
+  "articleBody": "STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通 证据状态更新（2026-07-28）：水压、深度梯度和 detail-shuffle 结果保留为机制诊断，但“Encoder 已经抽入英文语义”尚未被证明。teacher-forced decoder 可能使用目标前缀，同时只把 TreeHeap 当作弱偏置。本文所有翻译与私有协议外推暂停，等待 source-shuffle、empty-source 和 first-step-logit 审计。详见 SPR-074。\nSTONE-1 还没有完成，但我们终于把一个长期混在一起的问题拆开了：不是 TreeHeap 深层没有信息，而是 decoder 的递归水管一直没有获得有效梯度。\n这篇文章总结 STONE-1 从 C01 到 C05 的进展。\n我们先给出最重要的结论：\nTreeHeap encoder 确实执行了有左右顺序的递归折叠； 训练得到的 root 不是简单词袋，而是路径敏感的压缩状态； 原生 decoder 长期只读 root，继续增加训练步数也没有自行打开深层路径； 冻结 encoder、强制打开递归路径后，decoder 能学会读取深层信息； 在同等追加训练预算下，递归读取最终略好于 root-only； 但读取深度仍然是人为固定的，所以 STONE-1 仍未完成。 这不是终点，但它把下一步从“继续猜架构”推进到了一个很具体的工程问题：\n如何让 decoder 在保证梯度通道畅通的前提下，自己学习何时停止、何时继续向下读取。\n1. STONE-1 到底想证明什么 普通 seq2seq 模型可以把输入编码成一个向量，然后用神经网络生成输出。仅仅把这个向量放进数组的第零项，再给它取名叫 TreeHeap，并不能证明树结构有用。\nSTONE-1 要求更严格：\n输入 token → 写入 TreeHeap leaf → 逐层 FOLD → 形成 root 与各层 detail → decoder 按 TreeHeap 层级读取 → 生成目标句子 其中至少需要回答三个问题。\n1.1 Encoder 是否真的使用树 如果交换 left/right、破坏某层配对或替换 FOLD kernel，最终结果应当发生可测变化。\n1.2 Decoder 是否真的读取树 如果打乱 decoder 正在读取的 detail 或地址，生成损失应当恶化。\n1.3 使用树是否带来功能收益 结构参与计算还不够。递归读取至少应当达到 root-only 对照的水平，最好带来更低 NLL、更高 BLEU 或更稳定的生成。\nSTONE-1 不是“代码能跑”的里程碑，而是这三类证据必须同时成立。\n2. 什么叫 Encoder 抽水机 一棵二叉 TreeHeap 的叶子保存局部 token 状态：\n$\n$ H^{(0)}_1,H^{(0)}_2,\\ldots,H^{(0)}_n $$\n相邻左右节点经过同一个局部 FOLD kernel：\n$\n$ \\left(H^{(d+1)}_i,D^{(d)}_i\\right) = \\operatorname{FOLD}_{\\theta} \\left(H^{(d)}_{2i},H^{(d)}_{2i+1}\\right) $$\n这里：\n$H^{(d+1)}_i$是向上一层传递的 parent 状态； $D^{(d)}_i$是这一层留下的 detail； $\\theta$是可学习 codec 参数； left/right 地址和递归顺序是固定的 TreeHeap 数学骨架。 不断递归之后：\nleaf → parent → grandparent → root 这就是我们所说的信息抽水机。\n“抽水”不意味着 root 能无损保存所有 token。它表示局部信息通过同一种递归规则逐层汇聚。root 更像一个高压压缩状态，各层 detail 保存折叠过程中没有继续上传的差异。\n完整状态不是只有 root：\n$\n$ H_{\\text{state}} = \\left( H_{\\text{root}}, D^{(0)},D^{(1)},\\ldots,D^{(L-1)} \\right) $$\n因此，讨论 TreeHeap 时必须区分：\nroot：最高层压缩结果； H_state：root 加全部层级 detail； theta：执行 FOLD、READ 和生成的学习参数。 3. C01 到 C04：我们排除了什么 C01：自由学习方向没有形成稳定协议 C01 让模型自由学习局部方向 gate。结果 learned 版本反而弱于 identity 和 frozen-random 对照。\n但交换左右地址会明显损伤 NLL。这说明：\n地址有用，但自由漂移的坐标协议不稳定。\n所以后续采用固定手性和固定代数骨架，不再让左右方向本身随意变化。\nC02：固定骨架加可学习残差 C02 使用固定的 0.4/0.6 parent 规则和可学习连续残差。learned codec 的平均结果优于固定代数和固定随机对照：\n方案 NLL，越低越好 BLEU-4，越高越好 固定代数 codec 4.1138 10.7937 可学习残差 codec 4.0538 11.2865 固定随机 codec 4.0910 10.6865 结构干预也产生明显损伤。C02 支持 codec、地址和层级参与计算，但多 seed 稳定性和产品质量仍未通过。\nC03：直接扩大参数失败 C03 比较约 28M 和 50M 参数。相同更新预算下，50M 没有更好：\n模型 NLL BLEU-4 28M，延长训练 3.7495 12.7444 50M，相同更新预算 4.1469 10.1225 这否定了“参数越大，私有协议自然越完整”的简单假设。\n更重要的是，50M decoder 的 route mass 全部停在 root。root-only 与 full-depth 的结果相同，root 形成后再交换 child 地址也没有影响。\n当时我们只能确认 decoder 没有读取 child，却不能确认 encoder 是否把路径信息压进了 root。\nC04：更多训练没有打开 Decoder C04 把同一个 50.27M 模型连续训练到 62,500 次更新：\nUpdate Valid NLL 非 root route mass 15,625 4.1879 0 31,250 3.8867 0 46,875 3.7331 约 0 62,500 3.6613 约 0 训练质量持续改善，但 decoder 始终只读 root。\n因此，“只是训练时间不够”被否定了。\n4. C04 的关键证据：Root 不是词袋 如果在 root 已经形成后交换下层 child，NLL 没有变化。这只能说明 decoder 没读 child，不能说明 encoder 没用路径。\nC04 增加了一个更严格的干预：\n在某一层 FOLD 之前交换左右 subheap，然后重新计算上层状态和 root。\n最终 62,500 步 checkpoint 的结果：\nPre-FOLD mirror depth NLL 损伤 0 0.1678 1 0.1106 2 0.1336 3 0.3908 4 0.6747 5 0.4783 强制关闭 learned codec、退回固定代数 codec，还会造成 +1.3456 NLL 损伤。\n因此 C04 支持：\n有序 leaf → 路径敏感的递归 FOLD → 压缩 root → root-only surface decoder 这不是 Bag of Words。左右顺序、折叠路径和 learned codec 都进入了 root。\n问题出在另一边：decoder 没有把 H_state 重新展开。\n5. 为什么不能说“优化器选择了捷径” 我们一度把 root-only 解释成优化器选择了更容易的路径。这个表述不够准确。\n当前 decoder 每生成一个 token，会计算：\n当前 query → 在当前节点决定 stop 或继续 → 如果继续，计算 left/right 概率 → 进入下一层 但 C04 训练后，stop probability 在 root 附近饱和。最终 route mass 大致是：\n[1.0, 0, 0, 0, 0, 0] 这意味着深层 branch 几乎不参与输出，也就没有有效梯度。\n实际计算图是：\ntoken loss → root readout → H_root → encoder FOLD → leaf 缺少的是：\ntoken loss → decoder 深层 branch → child/detail → 逐层读取 所以更准确的诊断是：\nEncoder 抽水机已经工作；Decoder 的向下释压通道处于关闭状态。\n6. C05：冻结 Encoder，只打开 Decoder 水管 C05 不再同时调整 encoder 和 decoder。\n我们加载 C04 的最终 checkpoint，冻结全部 encoder 参数和完整 H_state 生成方式，然后复制两个相同 decoder：\nRoot control 每次读取都固定停在 root：\nroute mass = [1, 0, 0, 0, 0, 0] Leaf pressure 禁止提前 stop，强制经过每个可见层级，在每层学习 left/right route：\nroute mass = [0, 0, 0, 0, 0, 1] 两组实验：\n使用相同的一百万对 WMT 训练数据； 从同一个 C04 checkpoint 开始； 每组只训练 decoder 15,625 次更新； batch、学习率和随机种子相同； encoder 校验和在训练前后必须完全相同。 这样就只回答一个问题：\n冻结的 C04 H_state 中，是否存在能够被递归 decoder 学会读取的信息？\n7. 正式结果：五个 Gate 全部通过 训练在 io 的 RTX 3090 上完成，总时间约 66.5 分钟，峰值显存约 1.67 GiB。\n指标 Root control Leaf pressure 趋势 初始 valid NLL 3.6613 4.6301 递归臂开始时不会读 最终 valid NLL 3.5875 3.5496 递归臂反超 Test NLL 3.5149 3.4636 越低越好 Test PPL 33.61 31.93 越低越好 BLEU-4 13.5999 13.9564 越高越好 严重重复率 2.60% 1.95% 越低越好 完全匹配率 0.60% 0.65% 越高越好 递归臂的 valid NLL 改善：\n$\n$ 4.6301-3.5496=1.0805 $$\n最终递归臂相对 root 对照的 Test NLL 优势：\n$\n$ 3.5149-3.4636=0.0513 $$\nBLEU-4 提升：\n$\n$ 13.9564-13.5999=0.3565 $$\n提升不算巨大，但方向一致：NLL、PPL、BLEU 和重复率都更好。\n更关键的是机制指标：\nGate 结果 递归 NLL 至少改善 0.30 通过，改善 1.0805 branch kernel 获得非零梯度 通过，观测比例 100% detail shuffle 至少损伤 0.10 通过，最大损伤 0.6909 encoder 保持冻结 通过，checksum 完全一致 递归臂不比 root 对照差 0.10 以上 通过，而且略胜 因此 C05 的正式状态是：\n支持 frozen TreeHeap state 上的强制递归 decoder 通道，单种子证据。\n8. 哪些层真的携带信息 我们逐层打乱 frozen detail，再观察 NLL 损伤：\nDetail depth NLL 损伤 当前可说的结论 0 0.0000 本次读取几乎不依赖 1 0.0942 弱影响 2 0.1633 有因果信息 3 0.5632 强因果信息 4 0.6909 最强因果信息 5 0.0826 弱影响 这说明信息并不是平均分布在所有深度，也不是只有 root 有用。中间层 detail 对 decoder 最重要。\n但请注意，我们还不能把这些层直接翻译成：\ndepth 2 = 词法 depth 3 = 短语 depth 4 = 句义 实验只证明这些层具有因果作用，没有提供人类可读的语法标签。私有协议仍然是模型自己形成的编码。\n9. 看几个生成样例 样例一 输入：\nIntegrated, standards-based certification labeling and reporting 参考：\n集成的、基于标准的认证标签和报告 递归 decoder：\n集成认证的标准、报告和报告 结构基本合理，但出现了“报告”重复。\n样例二 输入：\nPOWER TRANSISTORS DARLINGTON NPN SILICON 参考：\nEpitaxial Planar NPN Silicon Transistors 递归 decoder：\nSILICON NPN EPITAXIAL TRANSISTORS 它抓住了器件描述的主要术语，但没有忠实对应全部参考内容。\n样例三 输入：\nAdobe Dreamweaver CSS Grafisk design HTML Webbdesign $90 (Avg Bid) 参考：\nAdobe Dreamweaver CSS 平面设计 HTML 网站设计 $708 (Avg Bid) 递归 decoder：\nAdobe Dreamweaver CSS 平面设计 HTML 网站设计 $166 (Avg Bid) 句式和类别基本正确，具体数字错误。这类样例说明模型已经具有统计生成能力，但事实复制仍不可靠。\n10. 当前 STONE-1 进度表 阶段 回答的问题 当前结论 C01 自由学习左右方向是否稳定 不支持；地址有效，但自由 gate 不稳定 C02 固定手性加 learned codec 是否有效 结构机制正向，产品门槛未过 C03 增加参数是否自然改善 否定；50M 在等预算下更差 C04 增加训练步数是否自然长出递归读取 否定；形成路径敏感 root 压缩 C05 冻结 encoder、打开水管后能否递归读取 支持；递归臂略胜 root 对照 C05 的单次结果已经达到早期 STONE-1 数值线：\nTest NLL 3.4636，低于 3.90； BLEU-4 13.9564，高于 13.5。 但 STONE-1 仍不能宣布完成，原因有三点：\n目前只有一个随机种子； route depth 是人为强制到最深层，不是模型自己学会； 当前生成仍有数字错误、重复和语义偏差。 所以这次是机制突破，还不是产品完成。\n11. 下一步不该继续盲目扩容 C03 已经告诉我们，直接增加参数不可靠。C04 也告诉我们，继续增加训练步数不会自动打开没有梯度的水管。\n下一步应当保持 C05 已经验证的条件：\n每个 decoder 层级都有非零梯度通道 然后逐步放开深度控制：\n先从固定最深读取，改为固定的非零下行压力； 允许模型在保持最小流量的条件下学习 stop； 记录每层梯度、route mass 和 detail 因果损伤； 用多 seed 验证递归收益是否稳定； 只有机制稳定后，再恢复 encoder-decoder 联合训练。 这里不能再次允许 stop gate 把全部概率压回 root。否则我们只会重演 C04。\n12. 一句话总结 此前我们看到的是：\nEncoder 把结构信息抽进 root， Decoder 却只在井口取水。 C05 做的事情很简单：\n冻结水源， 打开向下水管， 让 decoder 的每一层都收到梯度。 结果表明，深层 TreeHeap state 不但能被读取，而且在同等追加训练预算下略好于 root-only。\n因此现在最准确的结论是：\nTreeHeap encoder 已经形成路径敏感的递归压缩；decoder 的递归读取能力也可以被训练出来。尚未解决的是如何让水压和停止深度在不关闭梯度通道的前提下自然学习。\nARA 证据已经保存于 SameTime：\nClaim：S3-STONE1-FROZEN-PRESSURE-C05 Evidence：ara/s3-generation/evidence/s3_stone1_frozen_encoder_pressure_decoder/ 结果提交：6257395 研究仍在航行，STONE-1 仍然诚实地保持未完成状态。\n",
+  "wordCount" : "873",
+  "inLanguage": "en",
+  "datePublished": "2026-07-23T00:00:00Z",
+  "dateModified": "2026-07-23T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Houming818 \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/069-stone1-encoder-decoder-pressure.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item active">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通
+    </h1>
+    <div class="post-description">
+      从 C01 到 C05 复盘 STONE-1：TreeHeap encoder 如何把路径信息压入 root，为什么 decoder 长期只读 root，以及冻结 encoder、强制打开递归水管后得到的正式证据。
+    </div>
+    <div class="post-meta"><span title='2026-07-23 00:00:00 +0000 UTC'>July 23, 2026</span>&nbsp;·&nbsp;<span>Houming818 &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="stone-1-航行报告encoder-已经抽水decoder-水压终于接通">STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通<a hidden class="anchor" aria-hidden="true" href="#stone-1-航行报告encoder-已经抽水decoder-水压终于接通">#</a></h1>
+<blockquote>
+<p><strong>证据状态更新（2026-07-28）：水压、深度梯度和 detail-shuffle 结果保留为机制诊断，但“Encoder 已经抽入英文语义”尚未被证明。teacher-forced decoder 可能使用目标前缀，同时只把 TreeHeap 当作弱偏置。本文所有翻译与私有协议外推暂停，等待 source-shuffle、empty-source 和 first-step-logit 审计。详见 SPR-074。</strong></p>
+</blockquote>
+<blockquote>
+<p>STONE-1 还没有完成，但我们终于把一个长期混在一起的问题拆开了：不是 TreeHeap 深层没有信息，而是 decoder 的递归水管一直没有获得有效梯度。</p>
+</blockquote>
+<p>这篇文章总结 STONE-1 从 C01 到 C05 的进展。</p>
+<p>我们先给出最重要的结论：</p>
+<ol>
+<li>TreeHeap encoder 确实执行了有左右顺序的递归折叠；</li>
+<li>训练得到的 root 不是简单词袋，而是路径敏感的压缩状态；</li>
+<li>原生 decoder 长期只读 root，继续增加训练步数也没有自行打开深层路径；</li>
+<li>冻结 encoder、强制打开递归路径后，decoder 能学会读取深层信息；</li>
+<li>在同等追加训练预算下，递归读取最终略好于 root-only；</li>
+<li>但读取深度仍然是人为固定的，所以 STONE-1 仍未完成。</li>
+</ol>
+<p>这不是终点，但它把下一步从“继续猜架构”推进到了一个很具体的工程问题：</p>
+<blockquote>
+<p><strong>如何让 decoder 在保证梯度通道畅通的前提下，自己学习何时停止、何时继续向下读取。</strong></p>
+</blockquote>
+<hr>
+<h2 id="1-stone-1-到底想证明什么">1. STONE-1 到底想证明什么<a hidden class="anchor" aria-hidden="true" href="#1-stone-1-到底想证明什么">#</a></h2>
+<p>普通 seq2seq 模型可以把输入编码成一个向量，然后用神经网络生成输出。仅仅把这个向量放进数组的第零项，再给它取名叫 TreeHeap，并不能证明树结构有用。</p>
+<p>STONE-1 要求更严格：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>输入 token
+</span></span><span style="display:flex;"><span>  → 写入 TreeHeap leaf
+</span></span><span style="display:flex;"><span>  → 逐层 FOLD
+</span></span><span style="display:flex;"><span>  → 形成 root 与各层 detail
+</span></span><span style="display:flex;"><span>  → decoder 按 TreeHeap 层级读取
+</span></span><span style="display:flex;"><span>  → 生成目标句子
+</span></span></code></pre></div><p>其中至少需要回答三个问题。</p>
+<h3 id="11-encoder-是否真的使用树">1.1 Encoder 是否真的使用树<a hidden class="anchor" aria-hidden="true" href="#11-encoder-是否真的使用树">#</a></h3>
+<p>如果交换 left/right、破坏某层配对或替换 FOLD kernel，最终结果应当发生可测变化。</p>
+<h3 id="12-decoder-是否真的读取树">1.2 Decoder 是否真的读取树<a hidden class="anchor" aria-hidden="true" href="#12-decoder-是否真的读取树">#</a></h3>
+<p>如果打乱 decoder 正在读取的 detail 或地址，生成损失应当恶化。</p>
+<h3 id="13-使用树是否带来功能收益">1.3 使用树是否带来功能收益<a hidden class="anchor" aria-hidden="true" href="#13-使用树是否带来功能收益">#</a></h3>
+<p>结构参与计算还不够。递归读取至少应当达到 root-only 对照的水平，最好带来更低 NLL、更高 BLEU 或更稳定的生成。</p>
+<p>STONE-1 不是“代码能跑”的里程碑，而是这三类证据必须同时成立。</p>
+<hr>
+<h2 id="2-什么叫-encoder-抽水机">2. 什么叫 Encoder 抽水机<a hidden class="anchor" aria-hidden="true" href="#2-什么叫-encoder-抽水机">#</a></h2>
+<p>一棵二叉 TreeHeap 的叶子保存局部 token 状态：</p>
+<p>$</p>
+$ H^{(0)}_1,H^{(0)}_2,\ldots,H^{(0)}_n $<p>$</p>
+<p>相邻左右节点经过同一个局部 FOLD kernel：</p>
+<p>$</p>
+$ \left(H^{(d+1)}_i,D^{(d)}_i\right) = \operatorname{FOLD}_{\theta} \left(H^{(d)}_{2i},H^{(d)}_{2i+1}\right) $<p>$</p>
+<p>这里：</p>
+<ul>
+<li>
+$H^{(d+1)}_i$是向上一层传递的 parent 状态；</li>
+<li>
+$D^{(d)}_i$是这一层留下的 detail；</li>
+<li>
+$\theta$是可学习 codec 参数；</li>
+<li>left/right 地址和递归顺序是固定的 TreeHeap 数学骨架。</li>
+</ul>
+<p>不断递归之后：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>leaf → parent → grandparent → root
+</span></span></code></pre></div><p>这就是我们所说的信息抽水机。</p>
+<p>“抽水”不意味着 root 能无损保存所有 token。它表示局部信息通过同一种递归规则逐层汇聚。root 更像一个高压压缩状态，各层 detail 保存折叠过程中没有继续上传的差异。</p>
+<p>完整状态不是只有 root：</p>
+<p>$</p>
+$ H_{\text{state}} = \left( H_{\text{root}}, D^{(0)},D^{(1)},\ldots,D^{(L-1)} \right) $<p>$</p>
+<p>因此，讨论 TreeHeap 时必须区分：</p>
+<ul>
+<li><code>root</code>：最高层压缩结果；</li>
+<li><code>H_state</code>：root 加全部层级 detail；</li>
+<li><code>theta</code>：执行 FOLD、READ 和生成的学习参数。</li>
+</ul>
+<hr>
+<h2 id="3-c01-到-c04我们排除了什么">3. C01 到 C04：我们排除了什么<a hidden class="anchor" aria-hidden="true" href="#3-c01-到-c04我们排除了什么">#</a></h2>
+<h3 id="c01自由学习方向没有形成稳定协议">C01：自由学习方向没有形成稳定协议<a hidden class="anchor" aria-hidden="true" href="#c01自由学习方向没有形成稳定协议">#</a></h3>
+<p>C01 让模型自由学习局部方向 gate。结果 learned 版本反而弱于 identity 和 frozen-random 对照。</p>
+<p>但交换左右地址会明显损伤 NLL。这说明：</p>
+<blockquote>
+<p>地址有用，但自由漂移的坐标协议不稳定。</p>
+</blockquote>
+<p>所以后续采用固定手性和固定代数骨架，不再让左右方向本身随意变化。</p>
+<h3 id="c02固定骨架加可学习残差">C02：固定骨架加可学习残差<a hidden class="anchor" aria-hidden="true" href="#c02固定骨架加可学习残差">#</a></h3>
+<p>C02 使用固定的 <code>0.4/0.6</code> parent 规则和可学习连续残差。learned codec 的平均结果优于固定代数和固定随机对照：</p>
+<table>
+  <thead>
+      <tr>
+          <th>方案</th>
+          <th style="text-align: right">NLL，越低越好</th>
+          <th style="text-align: right">BLEU-4，越高越好</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>固定代数 codec</td>
+          <td style="text-align: right">4.1138</td>
+          <td style="text-align: right">10.7937</td>
+      </tr>
+      <tr>
+          <td>可学习残差 codec</td>
+          <td style="text-align: right"><strong>4.0538</strong></td>
+          <td style="text-align: right"><strong>11.2865</strong></td>
+      </tr>
+      <tr>
+          <td>固定随机 codec</td>
+          <td style="text-align: right">4.0910</td>
+          <td style="text-align: right">10.6865</td>
+      </tr>
+  </tbody>
+</table>
+<p>结构干预也产生明显损伤。C02 支持 codec、地址和层级参与计算，但多 seed 稳定性和产品质量仍未通过。</p>
+<h3 id="c03直接扩大参数失败">C03：直接扩大参数失败<a hidden class="anchor" aria-hidden="true" href="#c03直接扩大参数失败">#</a></h3>
+<p>C03 比较约 28M 和 50M 参数。相同更新预算下，50M 没有更好：</p>
+<table>
+  <thead>
+      <tr>
+          <th>模型</th>
+          <th style="text-align: right">NLL</th>
+          <th style="text-align: right">BLEU-4</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>28M，延长训练</td>
+          <td style="text-align: right"><strong>3.7495</strong></td>
+          <td style="text-align: right"><strong>12.7444</strong></td>
+      </tr>
+      <tr>
+          <td>50M，相同更新预算</td>
+          <td style="text-align: right">4.1469</td>
+          <td style="text-align: right">10.1225</td>
+      </tr>
+  </tbody>
+</table>
+<p>这否定了“参数越大，私有协议自然越完整”的简单假设。</p>
+<p>更重要的是，50M decoder 的 route mass 全部停在 root。root-only 与 full-depth 的结果相同，root 形成后再交换 child 地址也没有影响。</p>
+<p>当时我们只能确认 decoder 没有读取 child，却不能确认 encoder 是否把路径信息压进了 root。</p>
+<h3 id="c04更多训练没有打开-decoder">C04：更多训练没有打开 Decoder<a hidden class="anchor" aria-hidden="true" href="#c04更多训练没有打开-decoder">#</a></h3>
+<p>C04 把同一个 50.27M 模型连续训练到 62,500 次更新：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">Update</th>
+          <th style="text-align: right">Valid NLL</th>
+          <th style="text-align: right">非 root route mass</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">15,625</td>
+          <td style="text-align: right">4.1879</td>
+          <td style="text-align: right">0</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">31,250</td>
+          <td style="text-align: right">3.8867</td>
+          <td style="text-align: right">0</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">46,875</td>
+          <td style="text-align: right">3.7331</td>
+          <td style="text-align: right">约 0</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">62,500</td>
+          <td style="text-align: right">3.6613</td>
+          <td style="text-align: right">约 0</td>
+      </tr>
+  </tbody>
+</table>
+<p>训练质量持续改善，但 decoder 始终只读 root。</p>
+<p>因此，“只是训练时间不够”被否定了。</p>
+<hr>
+<h2 id="4-c04-的关键证据root-不是词袋">4. C04 的关键证据：Root 不是词袋<a hidden class="anchor" aria-hidden="true" href="#4-c04-的关键证据root-不是词袋">#</a></h2>
+<p>如果在 root 已经形成后交换下层 child，NLL 没有变化。这只能说明 decoder 没读 child，不能说明 encoder 没用路径。</p>
+<p>C04 增加了一个更严格的干预：</p>
+<blockquote>
+<p>在某一层 FOLD <strong>之前</strong>交换左右 subheap，然后重新计算上层状态和 root。</p>
+</blockquote>
+<p>最终 62,500 步 checkpoint 的结果：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">Pre-FOLD mirror depth</th>
+          <th style="text-align: right">NLL 损伤</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">0</td>
+          <td style="text-align: right">0.1678</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">1</td>
+          <td style="text-align: right">0.1106</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">2</td>
+          <td style="text-align: right">0.1336</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">3</td>
+          <td style="text-align: right">0.3908</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">4</td>
+          <td style="text-align: right"><strong>0.6747</strong></td>
+      </tr>
+      <tr>
+          <td style="text-align: right">5</td>
+          <td style="text-align: right">0.4783</td>
+      </tr>
+  </tbody>
+</table>
+<p>强制关闭 learned codec、退回固定代数 codec，还会造成 <code>+1.3456</code> NLL 损伤。</p>
+<p>因此 C04 支持：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>有序 leaf
+</span></span><span style="display:flex;"><span>  → 路径敏感的递归 FOLD
+</span></span><span style="display:flex;"><span>  → 压缩 root
+</span></span><span style="display:flex;"><span>  → root-only surface decoder
+</span></span></code></pre></div><p>这不是 Bag of Words。左右顺序、折叠路径和 learned codec 都进入了 root。</p>
+<p>问题出在另一边：decoder 没有把 <code>H_state</code> 重新展开。</p>
+<hr>
+<h2 id="5-为什么不能说优化器选择了捷径">5. 为什么不能说“优化器选择了捷径”<a hidden class="anchor" aria-hidden="true" href="#5-为什么不能说优化器选择了捷径">#</a></h2>
+<p>我们一度把 root-only 解释成优化器选择了更容易的路径。这个表述不够准确。</p>
+<p>当前 decoder 每生成一个 token，会计算：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>当前 query
+</span></span><span style="display:flex;"><span>  → 在当前节点决定 stop 或继续
+</span></span><span style="display:flex;"><span>  → 如果继续，计算 left/right 概率
+</span></span><span style="display:flex;"><span>  → 进入下一层
+</span></span></code></pre></div><p>但 C04 训练后，stop probability 在 root 附近饱和。最终 route mass 大致是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>[1.0, 0, 0, 0, 0, 0]
+</span></span></code></pre></div><p>这意味着深层 branch 几乎不参与输出，也就没有有效梯度。</p>
+<p>实际计算图是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token loss
+</span></span><span style="display:flex;"><span>  → root readout
+</span></span><span style="display:flex;"><span>  → H_root
+</span></span><span style="display:flex;"><span>  → encoder FOLD
+</span></span><span style="display:flex;"><span>  → leaf
+</span></span></code></pre></div><p>缺少的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>token loss
+</span></span><span style="display:flex;"><span>  → decoder 深层 branch
+</span></span><span style="display:flex;"><span>  → child/detail
+</span></span><span style="display:flex;"><span>  → 逐层读取
+</span></span></code></pre></div><p>所以更准确的诊断是：</p>
+<blockquote>
+<p><strong>Encoder 抽水机已经工作；Decoder 的向下释压通道处于关闭状态。</strong></p>
+</blockquote>
+<hr>
+<h2 id="6-c05冻结-encoder只打开-decoder-水管">6. C05：冻结 Encoder，只打开 Decoder 水管<a hidden class="anchor" aria-hidden="true" href="#6-c05冻结-encoder只打开-decoder-水管">#</a></h2>
+<p>C05 不再同时调整 encoder 和 decoder。</p>
+<p>我们加载 C04 的最终 checkpoint，冻结全部 encoder 参数和完整 <code>H_state</code> 生成方式，然后复制两个相同 decoder：</p>
+<h3 id="root-control">Root control<a hidden class="anchor" aria-hidden="true" href="#root-control">#</a></h3>
+<p>每次读取都固定停在 root：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>route mass = [1, 0, 0, 0, 0, 0]
+</span></span></code></pre></div><h3 id="leaf-pressure">Leaf pressure<a hidden class="anchor" aria-hidden="true" href="#leaf-pressure">#</a></h3>
+<p>禁止提前 stop，强制经过每个可见层级，在每层学习 left/right route：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>route mass = [0, 0, 0, 0, 0, 1]
+</span></span></code></pre></div><p>两组实验：</p>
+<ul>
+<li>使用相同的一百万对 WMT 训练数据；</li>
+<li>从同一个 C04 checkpoint 开始；</li>
+<li>每组只训练 decoder 15,625 次更新；</li>
+<li>batch、学习率和随机种子相同；</li>
+<li>encoder 校验和在训练前后必须完全相同。</li>
+</ul>
+<p>这样就只回答一个问题：</p>
+<blockquote>
+<p>冻结的 C04 <code>H_state</code> 中，是否存在能够被递归 decoder 学会读取的信息？</p>
+</blockquote>
+<hr>
+<h2 id="7-正式结果五个-gate-全部通过">7. 正式结果：五个 Gate 全部通过<a hidden class="anchor" aria-hidden="true" href="#7-正式结果五个-gate-全部通过">#</a></h2>
+<p>训练在 io 的 RTX 3090 上完成，总时间约 66.5 分钟，峰值显存约 1.67 GiB。</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">Root control</th>
+          <th style="text-align: right">Leaf pressure</th>
+          <th>趋势</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>初始 valid NLL</td>
+          <td style="text-align: right">3.6613</td>
+          <td style="text-align: right">4.6301</td>
+          <td>递归臂开始时不会读</td>
+      </tr>
+      <tr>
+          <td>最终 valid NLL</td>
+          <td style="text-align: right">3.5875</td>
+          <td style="text-align: right"><strong>3.5496</strong></td>
+          <td>递归臂反超</td>
+      </tr>
+      <tr>
+          <td>Test NLL</td>
+          <td style="text-align: right">3.5149</td>
+          <td style="text-align: right"><strong>3.4636</strong></td>
+          <td>越低越好</td>
+      </tr>
+      <tr>
+          <td>Test PPL</td>
+          <td style="text-align: right">33.61</td>
+          <td style="text-align: right"><strong>31.93</strong></td>
+          <td>越低越好</td>
+      </tr>
+      <tr>
+          <td>BLEU-4</td>
+          <td style="text-align: right">13.5999</td>
+          <td style="text-align: right"><strong>13.9564</strong></td>
+          <td>越高越好</td>
+      </tr>
+      <tr>
+          <td>严重重复率</td>
+          <td style="text-align: right">2.60%</td>
+          <td style="text-align: right"><strong>1.95%</strong></td>
+          <td>越低越好</td>
+      </tr>
+      <tr>
+          <td>完全匹配率</td>
+          <td style="text-align: right">0.60%</td>
+          <td style="text-align: right"><strong>0.65%</strong></td>
+          <td>越高越好</td>
+      </tr>
+  </tbody>
+</table>
+<p>递归臂的 valid NLL 改善：</p>
+<p>$</p>
+$ 4.6301-3.5496=1.0805 $<p>$</p>
+<p>最终递归臂相对 root 对照的 Test NLL 优势：</p>
+<p>$</p>
+$ 3.5149-3.4636=0.0513 $<p>$</p>
+<p>BLEU-4 提升：</p>
+<p>$</p>
+$ 13.9564-13.5999=0.3565 $<p>$</p>
+<p>提升不算巨大，但方向一致：NLL、PPL、BLEU 和重复率都更好。</p>
+<p>更关键的是机制指标：</p>
+<table>
+  <thead>
+      <tr>
+          <th>Gate</th>
+          <th>结果</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>递归 NLL 至少改善 0.30</td>
+          <td>通过，改善 1.0805</td>
+      </tr>
+      <tr>
+          <td>branch kernel 获得非零梯度</td>
+          <td>通过，观测比例 100%</td>
+      </tr>
+      <tr>
+          <td>detail shuffle 至少损伤 0.10</td>
+          <td>通过，最大损伤 0.6909</td>
+      </tr>
+      <tr>
+          <td>encoder 保持冻结</td>
+          <td>通过，checksum 完全一致</td>
+      </tr>
+      <tr>
+          <td>递归臂不比 root 对照差 0.10 以上</td>
+          <td>通过，而且略胜</td>
+      </tr>
+  </tbody>
+</table>
+<p>因此 C05 的正式状态是：</p>
+<blockquote>
+<p><strong>支持 frozen TreeHeap state 上的强制递归 decoder 通道，单种子证据。</strong></p>
+</blockquote>
+<hr>
+<h2 id="8-哪些层真的携带信息">8. 哪些层真的携带信息<a hidden class="anchor" aria-hidden="true" href="#8-哪些层真的携带信息">#</a></h2>
+<p>我们逐层打乱 frozen detail，再观察 NLL 损伤：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">Detail depth</th>
+          <th style="text-align: right">NLL 损伤</th>
+          <th>当前可说的结论</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">0</td>
+          <td style="text-align: right">0.0000</td>
+          <td>本次读取几乎不依赖</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">1</td>
+          <td style="text-align: right">0.0942</td>
+          <td>弱影响</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">2</td>
+          <td style="text-align: right">0.1633</td>
+          <td>有因果信息</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">3</td>
+          <td style="text-align: right">0.5632</td>
+          <td>强因果信息</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">4</td>
+          <td style="text-align: right"><strong>0.6909</strong></td>
+          <td>最强因果信息</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">5</td>
+          <td style="text-align: right">0.0826</td>
+          <td>弱影响</td>
+      </tr>
+  </tbody>
+</table>
+<p>这说明信息并不是平均分布在所有深度，也不是只有 root 有用。中间层 detail 对 decoder 最重要。</p>
+<p>但请注意，我们还不能把这些层直接翻译成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>depth 2 = 词法
+</span></span><span style="display:flex;"><span>depth 3 = 短语
+</span></span><span style="display:flex;"><span>depth 4 = 句义
+</span></span></code></pre></div><p>实验只证明这些层具有因果作用，没有提供人类可读的语法标签。私有协议仍然是模型自己形成的编码。</p>
+<hr>
+<h2 id="9-看几个生成样例">9. 看几个生成样例<a hidden class="anchor" aria-hidden="true" href="#9-看几个生成样例">#</a></h2>
+<h3 id="样例一">样例一<a hidden class="anchor" aria-hidden="true" href="#样例一">#</a></h3>
+<p>输入：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Integrated, standards-based certification labeling and reporting
+</span></span></code></pre></div><p>参考：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>集成的、基于标准的认证标签和报告
+</span></span></code></pre></div><p>递归 decoder：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>集成认证的标准、报告和报告
+</span></span></code></pre></div><p>结构基本合理，但出现了“报告”重复。</p>
+<h3 id="样例二">样例二<a hidden class="anchor" aria-hidden="true" href="#样例二">#</a></h3>
+<p>输入：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>POWER TRANSISTORS DARLINGTON NPN SILICON
+</span></span></code></pre></div><p>参考：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Epitaxial Planar NPN Silicon Transistors
+</span></span></code></pre></div><p>递归 decoder：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>SILICON NPN EPITAXIAL TRANSISTORS
+</span></span></code></pre></div><p>它抓住了器件描述的主要术语，但没有忠实对应全部参考内容。</p>
+<h3 id="样例三">样例三<a hidden class="anchor" aria-hidden="true" href="#样例三">#</a></h3>
+<p>输入：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Adobe Dreamweaver CSS Grafisk design HTML Webbdesign $90 (Avg Bid)
+</span></span></code></pre></div><p>参考：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Adobe Dreamweaver CSS 平面设计 HTML 网站设计 $708 (Avg Bid)
+</span></span></code></pre></div><p>递归 decoder：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Adobe Dreamweaver CSS 平面设计 HTML 网站设计 $166 (Avg Bid)
+</span></span></code></pre></div><p>句式和类别基本正确，具体数字错误。这类样例说明模型已经具有统计生成能力，但事实复制仍不可靠。</p>
+<hr>
+<h2 id="10-当前-stone-1-进度表">10. 当前 STONE-1 进度表<a hidden class="anchor" aria-hidden="true" href="#10-当前-stone-1-进度表">#</a></h2>
+<table>
+  <thead>
+      <tr>
+          <th>阶段</th>
+          <th>回答的问题</th>
+          <th>当前结论</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>C01</td>
+          <td>自由学习左右方向是否稳定</td>
+          <td>不支持；地址有效，但自由 gate 不稳定</td>
+      </tr>
+      <tr>
+          <td>C02</td>
+          <td>固定手性加 learned codec 是否有效</td>
+          <td>结构机制正向，产品门槛未过</td>
+      </tr>
+      <tr>
+          <td>C03</td>
+          <td>增加参数是否自然改善</td>
+          <td>否定；50M 在等预算下更差</td>
+      </tr>
+      <tr>
+          <td>C04</td>
+          <td>增加训练步数是否自然长出递归读取</td>
+          <td>否定；形成路径敏感 root 压缩</td>
+      </tr>
+      <tr>
+          <td>C05</td>
+          <td>冻结 encoder、打开水管后能否递归读取</td>
+          <td><strong>支持；递归臂略胜 root 对照</strong></td>
+      </tr>
+  </tbody>
+</table>
+<p>C05 的单次结果已经达到早期 STONE-1 数值线：</p>
+<ul>
+<li>Test NLL <code>3.4636</code>，低于 <code>3.90</code>；</li>
+<li>BLEU-4 <code>13.9564</code>，高于 <code>13.5</code>。</li>
+</ul>
+<p>但 STONE-1 仍不能宣布完成，原因有三点：</p>
+<ol>
+<li>目前只有一个随机种子；</li>
+<li>route depth 是人为强制到最深层，不是模型自己学会；</li>
+<li>当前生成仍有数字错误、重复和语义偏差。</li>
+</ol>
+<p>所以这次是<strong>机制突破</strong>，还不是产品完成。</p>
+<hr>
+<h2 id="11-下一步不该继续盲目扩容">11. 下一步不该继续盲目扩容<a hidden class="anchor" aria-hidden="true" href="#11-下一步不该继续盲目扩容">#</a></h2>
+<p>C03 已经告诉我们，直接增加参数不可靠。C04 也告诉我们，继续增加训练步数不会自动打开没有梯度的水管。</p>
+<p>下一步应当保持 C05 已经验证的条件：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>每个 decoder 层级都有非零梯度通道
+</span></span></code></pre></div><p>然后逐步放开深度控制：</p>
+<ol>
+<li>先从固定最深读取，改为固定的非零下行压力；</li>
+<li>允许模型在保持最小流量的条件下学习 stop；</li>
+<li>记录每层梯度、route mass 和 detail 因果损伤；</li>
+<li>用多 seed 验证递归收益是否稳定；</li>
+<li>只有机制稳定后，再恢复 encoder-decoder 联合训练。</li>
+</ol>
+<p>这里不能再次允许 stop gate 把全部概率压回 root。否则我们只会重演 C04。</p>
+<hr>
+<h2 id="12-一句话总结">12. 一句话总结<a hidden class="anchor" aria-hidden="true" href="#12-一句话总结">#</a></h2>
+<p>此前我们看到的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Encoder 把结构信息抽进 root，
+</span></span><span style="display:flex;"><span>Decoder 却只在井口取水。
+</span></span></code></pre></div><p>C05 做的事情很简单：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>冻结水源，
+</span></span><span style="display:flex;"><span>打开向下水管，
+</span></span><span style="display:flex;"><span>让 decoder 的每一层都收到梯度。
+</span></span></code></pre></div><p>结果表明，深层 TreeHeap state 不但能被读取，而且在同等追加训练预算下略好于 root-only。</p>
+<p>因此现在最准确的结论是：</p>
+<blockquote>
+<p><strong>TreeHeap encoder 已经形成路径敏感的递归压缩；decoder 的递归读取能力也可以被训练出来。尚未解决的是如何让水压和停止深度在不关闭梯度通道的前提下自然学习。</strong></p>
+</blockquote>
+<p>ARA 证据已经保存于 SameTime：</p>
+<ul>
+<li>Claim：<code>S3-STONE1-FROZEN-PRESSURE-C05</code></li>
+<li>Evidence：<code>ara/s3-generation/evidence/s3_stone1_frozen_encoder_pressure_decoder/</code></li>
+<li>结果提交：<code>6257395</code></li>
+</ul>
+<p>研究仍在航行，STONE-1 仍然诚实地保持未完成状态。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

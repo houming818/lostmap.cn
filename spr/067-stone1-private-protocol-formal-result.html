@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, STONE-1, Private Protocol, WMT, Encoder, Decoder, NLL, BLEU, Falsification">
+<meta name="description" content="一百万对真实英中语料、三颗随机种子、九次正式训练：STONE-1 为什么证明了 TreeHeap 地址的因果作用，却否定了当前 hard gate 私有协议配方。">
+<meta name="author" content="Houming818 &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/067-stone1-private-protocol-formal-result.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/067-stone1-private-protocol-formal-result.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/067-stone1-private-protocol-formal-result.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会">
+  <meta property="og:description" content="一百万对真实英中语料、三颗随机种子、九次正式训练：STONE-1 为什么证明了 TreeHeap 地址的因果作用，却否定了当前 hard gate 私有协议配方。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-07-22T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-07-22T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会">
+  <meta name="twitter:description" content="一百万对真实英中语料、三颗随机种子、九次正式训练：STONE-1 为什么证明了 TreeHeap 地址的因果作用，却否定了当前 hard gate 私有协议配方。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会",
+      "item": "https://www.lostmap.cn/spr/067-stone1-private-protocol-formal-result.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会",
+  "name": "[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会",
+  "description": "一百万对真实英中语料、三颗随机种子、九次正式训练：STONE-1 为什么证明了 TreeHeap 地址的因果作用，却否定了当前 hard gate 私有协议配方。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "STONE-1", "Private Protocol", "WMT", "Encoder", "Decoder", "NLL", "BLEU", "Falsification"
+  ],
+  "articleBody": "STONE-1 正式体检：树地址成立，私有协议尚未学会 证据状态更新（2026-07-28）：STONE-1 的完成判定与“英文语义进入 TreeHeap”的推断暂停。C10 代码审计发现，teacher forcing 和大面积可见 EOS 尾部没有被既有 gate 排除。地址交换造成 NLL 损伤，仍能证明 decoder 使用了某些树状态；它不能单独证明这些状态携带英文条件语义。详见 SPR-074。\n这是一篇正式实验报告，也是一份“架构体检单”。STONE-1 在 io 的 RTX 3090 上连续运行约 7.57 小时，完成了 3 种结构方案、3 颗随机种子、共 9 次训练。程序没有崩溃，checkpoint 和 CLI 都成功产出，但核心 Claim 没有通过。更准确地说：模型确实依赖 TreeHeap 的左右地址和层级秩序；然而当前的可学习方向 gate 没有形成比固定结构更好的 encoder-decoder 私有协议。\n这不是“TreeHeap 已经失败”，也不是“再多跑几天就一定成功”。它把两个长期混在一起的问题第一次拆开了：\nTreeHeap 的结构有没有进入模型计算？有，而且因果信号很强。 当前 kernel 是否学会了有价值的内部编码协议？没有，固定 identity 反而更好。 本文从头解释实验设计、指标、数据、结果和下一步。没有读过前 66 篇文章，也可以独立阅读。\n1. 我们到底想证明什么 普通 seq2seq 模型可以把输入句子编码成一组向量，再从这些向量生成输出。只看最终翻译，我们不知道中间状态究竟是一棵 TreeHeap，还是一条换了名字的数组。\nSTONE-1 因此提出了一个比“能翻译”更严格的目标：\n英文 token -\u003e 递归 FOLD -\u003e 固定容量 TreeHeap H_state -\u003e 递归 UNFOLD / 多层读取 -\u003e 中文 decoder -\u003e 非 teacher-forcing 生成 其中没有额外的句法标签、旋转标签或“这里应该向左”的答案。模型只能根据最终翻译损失，通过梯度自己决定内部如何编码。\n我们希望看到的现象是：\nlearned structural 比固定 identity 更好 比固定 random 更好 改掉 learned gate 会明显变差 破坏左右地址也会明显变差 如果只满足最后一条，只能证明“地址有用”，不能证明“learned gate 学会了私有协议”。这一区分是整场实验的核心。\n2. 什么叫 encoder-decoder 私有协议 先用一个生活例子。\n两个人可以约定：写字时把重要内容放在纸张左侧，补充内容放在右侧。只要写的人和读的人使用同一规则，外人不需要看懂这种布局，信息也能正确传递。\n对模型而言，这个约定不必是人类可读的“主语、谓语、宾语”。它可以是训练自行形成的内部协议：\nencoder 决定怎样折叠和摆放信息 decoder 学会怎样读取这种摆放 最终任务 loss 同时约束两者 这里的 private 不是加密，而是“模型内部自洽，不要求人类手写”。\n如果这种协议真的存在，那么强制改用另一套左右选择规则，decoder 应该像拿到错误的字典一样，性能明显下降。反过来，如果随便替换 gate 都几乎没影响，就不能说这个 gate 承载了关键协议。\n3. TreeHeap 状态是怎样折叠的 STONE-1 使用固定宽度为 64 的二叉 TreeHeap。句子的 token embedding 放在 leaf 层，然后两两递归合并：\n64 leaves -\u003e 32 parents -\u003e 16 parents -\u003e 8 -\u003e 4 -\u003e 2 -\u003e 1 root 每次局部 FOLD 只看一对子节点 left 和 right。系统包含两个可学习函数：\nP：根据 anchor 预测另一侧状态； U：把预测残差更新到 parent。 当左侧作为 anchor 时：\n\\[ d = R-P(L) \\]\\[ H_{parent}=L+U(d) \\]这里的 detail，也就是 \\(d\\)，保存“右侧相对左侧还缺少什么”。UNFOLD 时执行：\n\\[ L=H_{parent}-U(d) \\]\\[ R=d+P(L) \\]如果右侧作为 anchor，公式左右对换。一个二值 gate \\(g\\) 决定方向：\ng = 1: left 是 anchor g = 0: right 是 anchor 这样做的好处是，FOLD 与 UNFOLD 在数学设计上成对出现。树向上压缩时保存 parent、detail 和方向；树向下展开时使用同一组信息恢复各层状态。\n需要注意：这不是无损压缩整个字符串的产品算法。decoder 看不到最终 leaf 层，只能读取 root 和被允许的压缩层。我们故意关闭了最直接的 token 旁路，迫使翻译至少经过一次结构折叠。\n4. learned kernel 学什么 局部方向 kernel 的输入为：\n\\[ x=[L, R, L-R, L\\odot R] \\]其中 \\(L\\odot R\\) 是逐元素乘积。kernel 是一个小型两层网络：\n\\[ p=\\sigma(K_{\\theta}(x)+b_{depth}) \\]\\(p\\) 是选择左 anchor 的概率。前向计算把它硬化成 0 或 1，反向传播使用 straight-through estimator，让梯度近似穿过这个离散选择。\n同一个 kernel 在整棵树上共享，只额外携带每个深度的 bias。这符合我们此前对 TreeHeap 卷积的要求：不是为每个地址单独训练一张表，而是让同一个局部算子沿树递归复用。\n但是，这种设计也有风险。decoder 正在学习怎样读取内部坐标时，gate 同时在改变内部坐标。就像一个人学习地图期间，地图的东西方向还在变化。STONE-1 正是要用对照实验判断：这种自由度究竟形成协议，还是只增加优化噪声。\n5. 为什么必须有三种实验臂 三种模型参数规模相同，训练数据、优化器、步数和 decoder 都相同。唯一变化是局部方向：\n实验臂 方向规则 它回答的问题 identity 所有有效节点固定使用左 anchor 稳定、规范的坐标系有多强？ learned_structural kernel 根据内容和深度学习 0/1 学习方向是否带来额外收益？ frozen_random 固定的地址/深度随机 pattern 只要规则稳定，任意坐标是否也能工作？ 这里最容易误解的是 random。\nfrozen_random 不是每一步重新掷骰子。它在训练开始前生成一个固定 pattern，此后永远不变。因此 decoder 有机会适应这套奇怪但稳定的坐标系。如果 learned 连 frozen random 都不能击败，问题很可能不是“树不能放信息”，而是“训练时持续变化的方向没有形成稳定协议”。\n6. 数据和训练合同 正式实验在结果出现前就锁定了配置，不能看完数字再修改及格线：\n项目 正式设置 数据源 WMT-massive 英中 TSV 原始声明行数 14,170,275 独立训练样本 1,000,000 验证 / 测试 2,000 / 2,000 句长过滤 8 到 32 token tokenizer 32K SentencePiece BPE 每个实验臂随机种子 3 总训练臂 9 batch size 64 每臂更新 15,625 每臂参数量 27,769,097 heap width 64 GPU RTX 3090 训练、验证和测试内容经过 hash 检查，没有交叉泄漏。正式任务运行 27,268.44 秒，也就是约 7.57 小时，退出码为 0，stderr.log 为空。\n因此，后面的负结果不是程序崩溃、GPU 掉卡、测试集泄漏或某个文件没有加载造成的。\n7. 先学会看 NLL 和 BLEU 7.1 NLL：模型给正确答案多少概率 假设正确 token 是 \\(y_t\\)，模型给它的概率是 \\(p(y_t)\\)，平均负对数似然为：\n\\[ \\operatorname{NLL}=-\\frac{1}{T}\\sum_{t=1}^{T}\\log p(y_t) \\]NLL 越小越好。它不是“错误百分比”，而是模型对正确答案分配概率的总体成本。\n例如：\n模型 A 给正确词概率 0.50 -\u003e -log(0.50) 约 0.69 模型 B 给正确词概率 0.10 -\u003e -log(0.10) 约 2.30 模型 A 的 NLL 更低，说明它更确信正确答案。\n7.2 BLEU-4：生成句和参考句有多少局部片段重合 BLEU-4 检查 1 到 4 token 片段的重合情况，并惩罚过短输出。它越高越好，但不是语义理解的完整评价。两个意思相近、措辞不同的句子，BLEU 可能仍然不高。\n本实验使用 token BLEU-4，主要用来防止一种假进步：teacher-forcing NLL 下降了，但模型自由生成时仍然是空字符串或重复乱码。\n7.3 标准差：换颗随机种子还可靠吗 同一程序从不同随机初始化出发，结果可能不同。三颗种子的 NLL 标准差越小，说明方案越稳定。\nSTONE-1 预注册的主要产品目标是：\nlearned mean NLL \u003c= 3.90 learned BLEU-4 \u003e= 13.5 NLL 标准差 \u003c= 0.05 非空生成率 = 1.00 严重重复率 \u003c= 0.10 8. 正式结果：identity 赢了 三颗种子的平均结果如下：\n方案 Test NLL，越低越好 NLL 标准差 BLEU-4，越高越好 严重重复率 identity 4.0719 0.0058 11.1735 0.0397 learned structural 4.2269 0.1125 9.7875 0.0558 frozen random 4.1210 0.0106 10.7198 0.0430 learned 相对 identity 的 NLL 差值是：\n\\[ 4.2269-4.0719=+0.1550 \\]正数意味着 learned 更差。它相对 frozen random 也差 +0.1059。\n这不是一颗坏种子造成的。逐种子比较：\nSeed identity NLL learned NLL random NLL learned - identity 71901 4.0799 4.3858 4.1359 +0.3059 71902 4.0691 4.1538 4.1121 +0.0847 71903 4.0666 4.1411 4.1149 +0.0746 三颗种子全部是 identity 最好，learned 最差。seed 71901 的 learned 出现了明显失败尾部，使 learned 的标准差达到 0.1125，超过预注册上限两倍以上。\n所以第一层结论很明确：\n在这一百万样本、一步训练遍历、hard straight-through gate 的配方中，可学习方向没有改善翻译，反而降低了平均质量和稳定性。\n9. 但是模型真的用了树地址 只看上表，可能会得出一个过快结论：“TreeHeap 没有用。”干预实验否定了这种说法。\n我们取 learned seed 71903 的最佳 checkpoint，在测试时主动改变内部结构：\n干预 NLL 相对正常模型的损伤 正常 learned 4.1411 0 强制全部 identity 4.1293 -0.0118，反而改善 强制 frozen random 4.1446 +0.0034，几乎无变化 交换每层 left/right 地址 5.6359 +1.4948，严重损坏 NLL 从 4.1411 上升到 5.6359 不是轻微波动。对应的困惑度从约 62.87 上升到 280.32。\n这说明 decoder 不是把所有内部节点当成无序 word bag。它确实区分：\n这个状态在左地址 那个状态在右地址 这个节点位于哪一层 一旦整体交换左右地址，decoder 原来学到的读取方式就失效了。\n但另外两项干预同样关键：把 learned gate 替换成 identity 不但没有伤害，反而稍有改善；替换成 random 也几乎不痛。这说明地址是协议的一部分，而 learned gate 不是当前协议中不可替代的一部分。\n可以把它类比成一座图书馆：\n书架编号非常重要，全部左右互换会让读者找不到书； 但管理员训练出来的临时摆书策略并没有比固定规则更好。 10. gate 内部发生了什么 learned gate 没有完全随机。它显示出一个很有信息量的模式：\n靠近 root 的深层 gate 大量饱和到固定方向； 部分浅层 gate 仍然有较高概率熵； 不同 seed 的硬方向比例差异明显； 最终策略整体在接近 identity，但保留了一批不稳定的局部翻转。 例如 seed 71903：\nFOLD 深度 左 anchor 概率均值 概率熵 硬 left 比例 0 0.5274 0.6554 0.7334 1 0.5520 0.6224 0.9971 2 0.6098 0.5426 1.0000 3 0.6093 0.5415 0.7070 4 0.9812 0.0792 1.0000 5 0.9881 0.0085 0.9844 概率熵接近 0.69 表示接近五五开，接近 0 表示几乎完全确定。表中浅层仍有较大不确定性，深层则接近固定 left。\n一种与证据相容的机制解释是：\nidentity 从训练第一步起就是稳定坐标系； frozen random 虽然奇怪，但也从第一步起不变； learned gate 随参数更新不断改变部分局部坐标； decoder 一边学读取，一边面对坐标变化； 最后 gate 大体退回 identity，但训练已经付出了额外优化成本。 这是机制诊断，还不是新 Claim。要证明“移动坐标系是根因”，下一轮必须记录 gate 随训练时间的翻转率，并用稳定化对照直接验证，而不能只凭最终统计讲故事。\n11. FOLD/UNFOLD 闭包通过了吗 从均方误差看，闭包非常接近精确：约 1e-13。也就是说，把状态 FOLD 后再 UNFOLD，绝大部分数值可以恢复到浮点精度附近。\n但我们预注册了更严格的最大绝对误差门槛：\nclosure_max_abs \u003c 1e-5 learned 的三颗种子分别约为：\n2.15e-5 0.51e-5 2.86e-5 其中两颗超过阈值，所以结构门 S6 必须记为失败。我们不能在看到结果后说“其实 3e-5 也差不多”，然后修改及格线。\n从工程判断看，这更像 float32 多层运算积累的尾部误差，而不是 FOLD/UNFOLD 已经失去逆运算关系。但要让它成为可靠数学工具，下一轮仍应加入 float64 审计、误差随深度的增长曲线，以及确定性的闭包单元测试。\n12. 生成效果到了什么水平 learned checkpoint 能由 CLI 加载，能够在没有 teacher forcing 的情况下生成非空输出。它不是只会返回 loss 的实验脚本。\n一个例子：\n输入：Integrated, standards-based certification labeling and reporting 参考：集成的、基于标准的认证标签和报告 输出：合规性、基于标准、报告和报告 可以看到，模型已经抓住了“标准、报告”等局部对应关系，句子也不是完全随机字符；但它丢失了“认证标签”，并重复了“报告”。\n另一个例子：\n输入：Requested URL: /FixedCamera/ANF24A.aspx 参考：请求的 URL : / ProList.aspx 输出：请求的 URL : / newslist.aspx 它学会了网页错误文本的常见模板，却没有忠实复制路径。这也反映了训练语料的现实问题：WMT-massive 中含有网页片段、产品表、错配双语和 mojibake。模型可以学习统计形式，但这些数据不等于高质量翻译知识。\n工程指标倒是全部通过：\n指标 结果 门槛 batch-1 greedy P50 27.42 ms \u003c= 1,000 ms 峰值显存 约 1.70 GiB \u003c= 4 GiB checkpoint 111,087,481 bytes \u003c= 300 MiB 非空生成率 1.00 = 1.00 严重重复率 0.0558 \u003c= 0.10 因此它是一个可运行的研究 CLI，不是一个达到质量里程碑的翻译产品。\n13. 像体检报告一样读最终裁决 STONE-1 把门槛分为三组：\n维度 通过情况 体检解释 产品质量 Q 2 / 5 能生成，但 NLL、BLEU、稳定性未达标 结构证据 S 1 / 6 地址因果成立，learned gate 协议不成立 工程可用 E 5 / 5 运行、显存、延迟、checkpoint、CLI 正常 最终状态是：\nnot_supported_under_recipe 中文不是“整个项目失败”，而是：\n在预先规定的这份配方下，STONE-1 的完整 Claim 不成立。\n具体地说：\n已有正向证据 固定容量 TreeHeap 可以完成真实英中 seq2seq 训练与生成。 decoder 对 left/right 地址高度敏感。 递归 FOLD/UNFOLD 数值上接近闭合。 一百万样本、九次训练的工程流程稳定完成。 identity 和 frozen random 的低方差说明稳定结构可以被 decoder 学习。 被本实验否定的部分 hard learned direction gate 会自然击败固定 identity。 learned gate 会自然击败固定 random。 强行替换 learned gate 会造成明显性能损失。 当前 checkpoint 达到 NLL 3.90 和 BLEU 13.5 的工程目标。 三颗随机种子已经形成稳定一致的 learned protocol。 本实验根本没有证明的事 TreeHeap 已具备开放对话能力 TreeHeap 已学会世界模型 root 具有人类可读语义 内部旋转等价于意识活动 TreeHeap 优于工业规模 Transformer 继续扩数据一定能修复 learned gate 把这些边界写清楚，不是削弱研究，而是保护后续工作不被过强故事带偏。\n14. 为什么这个负结果反而推进了理论 在实验前，我们容易把下面两件事当成同一件：\n模型使用树结构 = 模型学会了树上的私有协议 STONE-1 证明它们不是一回事。\n地址交换造成巨大损失，说明树的结构坐标已经参与预测；learned gate 可以被替换，说明“可学习局部方向”还不是有用协议。换句话说：\nTreeHeap 是有效载体 不等于 任意可学习算子都会自动成为有效编码协议 这与 Transformer 研究中的一个朴素事实一致：可微、参数多、能够反向传播，只能保证“可以优化”；不能保证某个自由度一定被任务识别、一定产生独特功能。\n本轮还暴露出一个更深的数学问题：局部左右方向近似一种 \\(\\mathbb{Z}_2\\) 选择，也就是每个节点都有“保持/翻转”两种等价表示。如果任务 loss 无法稳定识别哪种表示更优，这个自由度就可能成为 gauge freedom，而不是知识。identity 相当于先固定一个规范坐标，训练自然更容易。\n因此，私有协议不应只定义“模型可以选择什么”，还要定义：\n什么信号让某个选择比另一个选择更有价值？ 这个选择何时稳定下来？ decoder 如何持续看见同一套坐标？ 压缩收益怎样抵消结构选择的优化成本？ 这正是下一轮 Claim 应该回答的内容。\n15. 下一步不应该只是“再跑久一点” 大部分实验臂在最后一次或倒数一次评估取得最好 NLL，说明绝对质量可能尚未完全收敛。继续训练有可能让 identity、random 和 learned 全部改善。\n但当前没有证据表明 learned 会反超。简单把相同配方从一轮数据改成十轮，只会花更多 GPU 时间回答一个不够尖锐的问题。\n更合理的下一轮应先定位“移动坐标”假设。可以预注册三个对照：\nA. identity warm-up 训练前期固定 identity，让 encoder-decoder 先建立稳定读取协议；后期才开放 gate。\nB. soft-to-hard annealing 早期使用连续 gate，让结构缓慢变化；温度逐步降低，最后才坍缩为 0/1。\nC. alternating freeze 固定 decoder，短暂训练 gate；再固定 gate，训练 decoder。这样可以区分“gate 没有价值”和“两边同时移动导致学不会”。\n下一轮必须额外记录：\n每层 gate 的翻转率随 step 如何变化 同一句话跨 checkpoint 的结构地址是否稳定 固定 gate 后 decoder 是否快速恢复 开放 gate 是否真的降低验证 NLL 学习到的结构是否比 identity 节省读取成本或改善泛化 只有这些 predict 通过，才能把“移动坐标是根因”升级为 Claim。\n16. 可复现材料 实验 Claim：\nS3-STONE1-PRIVATE-PROTOCOL-C01 代码与 ARA：\nara/s3-generation/src/s3_stone1_private_protocol.py ara/s3-generation/src/treeheap_cli.py ara/s3-generation/logic/stone1_private_protocol_translation.md ara/s3-generation/evidence/s3_stone1_private_protocol/ 正式证据目录包含：\nREPORT.md REVIEW.md summary.json runs.json interventions.json trace.jsonl dataset_manifest.json config.json command.sh stdout.log stderr.log cli_smoke.json runner_status.json 代码和证据已提交到 SameTime 的 experiment/private-protocol-battle 分支，正式结果提交为：\nc07077b ara: record STONE-1 formal result demo checkpoint 保存在 io，大小 111,087,481 bytes，SHA-256：\n732b9b367a1c473d790a46dfca8698d41608453ab965c747c33639d889c76d56 17. 结论 STONE-1 没有达到我们预注册的完整目标，但它给出了一条比模糊乐观更有价值的分界线：\nTreeHeap 的左右地址已经是翻译模型的因果变量；当前 hard straight-through 方向 gate 还不是有效私有协议。\nidentity 最好，不意味着 TreeHeap 只能固定不动。它意味着在要求结构自由生长之前，我们必须给模型一个能够形成稳定共同语言的学习过程。一个合法、可逆、可微的算子，只是候选工具；只有当任务干预证明模型离不开它时，它才成为协议。\n这艘船没有沉。它只是第一次用正式仪器测出：发动机在转，方向舵还没有接上传动轴。\nLicense: GPLv3。本文中的 TreeHeap 私有协议、实验设计、数据表述和 ARA 结论按项目许可证公开，欢迎复现、批评和提出反证。\n",
+  "wordCount" : "1015",
+  "inLanguage": "en",
+  "datePublished": "2026-07-22T00:00:00Z",
+  "dateModified": "2026-07-22T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Houming818 \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/067-stone1-private-protocol-formal-result.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item active">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会
+    </h1>
+    <div class="post-description">
+      一百万对真实英中语料、三颗随机种子、九次正式训练：STONE-1 为什么证明了 TreeHeap 地址的因果作用，却否定了当前 hard gate 私有协议配方。
+    </div>
+    <div class="post-meta"><span title='2026-07-22 00:00:00 +0000 UTC'>July 22, 2026</span>&nbsp;·&nbsp;<span>Houming818 &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="stone-1-正式体检树地址成立私有协议尚未学会">STONE-1 正式体检：树地址成立，私有协议尚未学会<a hidden class="anchor" aria-hidden="true" href="#stone-1-正式体检树地址成立私有协议尚未学会">#</a></h1>
+<blockquote>
+<p><strong>证据状态更新（2026-07-28）：STONE-1 的完成判定与“英文语义进入 TreeHeap”的推断暂停。C10 代码审计发现，teacher forcing 和大面积可见 EOS 尾部没有被既有 gate 排除。地址交换造成 NLL 损伤，仍能证明 decoder 使用了某些树状态；它不能单独证明这些状态携带英文条件语义。详见 SPR-074。</strong></p>
+</blockquote>
+<blockquote>
+<p>这是一篇正式实验报告，也是一份“架构体检单”。STONE-1 在 io 的 RTX 3090 上连续运行约 7.57 小时，完成了 3 种结构方案、3 颗随机种子、共 9 次训练。程序没有崩溃，checkpoint 和 CLI 都成功产出，但核心 Claim 没有通过。更准确地说：<strong>模型确实依赖 TreeHeap 的左右地址和层级秩序；然而当前的可学习方向 gate 没有形成比固定结构更好的 encoder-decoder 私有协议。</strong></p>
+</blockquote>
+<p>这不是“TreeHeap 已经失败”，也不是“再多跑几天就一定成功”。它把两个长期混在一起的问题第一次拆开了：</p>
+<ol>
+<li>TreeHeap 的结构有没有进入模型计算？有，而且因果信号很强。</li>
+<li>当前 kernel 是否学会了有价值的内部编码协议？没有，固定 identity 反而更好。</li>
+</ol>
+<p>本文从头解释实验设计、指标、数据、结果和下一步。没有读过前 66 篇文章，也可以独立阅读。</p>
+<hr>
+<h2 id="1-我们到底想证明什么">1. 我们到底想证明什么<a hidden class="anchor" aria-hidden="true" href="#1-我们到底想证明什么">#</a></h2>
+<p>普通 seq2seq 模型可以把输入句子编码成一组向量，再从这些向量生成输出。只看最终翻译，我们不知道中间状态究竟是一棵 TreeHeap，还是一条换了名字的数组。</p>
+<p>STONE-1 因此提出了一个比“能翻译”更严格的目标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>英文 token
+</span></span><span style="display:flex;"><span>  -&gt; 递归 FOLD
+</span></span><span style="display:flex;"><span>  -&gt; 固定容量 TreeHeap H_state
+</span></span><span style="display:flex;"><span>  -&gt; 递归 UNFOLD / 多层读取
+</span></span><span style="display:flex;"><span>  -&gt; 中文 decoder
+</span></span><span style="display:flex;"><span>  -&gt; 非 teacher-forcing 生成
+</span></span></code></pre></div><p>其中没有额外的句法标签、旋转标签或“这里应该向左”的答案。模型只能根据最终翻译损失，通过梯度自己决定内部如何编码。</p>
+<p>我们希望看到的现象是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>learned structural
+</span></span><span style="display:flex;"><span>  比固定 identity 更好
+</span></span><span style="display:flex;"><span>  比固定 random 更好
+</span></span><span style="display:flex;"><span>  改掉 learned gate 会明显变差
+</span></span><span style="display:flex;"><span>  破坏左右地址也会明显变差
+</span></span></code></pre></div><p>如果只满足最后一条，只能证明“地址有用”，不能证明“learned gate 学会了私有协议”。这一区分是整场实验的核心。</p>
+<hr>
+<h2 id="2-什么叫-encoder-decoder-私有协议">2. 什么叫 encoder-decoder 私有协议<a hidden class="anchor" aria-hidden="true" href="#2-什么叫-encoder-decoder-私有协议">#</a></h2>
+<p>先用一个生活例子。</p>
+<p>两个人可以约定：写字时把重要内容放在纸张左侧，补充内容放在右侧。只要写的人和读的人使用同一规则，外人不需要看懂这种布局，信息也能正确传递。</p>
+<p>对模型而言，这个约定不必是人类可读的“主语、谓语、宾语”。它可以是训练自行形成的内部协议：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>encoder 决定怎样折叠和摆放信息
+</span></span><span style="display:flex;"><span>decoder 学会怎样读取这种摆放
+</span></span><span style="display:flex;"><span>最终任务 loss 同时约束两者
+</span></span></code></pre></div><p>这里的 <code>private</code> 不是加密，而是“模型内部自洽，不要求人类手写”。</p>
+<p>如果这种协议真的存在，那么强制改用另一套左右选择规则，decoder 应该像拿到错误的字典一样，性能明显下降。反过来，如果随便替换 gate 都几乎没影响，就不能说这个 gate 承载了关键协议。</p>
+<hr>
+<h2 id="3-treeheap-状态是怎样折叠的">3. TreeHeap 状态是怎样折叠的<a hidden class="anchor" aria-hidden="true" href="#3-treeheap-状态是怎样折叠的">#</a></h2>
+<p>STONE-1 使用固定宽度为 64 的二叉 TreeHeap。句子的 token embedding 放在 leaf 层，然后两两递归合并：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>64 leaves
+</span></span><span style="display:flex;"><span> -&gt; 32 parents
+</span></span><span style="display:flex;"><span> -&gt; 16 parents
+</span></span><span style="display:flex;"><span> -&gt; 8
+</span></span><span style="display:flex;"><span> -&gt; 4
+</span></span><span style="display:flex;"><span> -&gt; 2
+</span></span><span style="display:flex;"><span> -&gt; 1 root
+</span></span></code></pre></div><p>每次局部 FOLD 只看一对子节点 <code>left</code> 和 <code>right</code>。系统包含两个可学习函数：</p>
+<ul>
+<li><code>P</code>：根据 anchor 预测另一侧状态；</li>
+<li><code>U</code>：把预测残差更新到 parent。</li>
+</ul>
+<p>当左侧作为 anchor 时：</p>
+\[ d = R-P(L) \]\[ H_{parent}=L+U(d) \]<p>这里的 <code>detail</code>，也就是 \(d\)，保存“右侧相对左侧还缺少什么”。UNFOLD 时执行：</p>
+\[ L=H_{parent}-U(d) \]\[ R=d+P(L) \]<p>如果右侧作为 anchor，公式左右对换。一个二值 gate \(g\) 决定方向：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>g = 1: left 是 anchor
+</span></span><span style="display:flex;"><span>g = 0: right 是 anchor
+</span></span></code></pre></div><p>这样做的好处是，FOLD 与 UNFOLD 在数学设计上成对出现。树向上压缩时保存 parent、detail 和方向；树向下展开时使用同一组信息恢复各层状态。</p>
+<p>需要注意：这不是无损压缩整个字符串的产品算法。decoder 看不到最终 leaf 层，只能读取 root 和被允许的压缩层。我们故意关闭了最直接的 token 旁路，迫使翻译至少经过一次结构折叠。</p>
+<hr>
+<h2 id="4-learned-kernel-学什么">4. learned kernel 学什么<a hidden class="anchor" aria-hidden="true" href="#4-learned-kernel-学什么">#</a></h2>
+<p>局部方向 kernel 的输入为：</p>
+\[ x=[L, R, L-R, L\odot R] \]<p>其中 \(L\odot R\) 是逐元素乘积。kernel 是一个小型两层网络：</p>
+\[ p=\sigma(K_{\theta}(x)+b_{depth}) \]<p>\(p\) 是选择左 anchor 的概率。前向计算把它硬化成 0 或 1，反向传播使用 straight-through estimator，让梯度近似穿过这个离散选择。</p>
+<p>同一个 kernel 在整棵树上共享，只额外携带每个深度的 bias。这符合我们此前对 TreeHeap 卷积的要求：<strong>不是为每个地址单独训练一张表，而是让同一个局部算子沿树递归复用。</strong></p>
+<p>但是，这种设计也有风险。decoder 正在学习怎样读取内部坐标时，gate 同时在改变内部坐标。就像一个人学习地图期间，地图的东西方向还在变化。STONE-1 正是要用对照实验判断：这种自由度究竟形成协议，还是只增加优化噪声。</p>
+<hr>
+<h2 id="5-为什么必须有三种实验臂">5. 为什么必须有三种实验臂<a hidden class="anchor" aria-hidden="true" href="#5-为什么必须有三种实验臂">#</a></h2>
+<p>三种模型参数规模相同，训练数据、优化器、步数和 decoder 都相同。唯一变化是局部方向：</p>
+<table>
+  <thead>
+      <tr>
+          <th>实验臂</th>
+          <th>方向规则</th>
+          <th>它回答的问题</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>identity</code></td>
+          <td>所有有效节点固定使用左 anchor</td>
+          <td>稳定、规范的坐标系有多强？</td>
+      </tr>
+      <tr>
+          <td><code>learned_structural</code></td>
+          <td>kernel 根据内容和深度学习 0/1</td>
+          <td>学习方向是否带来额外收益？</td>
+      </tr>
+      <tr>
+          <td><code>frozen_random</code></td>
+          <td>固定的地址/深度随机 pattern</td>
+          <td>只要规则稳定，任意坐标是否也能工作？</td>
+      </tr>
+  </tbody>
+</table>
+<p>这里最容易误解的是 random。</p>
+<p><code>frozen_random</code> 不是每一步重新掷骰子。它在训练开始前生成一个固定 pattern，此后永远不变。因此 decoder 有机会适应这套奇怪但稳定的坐标系。如果 learned 连 frozen random 都不能击败，问题很可能不是“树不能放信息”，而是“训练时持续变化的方向没有形成稳定协议”。</p>
+<hr>
+<h2 id="6-数据和训练合同">6. 数据和训练合同<a hidden class="anchor" aria-hidden="true" href="#6-数据和训练合同">#</a></h2>
+<p>正式实验在结果出现前就锁定了配置，不能看完数字再修改及格线：</p>
+<table>
+  <thead>
+      <tr>
+          <th>项目</th>
+          <th style="text-align: right">正式设置</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>数据源</td>
+          <td style="text-align: right">WMT-massive 英中 TSV</td>
+      </tr>
+      <tr>
+          <td>原始声明行数</td>
+          <td style="text-align: right">14,170,275</td>
+      </tr>
+      <tr>
+          <td>独立训练样本</td>
+          <td style="text-align: right">1,000,000</td>
+      </tr>
+      <tr>
+          <td>验证 / 测试</td>
+          <td style="text-align: right">2,000 / 2,000</td>
+      </tr>
+      <tr>
+          <td>句长过滤</td>
+          <td style="text-align: right">8 到 32 token</td>
+      </tr>
+      <tr>
+          <td>tokenizer</td>
+          <td style="text-align: right">32K SentencePiece BPE</td>
+      </tr>
+      <tr>
+          <td>每个实验臂随机种子</td>
+          <td style="text-align: right">3</td>
+      </tr>
+      <tr>
+          <td>总训练臂</td>
+          <td style="text-align: right">9</td>
+      </tr>
+      <tr>
+          <td>batch size</td>
+          <td style="text-align: right">64</td>
+      </tr>
+      <tr>
+          <td>每臂更新</td>
+          <td style="text-align: right">15,625</td>
+      </tr>
+      <tr>
+          <td>每臂参数量</td>
+          <td style="text-align: right">27,769,097</td>
+      </tr>
+      <tr>
+          <td>heap width</td>
+          <td style="text-align: right">64</td>
+      </tr>
+      <tr>
+          <td>GPU</td>
+          <td style="text-align: right">RTX 3090</td>
+      </tr>
+  </tbody>
+</table>
+<p>训练、验证和测试内容经过 hash 检查，没有交叉泄漏。正式任务运行 <code>27,268.44</code> 秒，也就是约 <code>7.57</code> 小时，退出码为 0，<code>stderr.log</code> 为空。</p>
+<p>因此，后面的负结果不是程序崩溃、GPU 掉卡、测试集泄漏或某个文件没有加载造成的。</p>
+<hr>
+<h2 id="7-先学会看-nll-和-bleu">7. 先学会看 NLL 和 BLEU<a hidden class="anchor" aria-hidden="true" href="#7-先学会看-nll-和-bleu">#</a></h2>
+<h3 id="71-nll模型给正确答案多少概率">7.1 NLL：模型给正确答案多少概率<a hidden class="anchor" aria-hidden="true" href="#71-nll模型给正确答案多少概率">#</a></h3>
+<p>假设正确 token 是 \(y_t\)，模型给它的概率是 \(p(y_t)\)，平均负对数似然为：</p>
+\[ \operatorname{NLL}=-\frac{1}{T}\sum_{t=1}^{T}\log p(y_t) \]<p>NLL 越小越好。它不是“错误百分比”，而是模型对正确答案分配概率的总体成本。</p>
+<p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型 A 给正确词概率 0.50 -&gt; -log(0.50) 约 0.69
+</span></span><span style="display:flex;"><span>模型 B 给正确词概率 0.10 -&gt; -log(0.10) 约 2.30
+</span></span></code></pre></div><p>模型 A 的 NLL 更低，说明它更确信正确答案。</p>
+<h3 id="72-bleu-4生成句和参考句有多少局部片段重合">7.2 BLEU-4：生成句和参考句有多少局部片段重合<a hidden class="anchor" aria-hidden="true" href="#72-bleu-4生成句和参考句有多少局部片段重合">#</a></h3>
+<p>BLEU-4 检查 1 到 4 token 片段的重合情况，并惩罚过短输出。它越高越好，但不是语义理解的完整评价。两个意思相近、措辞不同的句子，BLEU 可能仍然不高。</p>
+<p>本实验使用 token BLEU-4，主要用来防止一种假进步：teacher-forcing NLL 下降了，但模型自由生成时仍然是空字符串或重复乱码。</p>
+<h3 id="73-标准差换颗随机种子还可靠吗">7.3 标准差：换颗随机种子还可靠吗<a hidden class="anchor" aria-hidden="true" href="#73-标准差换颗随机种子还可靠吗">#</a></h3>
+<p>同一程序从不同随机初始化出发，结果可能不同。三颗种子的 NLL 标准差越小，说明方案越稳定。</p>
+<p>STONE-1 预注册的主要产品目标是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>learned mean NLL &lt;= 3.90
+</span></span><span style="display:flex;"><span>learned BLEU-4   &gt;= 13.5
+</span></span><span style="display:flex;"><span>NLL 标准差       &lt;= 0.05
+</span></span><span style="display:flex;"><span>非空生成率        = 1.00
+</span></span><span style="display:flex;"><span>严重重复率        &lt;= 0.10
+</span></span></code></pre></div><hr>
+<h2 id="8-正式结果identity-赢了">8. 正式结果：identity 赢了<a hidden class="anchor" aria-hidden="true" href="#8-正式结果identity-赢了">#</a></h2>
+<p>三颗种子的平均结果如下：</p>
+<table>
+  <thead>
+      <tr>
+          <th>方案</th>
+          <th style="text-align: right">Test NLL，越低越好</th>
+          <th style="text-align: right">NLL 标准差</th>
+          <th style="text-align: right">BLEU-4，越高越好</th>
+          <th style="text-align: right">严重重复率</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>identity</td>
+          <td style="text-align: right"><strong>4.0719</strong></td>
+          <td style="text-align: right"><strong>0.0058</strong></td>
+          <td style="text-align: right"><strong>11.1735</strong></td>
+          <td style="text-align: right"><strong>0.0397</strong></td>
+      </tr>
+      <tr>
+          <td>learned structural</td>
+          <td style="text-align: right">4.2269</td>
+          <td style="text-align: right">0.1125</td>
+          <td style="text-align: right">9.7875</td>
+          <td style="text-align: right">0.0558</td>
+      </tr>
+      <tr>
+          <td>frozen random</td>
+          <td style="text-align: right">4.1210</td>
+          <td style="text-align: right">0.0106</td>
+          <td style="text-align: right">10.7198</td>
+          <td style="text-align: right">0.0430</td>
+      </tr>
+  </tbody>
+</table>
+<p>learned 相对 identity 的 NLL 差值是：</p>
+\[ 4.2269-4.0719=+0.1550 \]<p>正数意味着 learned 更差。它相对 frozen random 也差 <code>+0.1059</code>。</p>
+<p>这不是一颗坏种子造成的。逐种子比较：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">Seed</th>
+          <th style="text-align: right">identity NLL</th>
+          <th style="text-align: right">learned NLL</th>
+          <th style="text-align: right">random NLL</th>
+          <th style="text-align: right">learned - identity</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">71901</td>
+          <td style="text-align: right">4.0799</td>
+          <td style="text-align: right">4.3858</td>
+          <td style="text-align: right">4.1359</td>
+          <td style="text-align: right">+0.3059</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">71902</td>
+          <td style="text-align: right">4.0691</td>
+          <td style="text-align: right">4.1538</td>
+          <td style="text-align: right">4.1121</td>
+          <td style="text-align: right">+0.0847</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">71903</td>
+          <td style="text-align: right">4.0666</td>
+          <td style="text-align: right">4.1411</td>
+          <td style="text-align: right">4.1149</td>
+          <td style="text-align: right">+0.0746</td>
+      </tr>
+  </tbody>
+</table>
+<p>三颗种子全部是 identity 最好，learned 最差。seed 71901 的 learned 出现了明显失败尾部，使 learned 的标准差达到 <code>0.1125</code>，超过预注册上限两倍以上。</p>
+<p>所以第一层结论很明确：</p>
+<blockquote>
+<p><strong>在这一百万样本、一步训练遍历、hard straight-through gate 的配方中，可学习方向没有改善翻译，反而降低了平均质量和稳定性。</strong></p>
+</blockquote>
+<hr>
+<h2 id="9-但是模型真的用了树地址">9. 但是模型真的用了树地址<a hidden class="anchor" aria-hidden="true" href="#9-但是模型真的用了树地址">#</a></h2>
+<p>只看上表，可能会得出一个过快结论：“TreeHeap 没有用。”干预实验否定了这种说法。</p>
+<p>我们取 learned seed 71903 的最佳 checkpoint，在测试时主动改变内部结构：</p>
+<table>
+  <thead>
+      <tr>
+          <th>干预</th>
+          <th style="text-align: right">NLL</th>
+          <th style="text-align: right">相对正常模型的损伤</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>正常 learned</td>
+          <td style="text-align: right">4.1411</td>
+          <td style="text-align: right">0</td>
+      </tr>
+      <tr>
+          <td>强制全部 identity</td>
+          <td style="text-align: right">4.1293</td>
+          <td style="text-align: right"><strong>-0.0118，反而改善</strong></td>
+      </tr>
+      <tr>
+          <td>强制 frozen random</td>
+          <td style="text-align: right">4.1446</td>
+          <td style="text-align: right">+0.0034，几乎无变化</td>
+      </tr>
+      <tr>
+          <td>交换每层 left/right 地址</td>
+          <td style="text-align: right">5.6359</td>
+          <td style="text-align: right"><strong>+1.4948，严重损坏</strong></td>
+      </tr>
+  </tbody>
+</table>
+<p>NLL 从 <code>4.1411</code> 上升到 <code>5.6359</code> 不是轻微波动。对应的困惑度从约 <code>62.87</code> 上升到 <code>280.32</code>。</p>
+<p>这说明 decoder 不是把所有内部节点当成无序 word bag。它确实区分：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>这个状态在左地址
+</span></span><span style="display:flex;"><span>那个状态在右地址
+</span></span><span style="display:flex;"><span>这个节点位于哪一层
+</span></span></code></pre></div><p>一旦整体交换左右地址，decoder 原来学到的读取方式就失效了。</p>
+<p>但另外两项干预同样关键：把 learned gate 替换成 identity 不但没有伤害，反而稍有改善；替换成 random 也几乎不痛。这说明<strong>地址是协议的一部分，而 learned gate 不是当前协议中不可替代的一部分。</strong></p>
+<p>可以把它类比成一座图书馆：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>书架编号非常重要，全部左右互换会让读者找不到书；
+</span></span><span style="display:flex;"><span>但管理员训练出来的临时摆书策略并没有比固定规则更好。
+</span></span></code></pre></div><hr>
+<h2 id="10-gate-内部发生了什么">10. gate 内部发生了什么<a hidden class="anchor" aria-hidden="true" href="#10-gate-内部发生了什么">#</a></h2>
+<p>learned gate 没有完全随机。它显示出一个很有信息量的模式：</p>
+<ul>
+<li>靠近 root 的深层 gate 大量饱和到固定方向；</li>
+<li>部分浅层 gate 仍然有较高概率熵；</li>
+<li>不同 seed 的硬方向比例差异明显；</li>
+<li>最终策略整体在接近 identity，但保留了一批不稳定的局部翻转。</li>
+</ul>
+<p>例如 seed 71903：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: right">FOLD 深度</th>
+          <th style="text-align: right">左 anchor 概率均值</th>
+          <th style="text-align: right">概率熵</th>
+          <th style="text-align: right">硬 left 比例</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: right">0</td>
+          <td style="text-align: right">0.5274</td>
+          <td style="text-align: right">0.6554</td>
+          <td style="text-align: right">0.7334</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">1</td>
+          <td style="text-align: right">0.5520</td>
+          <td style="text-align: right">0.6224</td>
+          <td style="text-align: right">0.9971</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">2</td>
+          <td style="text-align: right">0.6098</td>
+          <td style="text-align: right">0.5426</td>
+          <td style="text-align: right">1.0000</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">3</td>
+          <td style="text-align: right">0.6093</td>
+          <td style="text-align: right">0.5415</td>
+          <td style="text-align: right">0.7070</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">4</td>
+          <td style="text-align: right">0.9812</td>
+          <td style="text-align: right">0.0792</td>
+          <td style="text-align: right">1.0000</td>
+      </tr>
+      <tr>
+          <td style="text-align: right">5</td>
+          <td style="text-align: right">0.9881</td>
+          <td style="text-align: right">0.0085</td>
+          <td style="text-align: right">0.9844</td>
+      </tr>
+  </tbody>
+</table>
+<p>概率熵接近 <code>0.69</code> 表示接近五五开，接近 0 表示几乎完全确定。表中浅层仍有较大不确定性，深层则接近固定 left。</p>
+<p>一种与证据相容的机制解释是：</p>
+<ol>
+<li>identity 从训练第一步起就是稳定坐标系；</li>
+<li>frozen random 虽然奇怪，但也从第一步起不变；</li>
+<li>learned gate 随参数更新不断改变部分局部坐标；</li>
+<li>decoder 一边学读取，一边面对坐标变化；</li>
+<li>最后 gate 大体退回 identity，但训练已经付出了额外优化成本。</li>
+</ol>
+<p>这是<strong>机制诊断</strong>，还不是新 Claim。要证明“移动坐标系是根因”，下一轮必须记录 gate 随训练时间的翻转率，并用稳定化对照直接验证，而不能只凭最终统计讲故事。</p>
+<hr>
+<h2 id="11-foldunfold-闭包通过了吗">11. FOLD/UNFOLD 闭包通过了吗<a hidden class="anchor" aria-hidden="true" href="#11-foldunfold-闭包通过了吗">#</a></h2>
+<p>从均方误差看，闭包非常接近精确：约 <code>1e-13</code>。也就是说，把状态 FOLD 后再 UNFOLD，绝大部分数值可以恢复到浮点精度附近。</p>
+<p>但我们预注册了更严格的最大绝对误差门槛：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>closure_max_abs &lt; 1e-5
+</span></span></code></pre></div><p>learned 的三颗种子分别约为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>2.15e-5
+</span></span><span style="display:flex;"><span>0.51e-5
+</span></span><span style="display:flex;"><span>2.86e-5
+</span></span></code></pre></div><p>其中两颗超过阈值，所以结构门 S6 必须记为失败。我们不能在看到结果后说“其实 <code>3e-5</code> 也差不多”，然后修改及格线。</p>
+<p>从工程判断看，这更像 float32 多层运算积累的尾部误差，而不是 FOLD/UNFOLD 已经失去逆运算关系。但要让它成为可靠数学工具，下一轮仍应加入 float64 审计、误差随深度的增长曲线，以及确定性的闭包单元测试。</p>
+<hr>
+<h2 id="12-生成效果到了什么水平">12. 生成效果到了什么水平<a hidden class="anchor" aria-hidden="true" href="#12-生成效果到了什么水平">#</a></h2>
+<p>learned checkpoint 能由 CLI 加载，能够在没有 teacher forcing 的情况下生成非空输出。它不是只会返回 loss 的实验脚本。</p>
+<p>一个例子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>输入：Integrated, standards-based certification labeling and reporting
+</span></span><span style="display:flex;"><span>参考：集成的、基于标准的认证标签和报告
+</span></span><span style="display:flex;"><span>输出：合规性、基于标准、报告和报告
+</span></span></code></pre></div><p>可以看到，模型已经抓住了“标准、报告”等局部对应关系，句子也不是完全随机字符；但它丢失了“认证标签”，并重复了“报告”。</p>
+<p>另一个例子：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>输入：Requested URL: /FixedCamera/ANF24A.aspx
+</span></span><span style="display:flex;"><span>参考：请求的 URL : / ProList.aspx
+</span></span><span style="display:flex;"><span>输出：请求的 URL : / newslist.aspx
+</span></span></code></pre></div><p>它学会了网页错误文本的常见模板，却没有忠实复制路径。这也反映了训练语料的现实问题：WMT-massive 中含有网页片段、产品表、错配双语和 mojibake。模型可以学习统计形式，但这些数据不等于高质量翻译知识。</p>
+<p>工程指标倒是全部通过：</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">结果</th>
+          <th style="text-align: right">门槛</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>batch-1 greedy P50</td>
+          <td style="text-align: right">27.42 ms</td>
+          <td style="text-align: right">&lt;= 1,000 ms</td>
+      </tr>
+      <tr>
+          <td>峰值显存</td>
+          <td style="text-align: right">约 1.70 GiB</td>
+          <td style="text-align: right">&lt;= 4 GiB</td>
+      </tr>
+      <tr>
+          <td>checkpoint</td>
+          <td style="text-align: right">111,087,481 bytes</td>
+          <td style="text-align: right">&lt;= 300 MiB</td>
+      </tr>
+      <tr>
+          <td>非空生成率</td>
+          <td style="text-align: right">1.00</td>
+          <td style="text-align: right">= 1.00</td>
+      </tr>
+      <tr>
+          <td>严重重复率</td>
+          <td style="text-align: right">0.0558</td>
+          <td style="text-align: right">&lt;= 0.10</td>
+      </tr>
+  </tbody>
+</table>
+<p>因此它是一个可运行的研究 CLI，不是一个达到质量里程碑的翻译产品。</p>
+<hr>
+<h2 id="13-像体检报告一样读最终裁决">13. 像体检报告一样读最终裁决<a hidden class="anchor" aria-hidden="true" href="#13-像体检报告一样读最终裁决">#</a></h2>
+<p>STONE-1 把门槛分为三组：</p>
+<table>
+  <thead>
+      <tr>
+          <th>维度</th>
+          <th style="text-align: right">通过情况</th>
+          <th>体检解释</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>产品质量 Q</td>
+          <td style="text-align: right">2 / 5</td>
+          <td>能生成，但 NLL、BLEU、稳定性未达标</td>
+      </tr>
+      <tr>
+          <td>结构证据 S</td>
+          <td style="text-align: right">1 / 6</td>
+          <td>地址因果成立，learned gate 协议不成立</td>
+      </tr>
+      <tr>
+          <td>工程可用 E</td>
+          <td style="text-align: right">5 / 5</td>
+          <td>运行、显存、延迟、checkpoint、CLI 正常</td>
+      </tr>
+  </tbody>
+</table>
+<p>最终状态是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>not_supported_under_recipe
+</span></span></code></pre></div><p>中文不是“整个项目失败”，而是：</p>
+<blockquote>
+<p><strong>在预先规定的这份配方下，STONE-1 的完整 Claim 不成立。</strong></p>
+</blockquote>
+<p>具体地说：</p>
+<h3 id="已有正向证据">已有正向证据<a hidden class="anchor" aria-hidden="true" href="#已有正向证据">#</a></h3>
+<ol>
+<li>固定容量 TreeHeap 可以完成真实英中 seq2seq 训练与生成。</li>
+<li>decoder 对 left/right 地址高度敏感。</li>
+<li>递归 FOLD/UNFOLD 数值上接近闭合。</li>
+<li>一百万样本、九次训练的工程流程稳定完成。</li>
+<li>identity 和 frozen random 的低方差说明稳定结构可以被 decoder 学习。</li>
+</ol>
+<h3 id="被本实验否定的部分">被本实验否定的部分<a hidden class="anchor" aria-hidden="true" href="#被本实验否定的部分">#</a></h3>
+<ol>
+<li>hard learned direction gate 会自然击败固定 identity。</li>
+<li>learned gate 会自然击败固定 random。</li>
+<li>强行替换 learned gate 会造成明显性能损失。</li>
+<li>当前 checkpoint 达到 NLL <code>3.90</code> 和 BLEU <code>13.5</code> 的工程目标。</li>
+<li>三颗随机种子已经形成稳定一致的 learned protocol。</li>
+</ol>
+<h3 id="本实验根本没有证明的事">本实验根本没有证明的事<a hidden class="anchor" aria-hidden="true" href="#本实验根本没有证明的事">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 已具备开放对话能力
+</span></span><span style="display:flex;"><span>TreeHeap 已学会世界模型
+</span></span><span style="display:flex;"><span>root 具有人类可读语义
+</span></span><span style="display:flex;"><span>内部旋转等价于意识活动
+</span></span><span style="display:flex;"><span>TreeHeap 优于工业规模 Transformer
+</span></span><span style="display:flex;"><span>继续扩数据一定能修复 learned gate
+</span></span></code></pre></div><p>把这些边界写清楚，不是削弱研究，而是保护后续工作不被过强故事带偏。</p>
+<hr>
+<h2 id="14-为什么这个负结果反而推进了理论">14. 为什么这个负结果反而推进了理论<a hidden class="anchor" aria-hidden="true" href="#14-为什么这个负结果反而推进了理论">#</a></h2>
+<p>在实验前，我们容易把下面两件事当成同一件：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型使用树结构
+</span></span><span style="display:flex;"><span>=
+</span></span><span style="display:flex;"><span>模型学会了树上的私有协议
+</span></span></code></pre></div><p>STONE-1 证明它们不是一回事。</p>
+<p>地址交换造成巨大损失，说明树的结构坐标已经参与预测；learned gate 可以被替换，说明“可学习局部方向”还不是有用协议。换句话说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 是有效载体
+</span></span><span style="display:flex;"><span>不等于
+</span></span><span style="display:flex;"><span>任意可学习算子都会自动成为有效编码协议
+</span></span></code></pre></div><p>这与 Transformer 研究中的一个朴素事实一致：可微、参数多、能够反向传播，只能保证“可以优化”；不能保证某个自由度一定被任务识别、一定产生独特功能。</p>
+<p>本轮还暴露出一个更深的数学问题：局部左右方向近似一种 \(\mathbb{Z}_2\) 选择，也就是每个节点都有“保持/翻转”两种等价表示。如果任务 loss 无法稳定识别哪种表示更优，这个自由度就可能成为 gauge freedom，而不是知识。identity 相当于先固定一个规范坐标，训练自然更容易。</p>
+<p>因此，私有协议不应只定义“模型可以选择什么”，还要定义：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>什么信号让某个选择比另一个选择更有价值？
+</span></span><span style="display:flex;"><span>这个选择何时稳定下来？
+</span></span><span style="display:flex;"><span>decoder 如何持续看见同一套坐标？
+</span></span><span style="display:flex;"><span>压缩收益怎样抵消结构选择的优化成本？
+</span></span></code></pre></div><p>这正是下一轮 Claim 应该回答的内容。</p>
+<hr>
+<h2 id="15-下一步不应该只是再跑久一点">15. 下一步不应该只是“再跑久一点”<a hidden class="anchor" aria-hidden="true" href="#15-下一步不应该只是再跑久一点">#</a></h2>
+<p>大部分实验臂在最后一次或倒数一次评估取得最好 NLL，说明绝对质量可能尚未完全收敛。继续训练有可能让 identity、random 和 learned 全部改善。</p>
+<p>但当前没有证据表明 learned 会反超。简单把相同配方从一轮数据改成十轮，只会花更多 GPU 时间回答一个不够尖锐的问题。</p>
+<p>更合理的下一轮应先定位“移动坐标”假设。可以预注册三个对照：</p>
+<h3 id="a-identity-warm-up">A. identity warm-up<a hidden class="anchor" aria-hidden="true" href="#a-identity-warm-up">#</a></h3>
+<p>训练前期固定 identity，让 encoder-decoder 先建立稳定读取协议；后期才开放 gate。</p>
+<h3 id="b-soft-to-hard-annealing">B. soft-to-hard annealing<a hidden class="anchor" aria-hidden="true" href="#b-soft-to-hard-annealing">#</a></h3>
+<p>早期使用连续 gate，让结构缓慢变化；温度逐步降低，最后才坍缩为 0/1。</p>
+<h3 id="c-alternating-freeze">C. alternating freeze<a hidden class="anchor" aria-hidden="true" href="#c-alternating-freeze">#</a></h3>
+<p>固定 decoder，短暂训练 gate；再固定 gate，训练 decoder。这样可以区分“gate 没有价值”和“两边同时移动导致学不会”。</p>
+<p>下一轮必须额外记录：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>每层 gate 的翻转率随 step 如何变化
+</span></span><span style="display:flex;"><span>同一句话跨 checkpoint 的结构地址是否稳定
+</span></span><span style="display:flex;"><span>固定 gate 后 decoder 是否快速恢复
+</span></span><span style="display:flex;"><span>开放 gate 是否真的降低验证 NLL
+</span></span><span style="display:flex;"><span>学习到的结构是否比 identity 节省读取成本或改善泛化
+</span></span></code></pre></div><p>只有这些 predict 通过，才能把“移动坐标是根因”升级为 Claim。</p>
+<hr>
+<h2 id="16-可复现材料">16. 可复现材料<a hidden class="anchor" aria-hidden="true" href="#16-可复现材料">#</a></h2>
+<p>实验 Claim：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>S3-STONE1-PRIVATE-PROTOCOL-C01
+</span></span></code></pre></div><p>代码与 ARA：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ara/s3-generation/src/s3_stone1_private_protocol.py
+</span></span><span style="display:flex;"><span>ara/s3-generation/src/treeheap_cli.py
+</span></span><span style="display:flex;"><span>ara/s3-generation/logic/stone1_private_protocol_translation.md
+</span></span><span style="display:flex;"><span>ara/s3-generation/evidence/s3_stone1_private_protocol/
+</span></span></code></pre></div><p>正式证据目录包含：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>REPORT.md
+</span></span><span style="display:flex;"><span>REVIEW.md
+</span></span><span style="display:flex;"><span>summary.json
+</span></span><span style="display:flex;"><span>runs.json
+</span></span><span style="display:flex;"><span>interventions.json
+</span></span><span style="display:flex;"><span>trace.jsonl
+</span></span><span style="display:flex;"><span>dataset_manifest.json
+</span></span><span style="display:flex;"><span>config.json
+</span></span><span style="display:flex;"><span>command.sh
+</span></span><span style="display:flex;"><span>stdout.log
+</span></span><span style="display:flex;"><span>stderr.log
+</span></span><span style="display:flex;"><span>cli_smoke.json
+</span></span><span style="display:flex;"><span>runner_status.json
+</span></span></code></pre></div><p>代码和证据已提交到 SameTime 的 <code>experiment/private-protocol-battle</code> 分支，正式结果提交为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>c07077b ara: record STONE-1 formal result
+</span></span></code></pre></div><p>demo checkpoint 保存在 io，大小 <code>111,087,481</code> bytes，SHA-256：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>732b9b367a1c473d790a46dfca8698d41608453ab965c747c33639d889c76d56
+</span></span></code></pre></div><hr>
+<h2 id="17-结论">17. 结论<a hidden class="anchor" aria-hidden="true" href="#17-结论">#</a></h2>
+<p>STONE-1 没有达到我们预注册的完整目标，但它给出了一条比模糊乐观更有价值的分界线：</p>
+<blockquote>
+<p><strong>TreeHeap 的左右地址已经是翻译模型的因果变量；当前 hard straight-through 方向 gate 还不是有效私有协议。</strong></p>
+</blockquote>
+<p>identity 最好，不意味着 TreeHeap 只能固定不动。它意味着在要求结构自由生长之前，我们必须给模型一个能够形成稳定共同语言的学习过程。一个合法、可逆、可微的算子，只是候选工具；只有当任务干预证明模型离不开它时，它才成为协议。</p>
+<p>这艘船没有沉。它只是第一次用正式仪器测出：发动机在转，方向舵还没有接上传动轴。</p>
+<blockquote>
+<p><strong>License: GPLv3。本文中的 TreeHeap 私有协议、实验设计、数据表述和 ARA 结论按项目许可证公开，欢迎复现、批评和提出反证。</strong></p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

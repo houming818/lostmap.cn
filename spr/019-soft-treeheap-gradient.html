@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-019] Soft TreeHeap：梯度如何进入树堆结构 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, Gradient, SoftTreeHeap, Experiment">
+<meta name="description" content="把 TreeHeap 接入机器学习：用 kernel-guided soft plus、soft route 和多核训练让梯度进入树堆算子，并提出 claim、predict、proof 和实验方案。">
+<meta name="author" content="nio (Houming818) &amp; Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/019-soft-treeheap-gradient.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/019-soft-treeheap-gradient.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/019-soft-treeheap-gradient.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-019] Soft TreeHeap：梯度如何进入树堆结构">
+  <meta property="og:description" content="把 TreeHeap 接入机器学习：用 kernel-guided soft plus、soft route 和多核训练让梯度进入树堆算子，并提出 claim、predict、proof 和实验方案。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-06-22T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-06-22T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-019] Soft TreeHeap：梯度如何进入树堆结构">
+  <meta name="twitter:description" content="把 TreeHeap 接入机器学习：用 kernel-guided soft plus、soft route 和多核训练让梯度进入树堆算子，并提出 claim、predict、proof 和实验方案。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-019] Soft TreeHeap：梯度如何进入树堆结构",
+      "item": "https://www.lostmap.cn/spr/019-soft-treeheap-gradient.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-019] Soft TreeHeap：梯度如何进入树堆结构",
+  "name": "[SPR-019] Soft TreeHeap：梯度如何进入树堆结构",
+  "description": "把 TreeHeap 接入机器学习：用 kernel-guided soft plus、soft route 和多核训练让梯度进入树堆算子，并提出 claim、predict、proof 和实验方案。",
+  "keywords": [
+    "SPR", "TreeHeap", "Gradient", "SoftTreeHeap", "Experiment"
+  ],
+  "articleBody": "Soft TreeHeap：梯度如何进入树堆结构 上一篇 SPR-018 把 TreeHeap 的目标说清楚了：\nTreeHeap 不是要证明自己完全不同。 TreeHeap 要证明自己和 MLP / CNN / Transformer 一样， 也是一种可以构造预测函数的机器学习结构。 但这会立刻遇到一个核心问题：\n梯度怎么进入 TreeHeap？ 线性回归为什么能学习？\n因为它有：\ny_hat = W x + b loss = MSE(y_hat, y) gradient = d loss / d W update W 训练结束后，数据里的规律被蒸馏进参数：\nW, b Transformer 也是类似的，只是参数从一个简单矩阵，变成很多矩阵：\nWq, Wk, Wv, Wo, FFN weights loss 仍然通过梯度，把数据里的统计规律写进参数矩阵。\n那么 TreeHeap 呢？\n如果 TreeHeap 只是硬指针：\nif query \u003c node.key: go left else: go right 或者硬写入：\narr[3] = value 那梯度很难传进去。\n所以第一版 TreeHeap 不能直接从 hard tree 开始。\n我们需要：\nSoft TreeHeap 也就是：\n硬树堆结构的连续松弛版本。 一句话 Claim 当前 claim 是：\n如果把 TreeHeap 的写入、路由、停止、读取都改成可微的 soft distribution， 那么 TreeHeap 就可以像 MLP / Transformer 一样用 loss 和 gradient 学习。 梯度会被写入： node_key node_value write kernel query kernel decoder kernel 这不是最终证明。\n这只是进入机器学习的入口。\n如果这个 claim 不成立，TreeHeap 后面不用谈 WMT，也不用谈世界模型。\n从 Hard TreeHeap 到 Soft TreeHeap 这里有一个很容易误解的点：\nSoft TreeHeap 不是推翻前面建立的 TreeHeap 数学基础。 更准确的说法是：\nHard TreeHeap 是离散代数对象。 Soft TreeHeap 是它的概率提升，也就是可微近似。 原来的 TreeHeap 有确定的地址、确定的子树、确定的路由。\n例如一个 hard 操作可以写成：\nO_a(H) 意思是：\n在地址 a 上，对 TreeHeap H 做一次确定操作。 比如：\n在地址 a 上执行 TreeHeap plus 读取 left(root) 沿着 root -\u003e left -\u003e right 走 在某个 subheap 上做 kernel matching 这些都是 hard TreeHeap 的操作。\nSoft 以后，不是把这些操作删掉。\nSoft 以后变成：\nSoftO(H) = sum_a p(a) * O_a(H) 翻译成人话就是：\n模型暂时不知道应该操作哪个地址， 所以它对多个地址都做一点操作， 每个地址的权重由概率 p(a) 决定。 如果概率分布是：\np(5) = 1.0 其他地址 = 0.0 那么：\nSoftO(H) = O_5(H) 也就是说：\nSoft TreeHeap 会退化回 Hard TreeHeap。 这非常重要。\n因为它说明：\nSoft TreeHeap 不是另一种东西。 它是 Hard TreeHeap 的连续版本。 可以把关系表写成这样：\nHard TreeHeap Soft TreeHeap 一个确定地址 一个地址概率分布 H_next = H ⊕_a x sum_a p(a) * (H ⊕_a x) left / right / stop p_left / p_right / p_stop 一个确定子树 子树概率分布 一个确定卷积核位置 多个 subheap 上的加权 kernel hard collapse 低温 softmax / top-k / argmax collapse 所以 Soft TreeHeap 的本质不是：\n把树堆变成普通向量。 而是：\n让 TreeHeap 的地址、路径、子结构都能携带概率。 这样 loss 才能通过概率分布反传。\n一个小例子 hard 查询是：\nquery = 6 root = 8 6 \u003c 8 go left soft 查询是：\nquery = 6 root = 8 stop: 0.05 left: 0.85 right: 0.10 这时模型还没有完全确定。\n它主要相信：\n应该 go left 但仍然保留一点：\nstop / right 的可能性。 如果后面发现答案错了，loss 可以反向告诉它：\nleft 的概率应该再高一点； right 的概率应该再低一点； 当前 node_key / query_kernel 应该如何调整。 这就是梯度进入 TreeHeap 的入口。\n但这里有一个工程边界 完整的概率 TreeHeap 应该保存：\n所有可能 TreeHeap 的概率分布。 这是最干净的数学版本。\n但它太贵。\n因为树一大，可能结构数量会爆炸。\n工程上更可能采用的是近似版本：\n每个 node 保存一个 value 分布； 每条 route 保存一个 action 分布； 每个 kernel 保存一个 soft attention 分布。 这可以叫：\nmean-field Soft TreeHeap 它的好处是能训练。\n它的风险是：\n可能丢失不同路径之间的相关性。 所以后续实验不能只看任务准确率。\n还要看：\nSoft 近似是否破坏了 TreeHeap 原来的代数结构？ 例如：\nhard collapse 以后，是否还能得到合法树？ soft route 是否真的收敛到可解释路径？ subheap kernel 是否还能迁移？ 这会成为后续 proof 的一部分。\n为什么 hard TreeHeap 不适合第一版训练 假设我们有一个硬查询 kernel：\nif query == node.key: return stop if query \u003c node.key: return left if query \u003e node.key: return right 这个逻辑很清楚，但对梯度不友好。\n因为模型一旦选择：\nleft 它就完全不走：\nright 如果最后错了，loss 很难告诉模型：\n其实刚才 right 更好。 同样，硬写入也有问题：\narr[5] = value 如果写错位置，梯度很难平滑地告诉 encoder：\n你应该往 arr[4] 写 0.2，往 arr[5] 写 0.8。 所以第一版必须用 soft 版本。\nSoft Write 的弱版本：神经内存写入 先承认一个问题。\n如果我们把可微写入写成：\nwrite_logits = encoder(x, H) write_prob = softmax(write_logits) 然后直接更新数组槽位：\narr_new[i] = (1 - write_prob[i]) * arr_old[i] + write_prob[i] * write_vector 这确实是可微的。\n但它更像：\nneural memory write 也就是神经网络记忆槽更新。\n它的问题是：\n梯度进入了 arr， 但没有真正进入 TreeHeap 的 plus 算子。 换句话说，它能证明：\n一个数组内存可以被 softmax 写入。 但它不能证明：\nTreeHeap 的加法、路径、子结构、卷积核可以被学习。 所以这个写法只能作为：\nbaseline 教学反例 最低可微版本 不能作为 TreeHeap 的正式写入机制。\n正式机制应该是：\nSoft Write = Soft Plus 更进一步：\nSoft Write = Kernel-guided Soft Plus Soft Plus：对 TreeHeap 加法的概率提升 先定义 hard plus。\n假设：\nH = 当前 TreeHeap x = 新输入的 token / node / 小 TreeHeap a = 一个地址或路径 hard 写入不是：\narr[a] = x 而是：\nH_next = H ⊕_a x 其中：\n⊕_a 表示：\n在地址 a 上，把 x 按 TreeHeap 的规则并入 H。 这个规则可以包含：\n路径比较 子树重排 局部 merge 权重更新 父子关系维护 这才是 TreeHeap 的加法味道。\nSoft plus 不是直接改数组。\nSoft plus 是：\nH_next = sum_a p(a | H, x) * (H ⊕_a x) 翻译成人话：\n模型不知道 x 应该插入哪个地址， 所以它先生成多个候选 TreeHeap： candidate_a = H ⊕_a x 然后按概率把这些候选结构混合起来。 如果：\np(left.right) = 1.0 其他地址 = 0.0 那么：\nH_next = H ⊕_{left.right} x 这就退化回 hard TreeHeap plus。\n所以 Soft Plus 仍然继承原来的 TreeHeap 数学基础。\n它不是：\n矩阵内存插值。 它是：\nTreeHeap plus 算子的 soft lifting。 Kernel-guided Soft Plus：用卷积核决定写入 还有一个更关键的问题：\np(a | H, x) 从哪里来？ 如果只是让一个普通 encoder 直接输出所有地址概率：\np(a) = softmax(MLP(H, x)) 那仍然有点像普通注意力。\n更符合 TreeHeap 的方案是：\np(a) 由 TreeHeap convolution kernel 计算出来。 也就是：\nscore(a) = K_write(subheap(H, a), x) p(a) = softmax(score(a)) 其中：\nK_write 是一个可微卷积核。\n它观察：\n当前位置的 subheap 新输入 x 局部路径 局部 key/value/weight 局部结构 pattern 然后判断：\nx 是否应该写到这个位置； x 是否应该继续往 left； x 是否应该继续往 right； x 是否应该在这里 stop 并 merge。 这样，写入就不再是 hardcode：\nif x \u003c node.key: go left 而是变成可微 kernel：\nlocal_feature = phi(subheap(H, a), x) score_stop = w_stop · local_feature score_left = w_left · local_feature score_right = w_right · local_feature p_action = softmax([score_stop, score_left, score_right]) 这个 K_write 就是 TreeHeap 上的卷积核。\n它不是二维图像卷积核。\n但它做的是同一类事情：\n在局部结构上滑动； 提取局部 pattern； 给出下一步操作分数。 图像卷积看的是：\n3x3 pixel patch TreeHeap 卷积看的是：\nroot -\u003e left/right 的小 subheap 例如：\n8 / \\ 4 12 现在插入：\nx.key = 6 卷积核在 root=8 看到：\n6 更像应该去 left 于是输出：\nstop: 0.05 left: 0.90 right: 0.05 到 node=4 时，它看到：\n6 更像应该去 right 输出：\nstop: 0.05 left: 0.05 right: 0.90 到空位或 node=6 时，它输出：\nstop: 0.95 left: 0.025 right: 0.025 然后执行：\nH_next = sum_a write_mass[a] * (H ⊕_a x) 这里的 write_mass[a] 不是外部指定的。\n它来自 kernel 在树上的逐步传播：\nmass[root] = 1 for step in search_steps: for each active address a: p_action = K_write(subheap(H, a), x) write_mass[a] += mass[a] * p_stop mass_next[left(a)] += mass[a] * p_left mass_next[right(a)] += mass[a] * p_right 最后：\nH_next = sum_a write_mass[a] * Plus_a(H, x) 这才是 TreeHeap 版本的可微写入。\n它的梯度链条是：\nloss ↓ H_next ↓ sum_a write_mass[a] * Plus_a(H, x) ↓ write_mass[a] ↓ K_write(subheap(H, a), x) ↓ kernel parameters 所以梯度进入的不是普通内存槽。\n梯度进入的是：\nTreeHeap convolution kernel TreeHeap plus candidates TreeHeap route distribution TreeHeap collapse path 这比 naive soft memory write 更接近我们的目标。\nSoft Route：可微路径选择 硬路由是：\ngo left Soft route 是：\naction_logits = query_kernel(query, node) action_prob = softmax(action_logits) 输出：\n{ stop: 0.10, left: 0.75, right: 0.15 } 这表示：\n当前更可能应该走 left， 但 right 和 stop 仍然保留少量概率。 如果当前节点有流量：\nmass[i] = 0.80 那么下一步传播：\nstop_mass[i] += 0.80 * 0.10 mass_next[left(i)] += 0.80 * 0.75 mass_next[right(i)] += 0.80 * 0.15 也就是：\nstop_mass[i] += mass[i] * p_stop mass_next[left(i)] += mass[i] * p_left mass_next[right(i)] += mass[i] * p_right 跑多步以后，输出可以是：\ny_hat = sum_i stop_mass[i] * node_value[i] 或者分类任务里：\nlogits = sum_i stop_mass[i] * node_logits[i] 这仍然是可微的。\n梯度能进入：\nquery kernel node_key node_value 路径概率 一个完整 Toy：查找 key/value 任务：\n输入一组 key/value 查询一个 key 输出对应 value 样本：\npairs = [(8,A), (4,B), (12,C), (2,D), (6,E), (10,F), (14,G)] query = 6 target = E 理想结构是：\n8:A / \\ 4:B 12:C / \\ / \\ 2:D 6:E 10:F 14:G 如果是硬查找：\n6 \u003c 8 -\u003e left 6 \u003e 4 -\u003e right 6 == 6 -\u003e stop output = E Soft TreeHeap 不会一开始这么硬。\n第 1 步在 root：\nnode.key = 8 query = 6 query kernel 输出：\nstop: 0.05 left: 0.85 right: 0.10 第 2 步进入左子树，节点是 4:B：\nnode.key = 4 query = 6 输出：\nstop: 0.05 left: 0.10 right: 0.85 路径概率：\nroot -\u003e left -\u003e right = 0.85 * 0.85 = 0.7225 第 3 步到 6:E：\nnode.key = 6 query = 6 输出：\nstop: 0.80 left: 0.10 right: 0.10 最终命中路径概率：\nroot -\u003e left -\u003e right -\u003e stop = 0.85 * 0.85 * 0.80 = 0.5780 如果模型输出了 E，loss 下降。\n如果模型输出错了，loss 反传，梯度会告诉系统：\n哪些节点 key/value 需要调整 哪些路由概率需要调整 哪个写入位置更合理 这就是 TreeHeap 的梯度学习过程。\nLoss 不应该一开始大锅炖 上面讲了：\nloss 可以进入 Soft TreeHeap。 但这不等于说：\n所有 loss 都应该一开始混在一起。 一个很自然的教学写法是：\nL = L_task + alpha * L_order + beta * L_depth + gamma * L_entropy 这个式子适合帮助读者理解：\n任务正确性、结构合法性、路径长度、概率坍缩 都可以变成训练信号。 但它不一定是好的工程设计。\n因为多个 loss 直接相加，会遇到几个问题：\n梯度方向可能互相抵消； 某个 loss 的尺度太大，压住其他 loss； 结构 loss 太早生效，导致模型过早坍缩； 熵 loss 太强，导致模型一直不敢做决定； 多个目标一起训练，难以知道到底哪个 kernel 学坏了。 这和 Transformer 的经验类似。\nTransformer 不是只用一个观察角度看序列。\n它用了：\nmulti-head attention 不同 head 可以学习不同关系。\nTreeHeap 也应该类似。\n更合理的设计不是：\n一个巨大 loss 控制所有东西。 而是：\n多个 TreeHeap kernel / head 各自学习一种结构能力。 Multi-kernel TreeHeap 可以先把 Soft TreeHeap 拆成几个 head。\nHead 学什么 主要梯度来源 plus/kernel head 输入应该通过哪个 subheap kernel 并入 TreeHeap reconstruction / lookup / structure loss route head 查询时走 stop/left/right lookup task loss order head 是否形成有序树 order violation loss depth head 路径是否短 expected depth loss prefix head 高频符号是否更短 compression loss collapse head 什么时候从概率变成确定结构 entropy / temperature schedule 这样每个 head 都比较清楚。\n例如查找任务里，route head 主要学：\nquery 和当前 node 的关系。 order head 主要学：\nleft_key \u003c root_key \u003c right_key prefix head 主要学：\n高频符号走短路径。 这些目标不一定应该同时强行压到一个参数空间里。\n更好的方式是：\n让不同 kernel 先学会自己的局部规律， 再由上层组合。 Loss 设计一：任务 Head 任务 head 只负责最终答案。\n如果输出是分类：\nL_task = cross_entropy(y_hat, target) 如果输出是连续值：\nL_task = MSE(y_hat, target) 例如 key/value 查找任务：\ntarget = E y_hat = soft_query(H, query) L_task = cross_entropy(y_hat, E) 这个 head 回答：\n最后答案对不对？ 它不直接负责：\n树是否漂亮； 路径是否最短； 概率是否已经坍缩。 Loss 设计二：Order Head 如果任务是有序查找树，可以单独给 order head 一个结构目标。\n例如：\nleft_key \u003c root_key \u003c right_key 用 hinge loss 写：\nL_order = max(0, left_key - root_key + margin) + max(0, root_key - right_key + margin) 如果左子节点比 root 还大，就会罚。\n如果右子节点比 root 还小，也会罚。\n这个 head 的作用不是替代任务 loss。\n它的作用是：\n让 TreeHeap 的内部结构更像可搜索结构。 这类似 CNN 的卷积结构偏置。\n但区别是：\nCNN 的局部结构通常是人工固定的二维邻域； TreeHeap 的局部结构是可学习的地址 / 子树 / 路由。 Loss 设计三：Depth Head 如果查找绕很远，虽然答案对了，也不一定好。\n可以单独训练一个 depth head：\nL_depth = expected_search_steps 例如：\nroot -\u003e left -\u003e right -\u003e stop 路径长度是 3。\n如果模型绕成：\nroot -\u003e right -\u003e left -\u003e left -\u003e right -\u003e stop 路径更长，就会被罚。\n这个 head 对应的是：\n搜索效率。 它可以晚一点加入。\n因为训练早期模型还不会查找，如果太早惩罚路径长度，可能导致模型学会：\n为了路径短，直接 stop。 但答案是错的。\nLoss 设计四：Collapse Head 训练早期，我们允许不确定：\nleft: 0.45 right: 0.40 stop: 0.15 训练后期，我们希望它逐渐清晰：\nleft: 0.95 right: 0.03 stop: 0.02 所以可以使用 entropy 或 temperature schedule。\n但这里要非常小心。\n如果把 entropy loss 一开始就和 task loss 强行混在一起，可能出现两种坏情况。\n第一种：\n过早坍缩。 模型还没学会结构，就已经把概率压成 one-hot。\n后面错了也很难改。\n第二种：\n长期不坍缩。 模型为了保留不确定性，永远不形成清晰路径。\n所以 collapse head 更像一个控制器：\nearly: high temperature, allow exploration middle: reduce temperature late: low temperature, encourage collapse 它不应该无脑和所有 loss 相加。\n推荐训练方式：分阶段或交替训练 更合理的训练流程可以是：\nStage 1: 只训练 task head / route head。 目标：答案能不能对。 Stage 2: 加入 order head。 目标：内部结构是否变成可搜索树。 Stage 3: 加入 depth head。 目标：路径是否更短。 Stage 4: 加入 collapse head。 目标：soft distribution 是否能稳定坍缩成 hard TreeHeap。 也可以采用交替训练：\nstep 1: update route kernel step 2: update write kernel step 3: update order kernel step 4: update collapse controller 必要时还可以使用：\nstop-gradient freeze kernel auxiliary probe gradient clipping loss normalization 这样做的好处是：\n每一种梯度信息都有自己的入口； 每个 kernel 学坏了都能被定位； 不会把所有目标搅在一起互相污染。 所以 SPR-019 的正式观点应该是：\nTreeHeap 可以通过 loss / gradient 学习， 但不应该依赖一个大锅炖总 loss。 TreeHeap 更合理的训练形态是： multi-kernel + staged training + controlled collapse。 Huffman-like 压缩任务的 Loss 如果任务是学习加权前缀树，loss 可以换成：\nL = L_reconstruct + lambda * L_length + mu * L_prefix_free 其中：\nL_reconstruct: decoder 是否能还原符号。 L_length: 高频符号路径是否更短。 L_prefix_free: 是否避免一个符号路径成为另一个符号路径的前缀。 例如符号频率：\nA: 0.50 B: 0.25 C: 0.15 D: 0.10 理想 Huffman-like 编码：\nA -\u003e 0 B -\u003e 10 C -\u003e 110 D -\u003e 111 平均路径长度：\n0.50 * 1 + 0.25 * 2 + 0.15 * 3 + 0.10 * 3 = 1.75 固定长度编码是：\n2.00 所以 predict 是：\n如果 TreeHeap 能学习加权前缀树， 它的 expected path length 应该接近 Huffman oracle， 并低于 fixed-length baseline。 Predict 当前 predict 分四层。\nPredict 1：可学习性 Soft TreeHeap 的 loss 应该能下降。 最小任务：\n线性回归 二分类 XOR / parity key/value lookup 如果这些都学不会，TreeHeap 不具备机器学习基本能力。\nPredict 2：可搜索编码 在 key/value lookup 任务中， TreeHeap encoder 应该能学习一种可被 query kernel 搜索的结构。 指标：\nquery accuracy expected search depth OOD key count generalization tree order violation rate failure tail Predict 3：可压缩编码 在 weighted prefix coding 任务中， TreeHeap encoder 应该能学习接近 Huffman oracle 的路径分配。 指标：\nreconstruction accuracy expected path length prefix-free violation rate gap to Huffman oracle gap to fixed-length baseline Predict 4：Soft 版本不破坏 TreeHeap 代数 如果 Soft TreeHeap 真的是 Hard TreeHeap 的概率提升， 那么当温度降低、分布接近 one-hot 时， soft 结果应该接近对应 hard 操作的结果。 也就是：\nkernel-guided soft plus collapse 后，应该接近 hard plus； soft route collapse 后，应该接近 hard route； soft subheap kernel collapse 后，应该接近 hard subheap kernel； soft learned tree collapse 后，应该仍然是合法 TreeHeap。 指标：\nhard-soft output gap collapse legality rate route interpretability subheap relocation accuracy gradient stability Proof 设计 为了证明 claim，需要最少四组实验。\nExperiment 0：Soft TreeHeap 能不能学习 目的：\n证明 TreeHeap 和 MLP 一样，可以通过 loss / gradient 学函数。 任务：\nlinear regression binary classification XOR small lookup 对比：\nMLP Soft TreeHeap 判断：\nloss 是否下降； accuracy 是否上升； 参数梯度是否非零； 训练是否稳定。 Experiment 1：Learned Ordered Tree Search 目的：\n证明 encoder 能学习建一棵可搜索树。 任务：\n输入 N 个 key/value； 查询 key； 输出 value。 训练：\nN = 7, 15 测试外推：\nN = 31, 63 对比：\nflatten MLP small Transformer Soft TreeHeap oracle BST 指标：\naccuracy expected search depth sample efficiency OOD generalization tree order violation Experiment 2：Learned Huffman-like Prefix Tree 目的：\n证明 encoder 能学习加权前缀压缩结构。 任务：\n输入符号频率； encoder 输出 TreeHeap code； decoder 根据路径还原符号。 对比：\nfixed-length code Huffman oracle MLP autoencoder Soft TreeHeap prefix encoder 指标：\nreconstruction accuracy expected code length prefix-free violation gap to Huffman oracle Experiment 3：Hard/Soft Consistency 与 Loss Ablation 目的：\n证明 Soft TreeHeap 没有破坏 Hard TreeHeap 的核心算子； 同时验证 multi-kernel 训练是否比大锅炖总 loss 更稳定。 这个实验分三部分。\n第一半验证 hard/soft 一致性。\n构造一个确定的 hard TreeHeap：\n8 / \\ 4 12 / \\ / \\ 2 6 10 14 hard 查询：\nquery = 6 8 -\u003e left 4 -\u003e right 6 -\u003e stop output = E soft 查询使用同一棵树，但每一步不是确定动作，而是概率：\nat 8: stop 0.01 left 0.98 right 0.01 at 4: stop 0.01 left 0.01 right 0.98 at 6: stop 0.98 left 0.01 right 0.01 这时正确路径概率约为：\n0.98 * 0.98 * 0.98 = 0.941192 如果 temperature 继续降低，概率会更接近：\n1.0 那么 soft 输出应该收敛到 hard 输出：\noutput_soft -\u003e E 判断指标：\nhard-soft output gap 是否下降； 正确路径概率是否上升； collapse 后路径是否合法； collapse 后是否等于 hard route。 第二半验证写入机制。\n同一个 key/value lookup 建树任务，比较三种写入方式：\nA: naive soft memory write B: encoder soft plus C: kernel-guided soft plus A 是弱版本：\narr_new[i] = (1 - p[i]) * arr_old[i] + p[i] * write_vector 它测试：\n普通神经内存写入能做到什么程度。 B 是中间版本：\nH_next = sum_a p(a | H, x) * (H ⊕_a x) 但 p(a) 由普通 encoder 给出。\n它测试：\n只要有 soft plus，是否就足够。 C 是 TreeHeap 正式版本：\nscore(a) = K_write(subheap(H, a), x) p(a) = softmax(score(a)) H_next = sum_a p(a) * (H ⊕_a x) 它测试：\n用 TreeHeap 卷积核来决定写入位置， 是否比普通 encoder 更稳定、更可解释、更能外推。 判断指标：\nlookup accuracy OOD N=31/63 accuracy expected search depth collapse legality rate route interpretability hard-soft output gap subheap relocation accuracy 如果我们的判断正确，C 应该至少在这些地方更好：\n更容易形成可解释路径； 更容易坍缩成合法 TreeHeap； 在更大 N 上失败尾部更少； 对 subheap relocation 更稳。 第三半验证 loss 设计。\n同一个 lookup 任务，比较三种训练方式：\nD: only task loss E: 大锅炖总 loss F: multi-kernel staged training 其中 E 是：\nL = L_task + alpha * L_order + beta * L_depth + gamma * L_entropy F 是：\nStage 1: train route/task head Stage 2: add order head Stage 3: add depth head Stage 4: add collapse head 如果我们的判断正确，F 应该更稳。\n预期结果不是 F 在所有指标上都赢。\n更具体的 predict 是：\nF 的梯度爆炸/消失次数更少； F 的 collapse 更晚、更可控； F 的 order violation 下降更平滑； F 在 OOD N=31/63 上失败尾部更少； E 可能训练更快，但更容易过早坍缩或目标对冲。 Falsification：什么结果会否定我们 这也要写清楚。\n如果出现这些结果，claim 就要降级：\nSoft TreeHeap 的 loss 不下降。 Soft route 梯度长期为 0 或爆炸。 TreeHeap lookup 不如同规模 MLP。 TreeHeap 无法外推到更大 N。 prefix tree 长度不如 fixed-length baseline。 soft collapse 后得不到合法 hard TreeHeap。 kernel-guided soft plus 不如 naive memory write。 multi-kernel 比大锅炖总 loss 更不稳定。 encoder 没有学出任何可解释结构。 这些结果说明：\nTreeHeap 可能只是复杂包装， 没有带来有效归纳偏置。 当前 Claim 的边界 到目前为止，我们还没有证明：\nSoft TreeHeap 一定能训练成功。 TreeHeap 一定优于 Transformer。 TreeHeap 能做 WMT。 Huffman-like 结构一定能通过梯度学出来。 现在只是确定了下一步要证明什么。\n真正的 claim 是：\nTreeHeap 如果要作为机器学习结构存在， 必须能让梯度进入它的结构状态。 Soft write 不应该只是内存插值。 正式路径应该是： kernel-guided soft plus、soft route、soft stop/read。 如果这条路径成立， TreeHeap 就能像 MLP / Transformer 一样用 loss 学习； 并且可能在搜索、压缩、路径解码这类结构任务上表现更好。 这就是 SPR-019 要进入实验的地方。\nLicense: GPLv3\n",
+  "wordCount" : "2315",
+  "inLanguage": "en",
+  "datePublished": "2026-06-22T00:00:00Z",
+  "dateModified": "2026-06-22T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "nio (Houming818) \u0026 Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/019-soft-treeheap-gradient.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item active">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-019] Soft TreeHeap：梯度如何进入树堆结构
+    </h1>
+    <div class="post-description">
+      把 TreeHeap 接入机器学习：用 kernel-guided soft plus、soft route 和多核训练让梯度进入树堆算子，并提出 claim、predict、proof 和实验方案。
+    </div>
+    <div class="post-meta"><span title='2026-06-22 00:00:00 +0000 UTC'>June 22, 2026</span>&nbsp;·&nbsp;<span>nio (Houming818) &amp; Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="soft-treeheap梯度如何进入树堆结构">Soft TreeHeap：梯度如何进入树堆结构<a hidden class="anchor" aria-hidden="true" href="#soft-treeheap梯度如何进入树堆结构">#</a></h1>
+<p>上一篇 <code>SPR-018</code> 把 TreeHeap 的目标说清楚了：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 不是要证明自己完全不同。
+</span></span><span style="display:flex;"><span>TreeHeap 要证明自己和 MLP / CNN / Transformer 一样，
+</span></span><span style="display:flex;"><span>也是一种可以构造预测函数的机器学习结构。
+</span></span></code></pre></div><p>但这会立刻遇到一个核心问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>梯度怎么进入 TreeHeap？
+</span></span></code></pre></div><p>线性回归为什么能学习？</p>
+<p>因为它有：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>y_hat = W x + b
+</span></span><span style="display:flex;"><span>loss = MSE(y_hat, y)
+</span></span><span style="display:flex;"><span>gradient = d loss / d W
+</span></span><span style="display:flex;"><span>update W
+</span></span></code></pre></div><p>训练结束后，数据里的规律被蒸馏进参数：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>W, b
+</span></span></code></pre></div><p>Transformer 也是类似的，只是参数从一个简单矩阵，变成很多矩阵：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Wq, Wk, Wv, Wo, FFN weights
+</span></span></code></pre></div><p>loss 仍然通过梯度，把数据里的统计规律写进参数矩阵。</p>
+<p>那么 TreeHeap 呢？</p>
+<p>如果 TreeHeap 只是硬指针：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>if query &lt; node.key:
+</span></span><span style="display:flex;"><span>  go left
+</span></span><span style="display:flex;"><span>else:
+</span></span><span style="display:flex;"><span>  go right
+</span></span></code></pre></div><p>或者硬写入：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>arr[3] = value
+</span></span></code></pre></div><p>那梯度很难传进去。</p>
+<p>所以第一版 TreeHeap 不能直接从 hard tree 开始。</p>
+<p>我们需要：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Soft TreeHeap
+</span></span></code></pre></div><p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>硬树堆结构的连续松弛版本。
+</span></span></code></pre></div><h2 id="一句话-claim">一句话 Claim<a hidden class="anchor" aria-hidden="true" href="#一句话-claim">#</a></h2>
+<p>当前 claim 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果把 TreeHeap 的写入、路由、停止、读取都改成可微的 soft distribution，
+</span></span><span style="display:flex;"><span>那么 TreeHeap 就可以像 MLP / Transformer 一样用 loss 和 gradient 学习。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>梯度会被写入：
+</span></span><span style="display:flex;"><span>node_key
+</span></span><span style="display:flex;"><span>node_value
+</span></span><span style="display:flex;"><span>write kernel
+</span></span><span style="display:flex;"><span>query kernel
+</span></span><span style="display:flex;"><span>decoder kernel
+</span></span></code></pre></div><p>这不是最终证明。</p>
+<p>这只是进入机器学习的入口。</p>
+<p>如果这个 claim 不成立，TreeHeap 后面不用谈 WMT，也不用谈世界模型。</p>
+<h2 id="从-hard-treeheap-到-soft-treeheap">从 Hard TreeHeap 到 Soft TreeHeap<a hidden class="anchor" aria-hidden="true" href="#从-hard-treeheap-到-soft-treeheap">#</a></h2>
+<p>这里有一个很容易误解的点：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Soft TreeHeap 不是推翻前面建立的 TreeHeap 数学基础。
+</span></span></code></pre></div><p>更准确的说法是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Hard TreeHeap 是离散代数对象。
+</span></span><span style="display:flex;"><span>Soft TreeHeap 是它的概率提升，也就是可微近似。
+</span></span></code></pre></div><p>原来的 TreeHeap 有确定的地址、确定的子树、确定的路由。</p>
+<p>例如一个 hard 操作可以写成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>O_a(H)
+</span></span></code></pre></div><p>意思是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在地址 a 上，对 TreeHeap H 做一次确定操作。
+</span></span></code></pre></div><p>比如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在地址 a 上执行 TreeHeap plus
+</span></span><span style="display:flex;"><span>读取 left(root)
+</span></span><span style="display:flex;"><span>沿着 root -&gt; left -&gt; right 走
+</span></span><span style="display:flex;"><span>在某个 subheap 上做 kernel matching
+</span></span></code></pre></div><p>这些都是 hard TreeHeap 的操作。</p>
+<p>Soft 以后，不是把这些操作删掉。</p>
+<p>Soft 以后变成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>SoftO(H) = sum_a p(a) * O_a(H)
+</span></span></code></pre></div><p>翻译成人话就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型暂时不知道应该操作哪个地址，
+</span></span><span style="display:flex;"><span>所以它对多个地址都做一点操作，
+</span></span><span style="display:flex;"><span>每个地址的权重由概率 p(a) 决定。
+</span></span></code></pre></div><p>如果概率分布是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>p(5) = 1.0
+</span></span><span style="display:flex;"><span>其他地址 = 0.0
+</span></span></code></pre></div><p>那么：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>SoftO(H) = O_5(H)
+</span></span></code></pre></div><p>也就是说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Soft TreeHeap 会退化回 Hard TreeHeap。
+</span></span></code></pre></div><p>这非常重要。</p>
+<p>因为它说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Soft TreeHeap 不是另一种东西。
+</span></span><span style="display:flex;"><span>它是 Hard TreeHeap 的连续版本。
+</span></span></code></pre></div><p>可以把关系表写成这样：</p>
+<table>
+  <thead>
+      <tr>
+          <th>Hard TreeHeap</th>
+          <th>Soft TreeHeap</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>一个确定地址</td>
+          <td>一个地址概率分布</td>
+      </tr>
+      <tr>
+          <td><code>H_next = H ⊕_a x</code></td>
+          <td><code>sum_a p(a) * (H ⊕_a x)</code></td>
+      </tr>
+      <tr>
+          <td><code>left / right / stop</code></td>
+          <td><code>p_left / p_right / p_stop</code></td>
+      </tr>
+      <tr>
+          <td>一个确定子树</td>
+          <td>子树概率分布</td>
+      </tr>
+      <tr>
+          <td>一个确定卷积核位置</td>
+          <td>多个 subheap 上的加权 kernel</td>
+      </tr>
+      <tr>
+          <td>hard collapse</td>
+          <td>低温 softmax / top-k / argmax collapse</td>
+      </tr>
+  </tbody>
+</table>
+<p>所以 Soft TreeHeap 的本质不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>把树堆变成普通向量。
+</span></span></code></pre></div><p>而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>让 TreeHeap 的地址、路径、子结构都能携带概率。
+</span></span></code></pre></div><p>这样 loss 才能通过概率分布反传。</p>
+<h3 id="一个小例子">一个小例子<a hidden class="anchor" aria-hidden="true" href="#一个小例子">#</a></h3>
+<p>hard 查询是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>query = 6
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>root = 8
+</span></span><span style="display:flex;"><span>6 &lt; 8
+</span></span><span style="display:flex;"><span>go left
+</span></span></code></pre></div><p>soft 查询是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>query = 6
+</span></span><span style="display:flex;"><span>root = 8
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>stop: 0.05
+</span></span><span style="display:flex;"><span>left: 0.85
+</span></span><span style="display:flex;"><span>right: 0.10
+</span></span></code></pre></div><p>这时模型还没有完全确定。</p>
+<p>它主要相信：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>应该 go left
+</span></span></code></pre></div><p>但仍然保留一点：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>stop / right 的可能性。
+</span></span></code></pre></div><p>如果后面发现答案错了，loss 可以反向告诉它：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>left 的概率应该再高一点；
+</span></span><span style="display:flex;"><span>right 的概率应该再低一点；
+</span></span><span style="display:flex;"><span>当前 node_key / query_kernel 应该如何调整。
+</span></span></code></pre></div><p>这就是梯度进入 TreeHeap 的入口。</p>
+<h3 id="但这里有一个工程边界">但这里有一个工程边界<a hidden class="anchor" aria-hidden="true" href="#但这里有一个工程边界">#</a></h3>
+<p>完整的概率 TreeHeap 应该保存：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>所有可能 TreeHeap 的概率分布。
+</span></span></code></pre></div><p>这是最干净的数学版本。</p>
+<p>但它太贵。</p>
+<p>因为树一大，可能结构数量会爆炸。</p>
+<p>工程上更可能采用的是近似版本：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>每个 node 保存一个 value 分布；
+</span></span><span style="display:flex;"><span>每条 route 保存一个 action 分布；
+</span></span><span style="display:flex;"><span>每个 kernel 保存一个 soft attention 分布。
+</span></span></code></pre></div><p>这可以叫：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>mean-field Soft TreeHeap
+</span></span></code></pre></div><p>它的好处是能训练。</p>
+<p>它的风险是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>可能丢失不同路径之间的相关性。
+</span></span></code></pre></div><p>所以后续实验不能只看任务准确率。</p>
+<p>还要看：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Soft 近似是否破坏了 TreeHeap 原来的代数结构？
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>hard collapse 以后，是否还能得到合法树？
+</span></span><span style="display:flex;"><span>soft route 是否真的收敛到可解释路径？
+</span></span><span style="display:flex;"><span>subheap kernel 是否还能迁移？
+</span></span></code></pre></div><p>这会成为后续 proof 的一部分。</p>
+<h2 id="为什么-hard-treeheap-不适合第一版训练">为什么 hard TreeHeap 不适合第一版训练<a hidden class="anchor" aria-hidden="true" href="#为什么-hard-treeheap-不适合第一版训练">#</a></h2>
+<p>假设我们有一个硬查询 kernel：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>if query == node.key:
+</span></span><span style="display:flex;"><span>  return stop
+</span></span><span style="display:flex;"><span>if query &lt; node.key:
+</span></span><span style="display:flex;"><span>  return left
+</span></span><span style="display:flex;"><span>if query &gt; node.key:
+</span></span><span style="display:flex;"><span>  return right
+</span></span></code></pre></div><p>这个逻辑很清楚，但对梯度不友好。</p>
+<p>因为模型一旦选择：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>left
+</span></span></code></pre></div><p>它就完全不走：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>right
+</span></span></code></pre></div><p>如果最后错了，loss 很难告诉模型：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>其实刚才 right 更好。
+</span></span></code></pre></div><p>同样，硬写入也有问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>arr[5] = value
+</span></span></code></pre></div><p>如果写错位置，梯度很难平滑地告诉 encoder：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>你应该往 arr[4] 写 0.2，往 arr[5] 写 0.8。
+</span></span></code></pre></div><p>所以第一版必须用 soft 版本。</p>
+<h2 id="soft-write-的弱版本神经内存写入">Soft Write 的弱版本：神经内存写入<a hidden class="anchor" aria-hidden="true" href="#soft-write-的弱版本神经内存写入">#</a></h2>
+<p>先承认一个问题。</p>
+<p>如果我们把可微写入写成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>write_logits = encoder(x, H)
+</span></span><span style="display:flex;"><span>write_prob = softmax(write_logits)
+</span></span></code></pre></div><p>然后直接更新数组槽位：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>arr_new[i] =
+</span></span><span style="display:flex;"><span>  (1 - write_prob[i]) * arr_old[i]
+</span></span><span style="display:flex;"><span>+ write_prob[i] * write_vector
+</span></span></code></pre></div><p>这确实是可微的。</p>
+<p>但它更像：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>neural memory write
+</span></span></code></pre></div><p>也就是神经网络记忆槽更新。</p>
+<p>它的问题是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>梯度进入了 arr，
+</span></span><span style="display:flex;"><span>但没有真正进入 TreeHeap 的 plus 算子。
+</span></span></code></pre></div><p>换句话说，它能证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个数组内存可以被 softmax 写入。
+</span></span></code></pre></div><p>但它不能证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 的加法、路径、子结构、卷积核可以被学习。
+</span></span></code></pre></div><p>所以这个写法只能作为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>baseline
+</span></span><span style="display:flex;"><span>教学反例
+</span></span><span style="display:flex;"><span>最低可微版本
+</span></span></code></pre></div><p>不能作为 TreeHeap 的正式写入机制。</p>
+<p>正式机制应该是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Soft Write = Soft Plus
+</span></span></code></pre></div><p>更进一步：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Soft Write = Kernel-guided Soft Plus
+</span></span></code></pre></div><h2 id="soft-plus对-treeheap-加法的概率提升">Soft Plus：对 TreeHeap 加法的概率提升<a hidden class="anchor" aria-hidden="true" href="#soft-plus对-treeheap-加法的概率提升">#</a></h2>
+<p>先定义 hard plus。</p>
+<p>假设：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H = 当前 TreeHeap
+</span></span><span style="display:flex;"><span>x = 新输入的 token / node / 小 TreeHeap
+</span></span><span style="display:flex;"><span>a = 一个地址或路径
+</span></span></code></pre></div><p>hard 写入不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>arr[a] = x
+</span></span></code></pre></div><p>而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H_next = H ⊕_a x
+</span></span></code></pre></div><p>其中：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>⊕_a
+</span></span></code></pre></div><p>表示：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在地址 a 上，把 x 按 TreeHeap 的规则并入 H。
+</span></span></code></pre></div><p>这个规则可以包含：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>路径比较
+</span></span><span style="display:flex;"><span>子树重排
+</span></span><span style="display:flex;"><span>局部 merge
+</span></span><span style="display:flex;"><span>权重更新
+</span></span><span style="display:flex;"><span>父子关系维护
+</span></span></code></pre></div><p>这才是 TreeHeap 的加法味道。</p>
+<p>Soft plus 不是直接改数组。</p>
+<p>Soft plus 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H_next = sum_a p(a | H, x) * (H ⊕_a x)
+</span></span></code></pre></div><p>翻译成人话：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>模型不知道 x 应该插入哪个地址，
+</span></span><span style="display:flex;"><span>所以它先生成多个候选 TreeHeap：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>candidate_a = H ⊕_a x
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>然后按概率把这些候选结构混合起来。
+</span></span></code></pre></div><p>如果：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>p(left.right) = 1.0
+</span></span><span style="display:flex;"><span>其他地址 = 0.0
+</span></span></code></pre></div><p>那么：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H_next = H ⊕_{left.right} x
+</span></span></code></pre></div><p>这就退化回 hard TreeHeap plus。</p>
+<p>所以 Soft Plus 仍然继承原来的 TreeHeap 数学基础。</p>
+<p>它不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>矩阵内存插值。
+</span></span></code></pre></div><p>它是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap plus 算子的 soft lifting。
+</span></span></code></pre></div><h2 id="kernel-guided-soft-plus用卷积核决定写入">Kernel-guided Soft Plus：用卷积核决定写入<a hidden class="anchor" aria-hidden="true" href="#kernel-guided-soft-plus用卷积核决定写入">#</a></h2>
+<p>还有一个更关键的问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>p(a | H, x) 从哪里来？
+</span></span></code></pre></div><p>如果只是让一个普通 encoder 直接输出所有地址概率：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>p(a) = softmax(MLP(H, x))
+</span></span></code></pre></div><p>那仍然有点像普通注意力。</p>
+<p>更符合 TreeHeap 的方案是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>p(a) 由 TreeHeap convolution kernel 计算出来。
+</span></span></code></pre></div><p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>score(a) = K_write(subheap(H, a), x)
+</span></span><span style="display:flex;"><span>p(a) = softmax(score(a))
+</span></span></code></pre></div><p>其中：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>K_write
+</span></span></code></pre></div><p>是一个可微卷积核。</p>
+<p>它观察：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>当前位置的 subheap
+</span></span><span style="display:flex;"><span>新输入 x
+</span></span><span style="display:flex;"><span>局部路径
+</span></span><span style="display:flex;"><span>局部 key/value/weight
+</span></span><span style="display:flex;"><span>局部结构 pattern
+</span></span></code></pre></div><p>然后判断：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x 是否应该写到这个位置；
+</span></span><span style="display:flex;"><span>x 是否应该继续往 left；
+</span></span><span style="display:flex;"><span>x 是否应该继续往 right；
+</span></span><span style="display:flex;"><span>x 是否应该在这里 stop 并 merge。
+</span></span></code></pre></div><p>这样，写入就不再是 hardcode：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>if x &lt; node.key:
+</span></span><span style="display:flex;"><span>  go left
+</span></span></code></pre></div><p>而是变成可微 kernel：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>local_feature = phi(subheap(H, a), x)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>score_stop  = w_stop  · local_feature
+</span></span><span style="display:flex;"><span>score_left  = w_left  · local_feature
+</span></span><span style="display:flex;"><span>score_right = w_right · local_feature
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>p_action = softmax([score_stop, score_left, score_right])
+</span></span></code></pre></div><p>这个 <code>K_write</code> 就是 TreeHeap 上的卷积核。</p>
+<p>它不是二维图像卷积核。</p>
+<p>但它做的是同一类事情：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在局部结构上滑动；
+</span></span><span style="display:flex;"><span>提取局部 pattern；
+</span></span><span style="display:flex;"><span>给出下一步操作分数。
+</span></span></code></pre></div><p>图像卷积看的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>3x3 pixel patch
+</span></span></code></pre></div><p>TreeHeap 卷积看的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root -&gt; left/right 的小 subheap
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>        8
+</span></span><span style="display:flex;"><span>      /   \
+</span></span><span style="display:flex;"><span>     4     12
+</span></span></code></pre></div><p>现在插入：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>x.key = 6
+</span></span></code></pre></div><p>卷积核在 root=8 看到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>6 更像应该去 left
+</span></span></code></pre></div><p>于是输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>stop:  0.05
+</span></span><span style="display:flex;"><span>left:  0.90
+</span></span><span style="display:flex;"><span>right: 0.05
+</span></span></code></pre></div><p>到 node=4 时，它看到：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>6 更像应该去 right
+</span></span></code></pre></div><p>输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>stop:  0.05
+</span></span><span style="display:flex;"><span>left:  0.05
+</span></span><span style="display:flex;"><span>right: 0.90
+</span></span></code></pre></div><p>到空位或 node=6 时，它输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>stop:  0.95
+</span></span><span style="display:flex;"><span>left:  0.025
+</span></span><span style="display:flex;"><span>right: 0.025
+</span></span></code></pre></div><p>然后执行：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H_next = sum_a write_mass[a] * (H ⊕_a x)
+</span></span></code></pre></div><p>这里的 <code>write_mass[a]</code> 不是外部指定的。</p>
+<p>它来自 kernel 在树上的逐步传播：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>mass[root] = 1
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>for step in search_steps:
+</span></span><span style="display:flex;"><span>  for each active address a:
+</span></span><span style="display:flex;"><span>    p_action = K_write(subheap(H, a), x)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    write_mass[a]       += mass[a] * p_stop
+</span></span><span style="display:flex;"><span>    mass_next[left(a)]  += mass[a] * p_left
+</span></span><span style="display:flex;"><span>    mass_next[right(a)] += mass[a] * p_right
+</span></span></code></pre></div><p>最后：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H_next = sum_a write_mass[a] * Plus_a(H, x)
+</span></span></code></pre></div><p>这才是 TreeHeap 版本的可微写入。</p>
+<p>它的梯度链条是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>loss
+</span></span><span style="display:flex;"><span>↓
+</span></span><span style="display:flex;"><span>H_next
+</span></span><span style="display:flex;"><span>↓
+</span></span><span style="display:flex;"><span>sum_a write_mass[a] * Plus_a(H, x)
+</span></span><span style="display:flex;"><span>↓
+</span></span><span style="display:flex;"><span>write_mass[a]
+</span></span><span style="display:flex;"><span>↓
+</span></span><span style="display:flex;"><span>K_write(subheap(H, a), x)
+</span></span><span style="display:flex;"><span>↓
+</span></span><span style="display:flex;"><span>kernel parameters
+</span></span></code></pre></div><p>所以梯度进入的不是普通内存槽。</p>
+<p>梯度进入的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap convolution kernel
+</span></span><span style="display:flex;"><span>TreeHeap plus candidates
+</span></span><span style="display:flex;"><span>TreeHeap route distribution
+</span></span><span style="display:flex;"><span>TreeHeap collapse path
+</span></span></code></pre></div><p>这比 naive soft memory write 更接近我们的目标。</p>
+<h2 id="soft-route可微路径选择">Soft Route：可微路径选择<a hidden class="anchor" aria-hidden="true" href="#soft-route可微路径选择">#</a></h2>
+<p>硬路由是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>go left
+</span></span></code></pre></div><p>Soft route 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>action_logits = query_kernel(query, node)
+</span></span><span style="display:flex;"><span>action_prob = softmax(action_logits)
+</span></span></code></pre></div><p>输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  stop:  0.10,
+</span></span><span style="display:flex;"><span>  left:  0.75,
+</span></span><span style="display:flex;"><span>  right: 0.15
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>这表示：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>当前更可能应该走 left，
+</span></span><span style="display:flex;"><span>但 right 和 stop 仍然保留少量概率。
+</span></span></code></pre></div><p>如果当前节点有流量：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>mass[i] = 0.80
+</span></span></code></pre></div><p>那么下一步传播：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>stop_mass[i]        += 0.80 * 0.10
+</span></span><span style="display:flex;"><span>mass_next[left(i)]  += 0.80 * 0.75
+</span></span><span style="display:flex;"><span>mass_next[right(i)] += 0.80 * 0.15
+</span></span></code></pre></div><p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>stop_mass[i]        += mass[i] * p_stop
+</span></span><span style="display:flex;"><span>mass_next[left(i)]  += mass[i] * p_left
+</span></span><span style="display:flex;"><span>mass_next[right(i)] += mass[i] * p_right
+</span></span></code></pre></div><p>跑多步以后，输出可以是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>y_hat = sum_i stop_mass[i] * node_value[i]
+</span></span></code></pre></div><p>或者分类任务里：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>logits = sum_i stop_mass[i] * node_logits[i]
+</span></span></code></pre></div><p>这仍然是可微的。</p>
+<p>梯度能进入：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>query kernel
+</span></span><span style="display:flex;"><span>node_key
+</span></span><span style="display:flex;"><span>node_value
+</span></span><span style="display:flex;"><span>路径概率
+</span></span></code></pre></div><h2 id="一个完整-toy查找-keyvalue">一个完整 Toy：查找 key/value<a hidden class="anchor" aria-hidden="true" href="#一个完整-toy查找-keyvalue">#</a></h2>
+<p>任务：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>输入一组 key/value
+</span></span><span style="display:flex;"><span>查询一个 key
+</span></span><span style="display:flex;"><span>输出对应 value
+</span></span></code></pre></div><p>样本：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>pairs = [(8,A), (4,B), (12,C), (2,D), (6,E), (10,F), (14,G)]
+</span></span><span style="display:flex;"><span>query = 6
+</span></span><span style="display:flex;"><span>target = E
+</span></span></code></pre></div><p>理想结构是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>          8:A
+</span></span><span style="display:flex;"><span>         /   \
+</span></span><span style="display:flex;"><span>      4:B     12:C
+</span></span><span style="display:flex;"><span>     /  \     /   \
+</span></span><span style="display:flex;"><span>  2:D   6:E 10:F 14:G
+</span></span></code></pre></div><p>如果是硬查找：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>6 &lt; 8  -&gt; left
+</span></span><span style="display:flex;"><span>6 &gt; 4  -&gt; right
+</span></span><span style="display:flex;"><span>6 == 6 -&gt; stop
+</span></span><span style="display:flex;"><span>output = E
+</span></span></code></pre></div><p>Soft TreeHeap 不会一开始这么硬。</p>
+<p>第 1 步在 root：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>node.key = 8
+</span></span><span style="display:flex;"><span>query = 6
+</span></span></code></pre></div><p>query kernel 输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>stop:  0.05
+</span></span><span style="display:flex;"><span>left:  0.85
+</span></span><span style="display:flex;"><span>right: 0.10
+</span></span></code></pre></div><p>第 2 步进入左子树，节点是 <code>4:B</code>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>node.key = 4
+</span></span><span style="display:flex;"><span>query = 6
+</span></span></code></pre></div><p>输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>stop:  0.05
+</span></span><span style="display:flex;"><span>left:  0.10
+</span></span><span style="display:flex;"><span>right: 0.85
+</span></span></code></pre></div><p>路径概率：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root -&gt; left -&gt; right
+</span></span><span style="display:flex;"><span>= 0.85 * 0.85
+</span></span><span style="display:flex;"><span>= 0.7225
+</span></span></code></pre></div><p>第 3 步到 <code>6:E</code>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>node.key = 6
+</span></span><span style="display:flex;"><span>query = 6
+</span></span></code></pre></div><p>输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>stop:  0.80
+</span></span><span style="display:flex;"><span>left:  0.10
+</span></span><span style="display:flex;"><span>right: 0.10
+</span></span></code></pre></div><p>最终命中路径概率：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root -&gt; left -&gt; right -&gt; stop
+</span></span><span style="display:flex;"><span>= 0.85 * 0.85 * 0.80
+</span></span><span style="display:flex;"><span>= 0.5780
+</span></span></code></pre></div><p>如果模型输出了 <code>E</code>，loss 下降。</p>
+<p>如果模型输出错了，loss 反传，梯度会告诉系统：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>哪些节点 key/value 需要调整
+</span></span><span style="display:flex;"><span>哪些路由概率需要调整
+</span></span><span style="display:flex;"><span>哪个写入位置更合理
+</span></span></code></pre></div><p>这就是 TreeHeap 的梯度学习过程。</p>
+<h2 id="loss-不应该一开始大锅炖">Loss 不应该一开始大锅炖<a hidden class="anchor" aria-hidden="true" href="#loss-不应该一开始大锅炖">#</a></h2>
+<p>上面讲了：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>loss 可以进入 Soft TreeHeap。
+</span></span></code></pre></div><p>但这不等于说：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>所有 loss 都应该一开始混在一起。
+</span></span></code></pre></div><p>一个很自然的教学写法是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>L =
+</span></span><span style="display:flex;"><span>  L_task
+</span></span><span style="display:flex;"><span>+ alpha * L_order
+</span></span><span style="display:flex;"><span>+ beta  * L_depth
+</span></span><span style="display:flex;"><span>+ gamma * L_entropy
+</span></span></code></pre></div><p>这个式子适合帮助读者理解：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>任务正确性、结构合法性、路径长度、概率坍缩
+</span></span><span style="display:flex;"><span>都可以变成训练信号。
+</span></span></code></pre></div><p>但它不一定是好的工程设计。</p>
+<p>因为多个 loss 直接相加，会遇到几个问题：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>梯度方向可能互相抵消；
+</span></span><span style="display:flex;"><span>某个 loss 的尺度太大，压住其他 loss；
+</span></span><span style="display:flex;"><span>结构 loss 太早生效，导致模型过早坍缩；
+</span></span><span style="display:flex;"><span>熵 loss 太强，导致模型一直不敢做决定；
+</span></span><span style="display:flex;"><span>多个目标一起训练，难以知道到底哪个 kernel 学坏了。
+</span></span></code></pre></div><p>这和 Transformer 的经验类似。</p>
+<p>Transformer 不是只用一个观察角度看序列。</p>
+<p>它用了：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>multi-head attention
+</span></span></code></pre></div><p>不同 head 可以学习不同关系。</p>
+<p>TreeHeap 也应该类似。</p>
+<p>更合理的设计不是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>一个巨大 loss 控制所有东西。
+</span></span></code></pre></div><p>而是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>多个 TreeHeap kernel / head 各自学习一种结构能力。
+</span></span></code></pre></div><h2 id="multi-kernel-treeheap">Multi-kernel TreeHeap<a hidden class="anchor" aria-hidden="true" href="#multi-kernel-treeheap">#</a></h2>
+<p>可以先把 Soft TreeHeap 拆成几个 head。</p>
+<table>
+  <thead>
+      <tr>
+          <th>Head</th>
+          <th>学什么</th>
+          <th>主要梯度来源</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>plus/kernel head</td>
+          <td>输入应该通过哪个 subheap kernel 并入 TreeHeap</td>
+          <td>reconstruction / lookup / structure loss</td>
+      </tr>
+      <tr>
+          <td>route head</td>
+          <td>查询时走 stop/left/right</td>
+          <td>lookup task loss</td>
+      </tr>
+      <tr>
+          <td>order head</td>
+          <td>是否形成有序树</td>
+          <td>order violation loss</td>
+      </tr>
+      <tr>
+          <td>depth head</td>
+          <td>路径是否短</td>
+          <td>expected depth loss</td>
+      </tr>
+      <tr>
+          <td>prefix head</td>
+          <td>高频符号是否更短</td>
+          <td>compression loss</td>
+      </tr>
+      <tr>
+          <td>collapse head</td>
+          <td>什么时候从概率变成确定结构</td>
+          <td>entropy / temperature schedule</td>
+      </tr>
+  </tbody>
+</table>
+<p>这样每个 head 都比较清楚。</p>
+<p>例如查找任务里，route head 主要学：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>query 和当前 node 的关系。
+</span></span></code></pre></div><p>order head 主要学：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>left_key &lt; root_key &lt; right_key
+</span></span></code></pre></div><p>prefix head 主要学：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>高频符号走短路径。
+</span></span></code></pre></div><p>这些目标不一定应该同时强行压到一个参数空间里。</p>
+<p>更好的方式是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>让不同 kernel 先学会自己的局部规律，
+</span></span><span style="display:flex;"><span>再由上层组合。
+</span></span></code></pre></div><h2 id="loss-设计一任务-head">Loss 设计一：任务 Head<a hidden class="anchor" aria-hidden="true" href="#loss-设计一任务-head">#</a></h2>
+<p>任务 head 只负责最终答案。</p>
+<p>如果输出是分类：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>L_task = cross_entropy(y_hat, target)
+</span></span></code></pre></div><p>如果输出是连续值：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>L_task = MSE(y_hat, target)
+</span></span></code></pre></div><p>例如 key/value 查找任务：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>target = E
+</span></span><span style="display:flex;"><span>y_hat = soft_query(H, query)
+</span></span><span style="display:flex;"><span>L_task = cross_entropy(y_hat, E)
+</span></span></code></pre></div><p>这个 head 回答：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>最后答案对不对？
+</span></span></code></pre></div><p>它不直接负责：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>树是否漂亮；
+</span></span><span style="display:flex;"><span>路径是否最短；
+</span></span><span style="display:flex;"><span>概率是否已经坍缩。
+</span></span></code></pre></div><h2 id="loss-设计二order-head">Loss 设计二：Order Head<a hidden class="anchor" aria-hidden="true" href="#loss-设计二order-head">#</a></h2>
+<p>如果任务是有序查找树，可以单独给 order head 一个结构目标。</p>
+<p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>left_key &lt; root_key &lt; right_key
+</span></span></code></pre></div><p>用 hinge loss 写：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>L_order =
+</span></span><span style="display:flex;"><span>  max(0, left_key - root_key + margin)
+</span></span><span style="display:flex;"><span>+ max(0, root_key - right_key + margin)
+</span></span></code></pre></div><p>如果左子节点比 root 还大，就会罚。</p>
+<p>如果右子节点比 root 还小，也会罚。</p>
+<p>这个 head 的作用不是替代任务 loss。</p>
+<p>它的作用是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>让 TreeHeap 的内部结构更像可搜索结构。
+</span></span></code></pre></div><p>这类似 CNN 的卷积结构偏置。</p>
+<p>但区别是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>CNN 的局部结构通常是人工固定的二维邻域；
+</span></span><span style="display:flex;"><span>TreeHeap 的局部结构是可学习的地址 / 子树 / 路由。
+</span></span></code></pre></div><h2 id="loss-设计三depth-head">Loss 设计三：Depth Head<a hidden class="anchor" aria-hidden="true" href="#loss-设计三depth-head">#</a></h2>
+<p>如果查找绕很远，虽然答案对了，也不一定好。</p>
+<p>可以单独训练一个 depth head：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>L_depth = expected_search_steps
+</span></span></code></pre></div><p>例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root -&gt; left -&gt; right -&gt; stop
+</span></span></code></pre></div><p>路径长度是 3。</p>
+<p>如果模型绕成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>root -&gt; right -&gt; left -&gt; left -&gt; right -&gt; stop
+</span></span></code></pre></div><p>路径更长，就会被罚。</p>
+<p>这个 head 对应的是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>搜索效率。
+</span></span></code></pre></div><p>它可以晚一点加入。</p>
+<p>因为训练早期模型还不会查找，如果太早惩罚路径长度，可能导致模型学会：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>为了路径短，直接 stop。
+</span></span></code></pre></div><p>但答案是错的。</p>
+<h2 id="loss-设计四collapse-head">Loss 设计四：Collapse Head<a hidden class="anchor" aria-hidden="true" href="#loss-设计四collapse-head">#</a></h2>
+<p>训练早期，我们允许不确定：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>left: 0.45
+</span></span><span style="display:flex;"><span>right: 0.40
+</span></span><span style="display:flex;"><span>stop: 0.15
+</span></span></code></pre></div><p>训练后期，我们希望它逐渐清晰：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>left: 0.95
+</span></span><span style="display:flex;"><span>right: 0.03
+</span></span><span style="display:flex;"><span>stop: 0.02
+</span></span></code></pre></div><p>所以可以使用 entropy 或 temperature schedule。</p>
+<p>但这里要非常小心。</p>
+<p>如果把 entropy loss 一开始就和 task loss 强行混在一起，可能出现两种坏情况。</p>
+<p>第一种：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>过早坍缩。
+</span></span></code></pre></div><p>模型还没学会结构，就已经把概率压成 one-hot。</p>
+<p>后面错了也很难改。</p>
+<p>第二种：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>长期不坍缩。
+</span></span></code></pre></div><p>模型为了保留不确定性，永远不形成清晰路径。</p>
+<p>所以 collapse head 更像一个控制器：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>early:  high temperature, allow exploration
+</span></span><span style="display:flex;"><span>middle: reduce temperature
+</span></span><span style="display:flex;"><span>late:   low temperature, encourage collapse
+</span></span></code></pre></div><p>它不应该无脑和所有 loss 相加。</p>
+<h2 id="推荐训练方式分阶段或交替训练">推荐训练方式：分阶段或交替训练<a hidden class="anchor" aria-hidden="true" href="#推荐训练方式分阶段或交替训练">#</a></h2>
+<p>更合理的训练流程可以是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Stage 1:
+</span></span><span style="display:flex;"><span>  只训练 task head / route head。
+</span></span><span style="display:flex;"><span>  目标：答案能不能对。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Stage 2:
+</span></span><span style="display:flex;"><span>  加入 order head。
+</span></span><span style="display:flex;"><span>  目标：内部结构是否变成可搜索树。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Stage 3:
+</span></span><span style="display:flex;"><span>  加入 depth head。
+</span></span><span style="display:flex;"><span>  目标：路径是否更短。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Stage 4:
+</span></span><span style="display:flex;"><span>  加入 collapse head。
+</span></span><span style="display:flex;"><span>  目标：soft distribution 是否能稳定坍缩成 hard TreeHeap。
+</span></span></code></pre></div><p>也可以采用交替训练：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>step 1: update route kernel
+</span></span><span style="display:flex;"><span>step 2: update write kernel
+</span></span><span style="display:flex;"><span>step 3: update order kernel
+</span></span><span style="display:flex;"><span>step 4: update collapse controller
+</span></span></code></pre></div><p>必要时还可以使用：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>stop-gradient
+</span></span><span style="display:flex;"><span>freeze kernel
+</span></span><span style="display:flex;"><span>auxiliary probe
+</span></span><span style="display:flex;"><span>gradient clipping
+</span></span><span style="display:flex;"><span>loss normalization
+</span></span></code></pre></div><p>这样做的好处是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>每一种梯度信息都有自己的入口；
+</span></span><span style="display:flex;"><span>每个 kernel 学坏了都能被定位；
+</span></span><span style="display:flex;"><span>不会把所有目标搅在一起互相污染。
+</span></span></code></pre></div><p>所以 SPR-019 的正式观点应该是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 可以通过 loss / gradient 学习，
+</span></span><span style="display:flex;"><span>但不应该依赖一个大锅炖总 loss。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>TreeHeap 更合理的训练形态是：
+</span></span><span style="display:flex;"><span>multi-kernel + staged training + controlled collapse。
+</span></span></code></pre></div><h2 id="huffman-like-压缩任务的-loss">Huffman-like 压缩任务的 Loss<a hidden class="anchor" aria-hidden="true" href="#huffman-like-压缩任务的-loss">#</a></h2>
+<p>如果任务是学习加权前缀树，loss 可以换成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>L =
+</span></span><span style="display:flex;"><span>  L_reconstruct
+</span></span><span style="display:flex;"><span>+ lambda * L_length
+</span></span><span style="display:flex;"><span>+ mu * L_prefix_free
+</span></span></code></pre></div><p>其中：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>L_reconstruct:
+</span></span><span style="display:flex;"><span>  decoder 是否能还原符号。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>L_length:
+</span></span><span style="display:flex;"><span>  高频符号路径是否更短。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>L_prefix_free:
+</span></span><span style="display:flex;"><span>  是否避免一个符号路径成为另一个符号路径的前缀。
+</span></span></code></pre></div><p>例如符号频率：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A: 0.50
+</span></span><span style="display:flex;"><span>B: 0.25
+</span></span><span style="display:flex;"><span>C: 0.15
+</span></span><span style="display:flex;"><span>D: 0.10
+</span></span></code></pre></div><p>理想 Huffman-like 编码：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A -&gt; 0
+</span></span><span style="display:flex;"><span>B -&gt; 10
+</span></span><span style="display:flex;"><span>C -&gt; 110
+</span></span><span style="display:flex;"><span>D -&gt; 111
+</span></span></code></pre></div><p>平均路径长度：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>0.50 * 1
+</span></span><span style="display:flex;"><span>+ 0.25 * 2
+</span></span><span style="display:flex;"><span>+ 0.15 * 3
+</span></span><span style="display:flex;"><span>+ 0.10 * 3
+</span></span><span style="display:flex;"><span>= 1.75
+</span></span></code></pre></div><p>固定长度编码是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>2.00
+</span></span></code></pre></div><p>所以 predict 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果 TreeHeap 能学习加权前缀树，
+</span></span><span style="display:flex;"><span>它的 expected path length 应该接近 Huffman oracle，
+</span></span><span style="display:flex;"><span>并低于 fixed-length baseline。
+</span></span></code></pre></div><h2 id="predict">Predict<a hidden class="anchor" aria-hidden="true" href="#predict">#</a></h2>
+<p>当前 predict 分四层。</p>
+<h3 id="predict-1可学习性">Predict 1：可学习性<a hidden class="anchor" aria-hidden="true" href="#predict-1可学习性">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Soft TreeHeap 的 loss 应该能下降。
+</span></span></code></pre></div><p>最小任务：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>线性回归
+</span></span><span style="display:flex;"><span>二分类
+</span></span><span style="display:flex;"><span>XOR / parity
+</span></span><span style="display:flex;"><span>key/value lookup
+</span></span></code></pre></div><p>如果这些都学不会，TreeHeap 不具备机器学习基本能力。</p>
+<h3 id="predict-2可搜索编码">Predict 2：可搜索编码<a hidden class="anchor" aria-hidden="true" href="#predict-2可搜索编码">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在 key/value lookup 任务中，
+</span></span><span style="display:flex;"><span>TreeHeap encoder 应该能学习一种可被 query kernel 搜索的结构。
+</span></span></code></pre></div><p>指标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>query accuracy
+</span></span><span style="display:flex;"><span>expected search depth
+</span></span><span style="display:flex;"><span>OOD key count generalization
+</span></span><span style="display:flex;"><span>tree order violation rate
+</span></span><span style="display:flex;"><span>failure tail
+</span></span></code></pre></div><h3 id="predict-3可压缩编码">Predict 3：可压缩编码<a hidden class="anchor" aria-hidden="true" href="#predict-3可压缩编码">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>在 weighted prefix coding 任务中，
+</span></span><span style="display:flex;"><span>TreeHeap encoder 应该能学习接近 Huffman oracle 的路径分配。
+</span></span></code></pre></div><p>指标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>reconstruction accuracy
+</span></span><span style="display:flex;"><span>expected path length
+</span></span><span style="display:flex;"><span>prefix-free violation rate
+</span></span><span style="display:flex;"><span>gap to Huffman oracle
+</span></span><span style="display:flex;"><span>gap to fixed-length baseline
+</span></span></code></pre></div><h3 id="predict-4soft-版本不破坏-treeheap-代数">Predict 4：Soft 版本不破坏 TreeHeap 代数<a hidden class="anchor" aria-hidden="true" href="#predict-4soft-版本不破坏-treeheap-代数">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>如果 Soft TreeHeap 真的是 Hard TreeHeap 的概率提升，
+</span></span><span style="display:flex;"><span>那么当温度降低、分布接近 one-hot 时，
+</span></span><span style="display:flex;"><span>soft 结果应该接近对应 hard 操作的结果。
+</span></span></code></pre></div><p>也就是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>kernel-guided soft plus collapse 后，应该接近 hard plus；
+</span></span><span style="display:flex;"><span>soft route collapse 后，应该接近 hard route；
+</span></span><span style="display:flex;"><span>soft subheap kernel collapse 后，应该接近 hard subheap kernel；
+</span></span><span style="display:flex;"><span>soft learned tree collapse 后，应该仍然是合法 TreeHeap。
+</span></span></code></pre></div><p>指标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>hard-soft output gap
+</span></span><span style="display:flex;"><span>collapse legality rate
+</span></span><span style="display:flex;"><span>route interpretability
+</span></span><span style="display:flex;"><span>subheap relocation accuracy
+</span></span><span style="display:flex;"><span>gradient stability
+</span></span></code></pre></div><h2 id="proof-设计">Proof 设计<a hidden class="anchor" aria-hidden="true" href="#proof-设计">#</a></h2>
+<p>为了证明 claim，需要最少四组实验。</p>
+<h3 id="experiment-0soft-treeheap-能不能学习">Experiment 0：Soft TreeHeap 能不能学习<a hidden class="anchor" aria-hidden="true" href="#experiment-0soft-treeheap-能不能学习">#</a></h3>
+<p>目的：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>证明 TreeHeap 和 MLP 一样，可以通过 loss / gradient 学函数。
+</span></span></code></pre></div><p>任务：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>linear regression
+</span></span><span style="display:flex;"><span>binary classification
+</span></span><span style="display:flex;"><span>XOR
+</span></span><span style="display:flex;"><span>small lookup
+</span></span></code></pre></div><p>对比：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>MLP
+</span></span><span style="display:flex;"><span>Soft TreeHeap
+</span></span></code></pre></div><p>判断：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>loss 是否下降；
+</span></span><span style="display:flex;"><span>accuracy 是否上升；
+</span></span><span style="display:flex;"><span>参数梯度是否非零；
+</span></span><span style="display:flex;"><span>训练是否稳定。
+</span></span></code></pre></div><h3 id="experiment-1learned-ordered-tree-search">Experiment 1：Learned Ordered Tree Search<a hidden class="anchor" aria-hidden="true" href="#experiment-1learned-ordered-tree-search">#</a></h3>
+<p>目的：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>证明 encoder 能学习建一棵可搜索树。
+</span></span></code></pre></div><p>任务：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>输入 N 个 key/value；
+</span></span><span style="display:flex;"><span>查询 key；
+</span></span><span style="display:flex;"><span>输出 value。
+</span></span></code></pre></div><p>训练：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>N = 7, 15
+</span></span></code></pre></div><p>测试外推：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>N = 31, 63
+</span></span></code></pre></div><p>对比：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>flatten MLP
+</span></span><span style="display:flex;"><span>small Transformer
+</span></span><span style="display:flex;"><span>Soft TreeHeap
+</span></span><span style="display:flex;"><span>oracle BST
+</span></span></code></pre></div><p>指标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>accuracy
+</span></span><span style="display:flex;"><span>expected search depth
+</span></span><span style="display:flex;"><span>sample efficiency
+</span></span><span style="display:flex;"><span>OOD generalization
+</span></span><span style="display:flex;"><span>tree order violation
+</span></span></code></pre></div><h3 id="experiment-2learned-huffman-like-prefix-tree">Experiment 2：Learned Huffman-like Prefix Tree<a hidden class="anchor" aria-hidden="true" href="#experiment-2learned-huffman-like-prefix-tree">#</a></h3>
+<p>目的：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>证明 encoder 能学习加权前缀压缩结构。
+</span></span></code></pre></div><p>任务：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>输入符号频率；
+</span></span><span style="display:flex;"><span>encoder 输出 TreeHeap code；
+</span></span><span style="display:flex;"><span>decoder 根据路径还原符号。
+</span></span></code></pre></div><p>对比：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>fixed-length code
+</span></span><span style="display:flex;"><span>Huffman oracle
+</span></span><span style="display:flex;"><span>MLP autoencoder
+</span></span><span style="display:flex;"><span>Soft TreeHeap prefix encoder
+</span></span></code></pre></div><p>指标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>reconstruction accuracy
+</span></span><span style="display:flex;"><span>expected code length
+</span></span><span style="display:flex;"><span>prefix-free violation
+</span></span><span style="display:flex;"><span>gap to Huffman oracle
+</span></span></code></pre></div><h3 id="experiment-3hardsoft-consistency-与-loss-ablation">Experiment 3：Hard/Soft Consistency 与 Loss Ablation<a hidden class="anchor" aria-hidden="true" href="#experiment-3hardsoft-consistency-与-loss-ablation">#</a></h3>
+<p>目的：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>证明 Soft TreeHeap 没有破坏 Hard TreeHeap 的核心算子；
+</span></span><span style="display:flex;"><span>同时验证 multi-kernel 训练是否比大锅炖总 loss 更稳定。
+</span></span></code></pre></div><p>这个实验分三部分。</p>
+<p>第一半验证 hard/soft 一致性。</p>
+<p>构造一个确定的 hard TreeHeap：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>        8
+</span></span><span style="display:flex;"><span>      /   \
+</span></span><span style="display:flex;"><span>     4     12
+</span></span><span style="display:flex;"><span>    / \    / \
+</span></span><span style="display:flex;"><span>   2   6  10 14
+</span></span></code></pre></div><p>hard 查询：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>query = 6
+</span></span><span style="display:flex;"><span>8 -&gt; left
+</span></span><span style="display:flex;"><span>4 -&gt; right
+</span></span><span style="display:flex;"><span>6 -&gt; stop
+</span></span><span style="display:flex;"><span>output = E
+</span></span></code></pre></div><p>soft 查询使用同一棵树，但每一步不是确定动作，而是概率：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>at 8:
+</span></span><span style="display:flex;"><span>  stop  0.01
+</span></span><span style="display:flex;"><span>  left  0.98
+</span></span><span style="display:flex;"><span>  right 0.01
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>at 4:
+</span></span><span style="display:flex;"><span>  stop  0.01
+</span></span><span style="display:flex;"><span>  left  0.01
+</span></span><span style="display:flex;"><span>  right 0.98
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>at 6:
+</span></span><span style="display:flex;"><span>  stop  0.98
+</span></span><span style="display:flex;"><span>  left  0.01
+</span></span><span style="display:flex;"><span>  right 0.01
+</span></span></code></pre></div><p>这时正确路径概率约为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>0.98 * 0.98 * 0.98 = 0.941192
+</span></span></code></pre></div><p>如果 temperature 继续降低，概率会更接近：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>1.0
+</span></span></code></pre></div><p>那么 soft 输出应该收敛到 hard 输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>output_soft -&gt; E
+</span></span></code></pre></div><p>判断指标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>hard-soft output gap 是否下降；
+</span></span><span style="display:flex;"><span>正确路径概率是否上升；
+</span></span><span style="display:flex;"><span>collapse 后路径是否合法；
+</span></span><span style="display:flex;"><span>collapse 后是否等于 hard route。
+</span></span></code></pre></div><p>第二半验证写入机制。</p>
+<p>同一个 key/value lookup 建树任务，比较三种写入方式：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>A: naive soft memory write
+</span></span><span style="display:flex;"><span>B: encoder soft plus
+</span></span><span style="display:flex;"><span>C: kernel-guided soft plus
+</span></span></code></pre></div><p>A 是弱版本：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>arr_new[i] =
+</span></span><span style="display:flex;"><span>  (1 - p[i]) * arr_old[i]
+</span></span><span style="display:flex;"><span>+ p[i] * write_vector
+</span></span></code></pre></div><p>它测试：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>普通神经内存写入能做到什么程度。
+</span></span></code></pre></div><p>B 是中间版本：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>H_next = sum_a p(a | H, x) * (H ⊕_a x)
+</span></span></code></pre></div><p>但 <code>p(a)</code> 由普通 encoder 给出。</p>
+<p>它测试：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>只要有 soft plus，是否就足够。
+</span></span></code></pre></div><p>C 是 TreeHeap 正式版本：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>score(a) = K_write(subheap(H, a), x)
+</span></span><span style="display:flex;"><span>p(a) = softmax(score(a))
+</span></span><span style="display:flex;"><span>H_next = sum_a p(a) * (H ⊕_a x)
+</span></span></code></pre></div><p>它测试：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>用 TreeHeap 卷积核来决定写入位置，
+</span></span><span style="display:flex;"><span>是否比普通 encoder 更稳定、更可解释、更能外推。
+</span></span></code></pre></div><p>判断指标：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>lookup accuracy
+</span></span><span style="display:flex;"><span>OOD N=31/63 accuracy
+</span></span><span style="display:flex;"><span>expected search depth
+</span></span><span style="display:flex;"><span>collapse legality rate
+</span></span><span style="display:flex;"><span>route interpretability
+</span></span><span style="display:flex;"><span>hard-soft output gap
+</span></span><span style="display:flex;"><span>subheap relocation accuracy
+</span></span></code></pre></div><p>如果我们的判断正确，C 应该至少在这些地方更好：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>更容易形成可解释路径；
+</span></span><span style="display:flex;"><span>更容易坍缩成合法 TreeHeap；
+</span></span><span style="display:flex;"><span>在更大 N 上失败尾部更少；
+</span></span><span style="display:flex;"><span>对 subheap relocation 更稳。
+</span></span></code></pre></div><p>第三半验证 loss 设计。</p>
+<p>同一个 lookup 任务，比较三种训练方式：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>D: only task loss
+</span></span><span style="display:flex;"><span>E: 大锅炖总 loss
+</span></span><span style="display:flex;"><span>F: multi-kernel staged training
+</span></span></code></pre></div><p>其中 E 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>L =
+</span></span><span style="display:flex;"><span>  L_task
+</span></span><span style="display:flex;"><span>+ alpha * L_order
+</span></span><span style="display:flex;"><span>+ beta  * L_depth
+</span></span><span style="display:flex;"><span>+ gamma * L_entropy
+</span></span></code></pre></div><p>F 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Stage 1: train route/task head
+</span></span><span style="display:flex;"><span>Stage 2: add order head
+</span></span><span style="display:flex;"><span>Stage 3: add depth head
+</span></span><span style="display:flex;"><span>Stage 4: add collapse head
+</span></span></code></pre></div><p>如果我们的判断正确，F 应该更稳。</p>
+<p>预期结果不是 F 在所有指标上都赢。</p>
+<p>更具体的 predict 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>F 的梯度爆炸/消失次数更少；
+</span></span><span style="display:flex;"><span>F 的 collapse 更晚、更可控；
+</span></span><span style="display:flex;"><span>F 的 order violation 下降更平滑；
+</span></span><span style="display:flex;"><span>F 在 OOD N=31/63 上失败尾部更少；
+</span></span><span style="display:flex;"><span>E 可能训练更快，但更容易过早坍缩或目标对冲。
+</span></span></code></pre></div><h2 id="falsification什么结果会否定我们">Falsification：什么结果会否定我们<a hidden class="anchor" aria-hidden="true" href="#falsification什么结果会否定我们">#</a></h2>
+<p>这也要写清楚。</p>
+<p>如果出现这些结果，claim 就要降级：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Soft TreeHeap 的 loss 不下降。
+</span></span><span style="display:flex;"><span>Soft route 梯度长期为 0 或爆炸。
+</span></span><span style="display:flex;"><span>TreeHeap lookup 不如同规模 MLP。
+</span></span><span style="display:flex;"><span>TreeHeap 无法外推到更大 N。
+</span></span><span style="display:flex;"><span>prefix tree 长度不如 fixed-length baseline。
+</span></span><span style="display:flex;"><span>soft collapse 后得不到合法 hard TreeHeap。
+</span></span><span style="display:flex;"><span>kernel-guided soft plus 不如 naive memory write。
+</span></span><span style="display:flex;"><span>multi-kernel 比大锅炖总 loss 更不稳定。
+</span></span><span style="display:flex;"><span>encoder 没有学出任何可解释结构。
+</span></span></code></pre></div><p>这些结果说明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 可能只是复杂包装，
+</span></span><span style="display:flex;"><span>没有带来有效归纳偏置。
+</span></span></code></pre></div><h2 id="当前-claim-的边界">当前 Claim 的边界<a hidden class="anchor" aria-hidden="true" href="#当前-claim-的边界">#</a></h2>
+<p>到目前为止，我们还没有证明：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Soft TreeHeap 一定能训练成功。
+</span></span><span style="display:flex;"><span>TreeHeap 一定优于 Transformer。
+</span></span><span style="display:flex;"><span>TreeHeap 能做 WMT。
+</span></span><span style="display:flex;"><span>Huffman-like 结构一定能通过梯度学出来。
+</span></span></code></pre></div><p>现在只是确定了下一步要证明什么。</p>
+<p>真正的 claim 是：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 如果要作为机器学习结构存在，
+</span></span><span style="display:flex;"><span>必须能让梯度进入它的结构状态。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Soft write 不应该只是内存插值。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>正式路径应该是：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>kernel-guided soft plus、soft route、soft stop/read。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>如果这条路径成立，
+</span></span><span style="display:flex;"><span>TreeHeap 就能像 MLP / Transformer 一样用 loss 学习；
+</span></span><span style="display:flex;"><span>并且可能在搜索、压缩、路径解码这类结构任务上表现更好。
+</span></span></code></pre></div><p>这就是 <code>SPR-019</code> 要进入实验的地方。</p>
+<blockquote>
+<p><strong>License: GPLv3</strong></p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>

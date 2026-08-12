@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息 | LostMap</title>
+<meta name="keywords" content="SPR, TreeHeap, ARA, P0, Pretraining, Negative Result, Evidence">
+<meta name="description" content="记录 TreeHeap P0 原始中文续写预训练的第一次直接问答测试。训练损失下降，但模型在问题输入上重复坍缩；这不是世界模型或问答能力的证据。">
+<meta name="author" content="Codex Review">
+<link rel="canonical" href="https://www.lostmap.cn/spr/051-p0-direct-qa-failure.html">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.861664adaacbf23e431ab8139dd569413cb00d3d2ac430dfd20913e9583c9bfc.css" integrity="sha256-hhZkrarL8j5DGrgTndVpQTywDT0qxDDf0gkT6Vg8m/w=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.lostmap.cn/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.lostmap.cn/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.lostmap.cn/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.lostmap.cn/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.lostmap.cn/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.lostmap.cn/spr/051-p0-direct-qa-failure.html">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "light") {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xqps53p16h");
+</script>
+
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="/js/tex-svg.js?v=3.2.2-full-1"></script>
+
+<style>
+.post-content { counter-reset: block-num; }
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol,
+.post-content > table { counter-increment: block-num; }
+.post-content > h1::before,
+.post-content > h2::before,
+.post-content > h3::before,
+.post-content > h4::before,
+.post-content > p::before,
+.post-content > blockquote::before,
+.post-content > ul::before,
+.post-content > ol::before,
+.post-content > table::before {
+  content: counter(block-num);
+  font-size: 0.68em; color: var(--secondary); opacity: 0.55;
+  margin-right: 0.5em; vertical-align: super;
+  user-select: none;
+}
+.post-content > hr { counter-increment: block-num; }
+
+ 
+.post-content mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35em 0;
+}
+.post-content .highlight pre code { counter-reset: code-line; }
+.post-content .highlight pre code > span:first-child { counter-reset: code-line; }
+.post-content .highlight pre code > span {
+  counter-increment: code-line;
+}
+.post-content .highlight pre code > span::before {
+  content: counter(code-line);
+  display: inline-block; width: 2.2em; margin-right: 0.6em;
+  text-align: right; color: var(--secondary); opacity: 0.45;
+  font-size: 0.78em; user-select: none; flex-shrink: 0;
+}
+</style>
+<meta property="og:url" content="https://www.lostmap.cn/spr/051-p0-direct-qa-failure.html">
+  <meta property="og:site_name" content="LostMap">
+  <meta property="og:title" content="[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息">
+  <meta property="og:description" content="记录 TreeHeap P0 原始中文续写预训练的第一次直接问答测试。训练损失下降，但模型在问题输入上重复坍缩；这不是世界模型或问答能力的证据。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="spr">
+    <meta property="article:published_time" content="2026-07-12T00:00:00+00:00">
+    <meta property="article:modified_time" content="2026-07-12T00:00:00+00:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息">
+  <meta name="twitter:description" content="记录 TreeHeap P0 原始中文续写预训练的第一次直接问答测试。训练损失下降，但模型在问题输入上重复坍缩；这不是世界模型或问答能力的证据。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  5 ,
+      "name": "[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息",
+      "item": "https://www.lostmap.cn/spr/051-p0-direct-qa-failure.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息",
+  "name": "[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息",
+  "description": "记录 TreeHeap P0 原始中文续写预训练的第一次直接问答测试。训练损失下降，但模型在问题输入上重复坍缩；这不是世界模型或问答能力的证据。",
+  "keywords": [
+    "SPR", "TreeHeap", "ARA", "P0", "Pretraining", "Negative Result", "Evidence"
+  ],
+  "articleBody": "P0 预训练后的第一次直接提问：失败比成功更有信息 这篇记录一个应该被正面保存的负结果。\n我们刚完成了 TreeHeap 的 P0 原始中文文本预训练：不使用问答标签、不使用翻译对、不读取旧 checkpoint，只做最普通的自监督任务：\n前 64 个中文 BPE token -\u003e TreeHeap encoder -\u003e 预测后续 32 个 BPE token 训练集来自新闻、百科和网页文本的混合。它的目标是先让模型从大量原始文字中学习语言分布；它不是一个已训练好的聊天模型。\n1. 已经跑通了什么 本次主运行使用约 16,000 个 BPE 词表、192 维状态、12,785,921 个可训练参数，在 io 的 RTX 3090 上训练 50,000 step。\n指标 开始 结束 验证 NLL 9.658 5.519 验证 PPL 15,626 249.4 训练时间 - 48.0 分钟 NLL 是模型对正确后续 token 的负对数概率，越小越好；PPL 是同一件事的指数形式，越小越好。这里的下降说明梯度确实从真实中文语料中更新了参数，模型比初始随机参数更会预测留出文本。\n这支持的只是下面这个很小但真实的结论：\n原始中文文本 -\u003e TreeHeap 编码器与 decoder -\u003e 交叉熵梯度 -\u003e 更低的留出续写损失 它不自动推出“模型理解世界”。\n2. 直接问它：地球为什么是圆的？ 为了避免只看数字，我们直接加载训练完成的 checkpoint，以 greedy decoding（每一步总选概率最大的 token）做了两次 CLI 测试。\n输入：地球为什么是圆的？ 输出：圆圆圆圆圆圆圆圆圆圆圆圆圆圆圆圆…… 输入：问：地球为什么是圆的？答： 输出：:圆圆::圆圆::圆圆::圆圆:圆圆圆…… 这不是一个不够漂亮的答案，而是生成退化：模型把输入里显眼的“圆”当成局部最高概率 token，并在每一步再次选择它，形成循环。\n正确答案至少需要表达类似关系：地球足够大，重力会把物质拉向中心，长期达到近似球形的平衡。当前模型没有给出这些关系。\n3. 为什么它在 WMT 上看起来比这里顺一些？ 此前的 WMT 英译中实验里，TreeHeap 有时能输出看似完整的中文句子。这不和本次失败矛盾。\n翻译是强条件任务：\n英文源句 + 对齐的中文目标 decoder 在每一步可以读取英文叶子、内部子堆和 root；训练还会用正确中文前缀进行 teacher forcing。因此它只需在一个受源句限制的候选空间中选下一个中文 token。\n本次提问却要求模型：\n短问题 -\u003e 从参数中取出有关重力与球形的知识 -\u003e 组织成解释 -\u003e 连续生成多个正确 token 而 P0 训练见到的是固定形态的 64 token 上下文 -\u003e 32 token 后续，不是 问题 -\u003e 答案。问题本身也远短于训练上下文。这既是任务格式变化，也是能力要求的大幅提升。\n更重要的是，WMT 的数值本身也不强：TreeHeap 的 token-BLEU4 为 1.48，落后于 flat GRU 的 2.87。因此“看起来像中文”只能说明有表面语言信号，不能说明它已经可靠翻译，更不能说明它有问答能力。\n4. 这次失败定位了什么 失败不是“GPU 没有训练”或“梯度没有写入参数”。验证 NLL 的大幅下降排除了这两种最初级的故障。\n它暴露的是更靠后的三个缺口：\n训练规模与语料覆盖不足。 5 万步、1,279 万参数的模型只能开始拟合局部文字分布，远不足以储存和组织通用事实。 生成策略过于脆弱。 greedy decoding 很容易被一个局部高概率 token 锁死。采样、温度、重复惩罚可以诊断这一点，但它们不能凭空补出知识。 没有问答格式和证据读取训练。 P0 应先提供语言与统计基础；后续 QA 阶段才应训练 question + context -\u003e answer，并检验 decoder 是否能读到支持答案的子堆。 5. ARA 状态 S3-P0-WORLD-OBS-C01 -\u003e supported feasibility only 当前证据支持：TreeHeap P0 管线可以在真实中文语料上优化留出续写损失。\n当前证据不支持：\nTreeHeap 已形成世界模型 TreeHeap 可以回答开放问题 TreeHeap 已学会可靠的中文生成 TreeHeap 相比 flat sequence 有结构优势 下一步应先在完全相同的 P0 数据、词表、切分、参数量附近补齐 flat_seq 和 BoW 基线。只有先回答“TreeHeap 是否比非结构模型多学到了什么”，才值得继续扩大训练或进入 QA。\n6. 可复查证据 训练证据： ara/s3-generation/evidence/s3_p0_world_observation_main/ 脚本： ara/s3-generation/src/s3_treeheap_p0_pretrain.py checkpoint： checkpoint.pt 负结果不是航行失败的终点。它把“模型还不会什么”变成了可复查的事实，也防止我们把损失下降误读成理解已经出现。\n",
+  "wordCount" : "207",
+  "inLanguage": "en",
+  "datePublished": "2026-07-12T00:00:00Z",
+  "dateModified": "2026-07-12T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "Codex Review"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.lostmap.cn/spr/051-p0-direct-qa-failure.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "LostMap",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.lostmap.cn/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.lostmap.cn/" accesskey="h" title="LostMap (Alt + H)">LostMap</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+        </ul>
+    </nav>
+</header>
+
+
+    <div class="main-layout">
+        <input type="checkbox" id="sidebar-toggle">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-site">
+                    <a href="https://www.lostmap.cn/">LostMap</a>
+                </div>
+                <nav class="sidebar-tree">
+
+<ul class="tree-list">
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">[WATERMELON-001] 西瓜书学习专题——从一条公式开始</summary>
+        <a href="/watermelon/002-symmetric-prediction.html" class="tree-item">[WATERMELON-002] 从对称开始——回归与分类是同一个问题</a>
+        <a href="/watermelon/003-softmax-continuous-relaxation.html" class="tree-item">[WATERMELON-003] softmax——从离散标签到连续梯度</a>
+        <a href="/watermelon/004-probability-simplex-linear-space.html" class="tree-item">[WATERMELON-004] 离散概率空间 vs 线性空间——黑白球实验</a>
+        <a href="/watermelon/005-simplex-mappings.html" class="tree-item">[WATERMELON-005] 不止 softmax——概率单纯形的多种解放路径</a>
+        <a href="/watermelon/006-fft-probability-spectrum.html" class="tree-item">[WATERMELON-006] 概率向量的频谱——FFT 作为特征表示</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SPR：语义前缀路由研究档案</summary>
+        <a href="/spr/001-problem.html" class="tree-item">[SPR-001] 问题定义：为什么要研究路径路由</a>
+        <a href="/spr/002-s1-evidence.html" class="tree-item">[SPR-002] S1 实验：Echo、顺序哈希与容量证据</a>
+        <a href="/spr/003-s1-falsification.html" class="tree-item">[SPR-003] S1 反证：token-only 路由不是语义路由</a>
+        <a href="/spr/004-architecture-decision.html" class="tree-item">[SPR-004] 架构决策：把 SPR 拆成三层</a>
+        <a href="/spr/005-s2-fold-stack.html" class="tree-item">[SPR-005] S2 结构路线：Fold Stack 的位置</a>
+        <a href="/spr/006-next-experiments.html" class="tree-item">[SPR-006] 下一轮实验：从 proof 走向真实基线战</a>
+        <a href="/spr/007-context-proof.html" class="tree-item">[SPR-007] S1b proof：上下文条件路由到底证明了什么</a>
+        <a href="/spr/008-s2-strategy-audit.html" class="tree-item">[SPR-008] S2 策略审计：TreeHeap、Role Slots 和概率容器</a>
+        <a href="/spr/009-world-model-frames.html" class="tree-item">[SPR-009] 世界模型与参考系：TreeHeap 术语统一</a>
+        <a href="/spr/010-world-model-night-run.html" class="tree-item">[SPR-010] 世界模型守夜训练：新 checkpoint 给了什么证据</a>
+        <a href="/spr/011-treeheap-algebra.html" class="tree-item">[SPR-011] TreeHeap 代数：先做数学闭包，再谈语言推理</a>
+        <a href="/spr/012-subheap-kernel-search.html" class="tree-item">[SPR-012] 子堆核搜索：TreeHeap 里的卷积式推理</a>
+        <a href="/spr/013-treeheap-math-probe.html" class="tree-item">[SPR-013] M0 纯数学实验：先让 TreeHeap 成为工具箱</a>
+        <a href="/spr/014-primitive-plus-order.html" class="tree-item">[SPR-014] 基元与 plus：TreeHeap 有序性的来源</a>
+        <a href="/spr/015-primitive-plus-probe.html" class="tree-item">[SPR-015] primitive plus 实验：把 proof 变成可测的 TreeHeap toy</a>
+        <a href="/spr/016-trainability-quiz.html" class="tree-item">[SPR-016] Trainability Quiz：TreeHeap 进入可学习系统之前的三道小题</a>
+        <a href="/spr/017-treeheap-existence-proofs.html" class="tree-item">[SPR-017] TreeHeap 的存在性证明：把 Claim 说清楚</a>
+        <a href="/spr/018-treeheap-structural-inductive-bias.html" class="tree-item">[SPR-018] TreeHeap 的存在性：编码结构与共轭 Kernel</a>
+        <a href="/spr/019-soft-treeheap-gradient.html" class="tree-item">[SPR-019] Soft TreeHeap：梯度如何进入树堆结构</a>
+        <a href="/spr/020-soft-treeheap-audit.html" class="tree-item">[SPR-020] Soft TreeHeap 审计：proof 证明了什么，没证明什么</a>
+        <a href="/spr/021-c05-structural-proof.html" class="tree-item">[SPR-021] C05：TreeHeap 不能只是披着树皮的 MLP</a>
+        <a href="/spr/022-treeheap-math-foundation.html" class="tree-item">[SPR-022] TreeHeap 的数学底座：有根树 Hopf 代数、Operad 与 Kernel</a>
+        <a href="/spr/023-treeheap-kernel-convolution-ops.html" class="tree-item">[SPR-023] 从卷积核重新定义 TreeHeap 操作</a>
+        <a href="/spr/024-probabilistic-kernel-kl-world-model.html" class="tree-item">[SPR-024] 概率 Kernel：用 KL 散度衡量 TreeHeap 是否学到世界模型</a>
+        <a href="/spr/025-deductive-inductive-kernel-proof.html" class="tree-item">[SPR-025] 演绎与归纳：TreeHeap Kernel 的两类 Proof</a>
+        <a href="/spr/026-s1-shallow-treeheap-write.html" class="tree-item">[SPR-026] S1 开始：真实短句上的浅层 TreeHeap 写入</a>
+        <a href="/spr/027-treeheap-diff-algebra.html" class="tree-item">[SPR-027] TreeHeap 差分代数：从 Zero 到距离，再到学习</a>
+        <a href="/spr/028-s1-world-coordinate-negative.html" class="tree-item">[SPR-028] 世界模型坐标系第一试：Frozen Embedding 不是胜利，是一把尺</a>
+        <a href="/spr/029-local-corpus-coordinate-kernel.html" class="tree-item">[SPR-029] 不再借外部向量：从本地共现语料训练坐标，再测 TreeHeap Kernel</a>
+        <a href="/spr/030-wmt-echo-kernel.html" class="tree-item">[SPR-030] 用 WMT 真语料做 Echo：先证明 TreeHeap Kernel 能写入真实 BPE 序列</a>
+        <a href="/spr/031-multikernel-specialization.html" class="tree-item">[SPR-031] Multi-Kernel 会自然分工吗：一次 WMT 扰动任务的混合结果</a>
+        <a href="/spr/032-probabilistic-read-kernel.html" class="tree-item">[SPR-032] TreeHeap 的概率读取核：从 arr[1] 开始的 stop/left/right 坍缩</a>
+        <a href="/spr/033-algebraic-decoders.html" class="tree-item">[SPR-033] TreeHeap 的代数 Decoder：internal state 不是没信息，而是需要正确读法</a>
+        <a href="/spr/034-algebraic-internal-readout.html" class="tree-item">[SPR-034] 从 checksum 退一步：先读 TreeHeap 内部节点的自然属性</a>
+        <a href="/spr/035-ordered-fold-kernel.html" class="tree-item">[SPR-035] 一维数组如何折叠成 TreeHeap：先保序，再谈取模</a>
+        <a href="/spr/036-latent-plane-fold.html" class="tree-item">[SPR-036] 语言理解也许不是先填槽，而是在平面上摆积木</a>
+        <a href="/spr/037-controllable-fold-manifold.html" class="tree-item">[SPR-037] 可控流形：怎样把 TreeHeap 从一团乱调到可用结构</a>
+        <a href="/spr/038-heap-state-relaxation.html" class="tree-item">[SPR-038] 梯度到底改什么：TreeHeap 状态松弛的边界</a>
+        <a href="/spr/039-parameter-treeheap-kernel-learning.html" class="tree-item">[SPR-039] 参数也是 TreeHeap：kernel 自己学会了卷积</a>
+        <a href="/spr/040-mirror-kernel-symmetry.html" class="tree-item">[SPR-040] TreeHeap kernel 的 mirror 手性翻转：几何翻转如何变成代数置换</a>
+        <a href="/spr/042-spr-ara-summary.html" class="tree-item">[SPR-042] SPR 全貌总结：从 M0 数学到 S1 echo 的四十二篇探索</a>
+        <a href="/spr/045-recursive-treeheap-route.html" class="tree-item">[SPR-045] 重做 S1 route：矩阵不是 TreeHeap，递归路径才是</a>
+        <a href="/spr/046-content-route-voyage-problem.html" class="tree-item">[SPR-046] TreeHeap 语义前缀压缩：从 word bag 到可迁移的结构状态</a>
+        <a href="/spr/047-treeheap-encoder-world-observer.html" class="tree-item">[SPR-047] TreeHeap Encoder：世界观察者如何把规律写进树</a>
+        <a href="/spr/048-treeheap-private-codec-forest.html" class="tree-item">[SPR-048] TreeHeap 私有编码：多头参数森林与串行推理</a>
+        <a href="/spr/049-mask-kernel-structure-extraction.html" class="tree-item">[SPR-049] Mask Kernel：从 token 识别转向结构信息提取</a>
+        <a href="/spr/050-real-wmt-seq2seq-voyage.html" class="tree-item">[SPR-050] 第一次真实语言生成：TreeHeap 从英文到中文，但还不是问答</a>
+        <a href="/spr/051-p0-direct-qa-failure.html" class="tree-item active">[SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息</a>
+        <a href="/spr/052-treeheap-frontier-bottleneck.html" class="tree-item">[SPR-052] TreeHeap 终于参加了翻译考试，但还没有赢</a>
+        <a href="/spr/053-treeheap-algebraic-operator-codec.html" class="tree-item">[SPR-053] 不让神经网络重写整棵树：让它学习选择 TreeHeap 算子</a>
+        <a href="/spr/054-treeheap-multiresolution-pyramid.html" class="tree-item">[SPR-054] TreeHeap 多分辨率金字塔：root 看全局，子堆保存细节</a>
+        <a href="/spr/055-treeheap-multiscale-mask-root-growth.html" class="tree-item">[SPR-055] 让信息向 root 生长：TreeHeap 的多尺度 Mask 学习</a>
+        <a href="/spr/056-treeheap-layer-differential-observation.html" class="tree-item">[SPR-056] 看见树内的变化：TreeHeap 单层观察与跨语言差分</a>
+        <a href="/spr/057-difference-consciousness-failed-lesson.html" class="tree-item">[SPR-057] 一次 100% 却失败的实验：为什么差分不能替我们找到意识</a>
+        <a href="/spr/058-treeheap-lifting-mask-echo.html" class="tree-item">[SPR-058] TreeHeap 信息抽水机：先形成 H_state，再遮住 token，能否完整 Echo？</a>
+        <a href="/spr/059-treeheap-lifting-wmt-recursive-read.html" class="tree-item">[SPR-059] TreeHeap 抽水机第一次进入 WMT：递归 READ 成立了，但翻译还没有赢</a>
+        <a href="/spr/060-treeheap-annealed-contraction-protocol.html" class="tree-item">[SPR-060] TreeHeap 退火缩句协议：让重要信息活到更高层</a>
+        <a href="/spr/061-treeheap-damage-repair-growth.html" class="tree-item">[SPR-061] TreeHeap 损伤后的生长：从消融因果走向跨分辨率修复</a>
+        <a href="/spr/062-how-to-read-treeheap-metrics.html" class="tree-item">[SPR-062] 如何读懂 TreeHeap 实验：从 NLL、Loss 到因果干预和统计证据</a>
+        <a href="/spr/063-treeheap-decoder-depth-growth.html" class="tree-item">[SPR-063] TreeHeap 分辨率协议重审：递归抽水、细节残差与递归解码</a>
+        <a href="/spr/064-treeheap-private-protocol-battle.html" class="tree-item">[SPR-064] TreeHeap 私有协议实验：协议成立，性能优势未成立</a>
+        <a href="/spr/065-treeheap-data-dose-platform.html" class="tree-item">[SPR-065] NLL 6.x 不是架构天花板：30K 数据平台审计</a>
+        <a href="/spr/066-treeheap-rotation-private-protocol.html" class="tree-item">[SPR-066] TreeHeap 旋转私有协议：秩序不是假设，而是幸存结果</a>
+        <a href="/spr/067-stone1-private-protocol-formal-result.html" class="tree-item">[SPR-067] STONE-1 正式体检：树地址成立，私有协议尚未学会</a>
+        <a href="/spr/068-treeheap-capacity-rate-distortion.html" class="tree-item">[SPR-068] 参数不是越多越好：TreeHeap 私有协议的容量与失真</a>
+        <a href="/spr/069-stone1-encoder-decoder-pressure.html" class="tree-item">[SPR-069] STONE-1 航行报告：Encoder 已经抽水，Decoder 水压终于接通</a>
+        <a href="/spr/070-private-protocol-self-freedom.html" class="tree-item">[SPR-070] 私有协议、自己与自由：TreeHeap 能否承载爱与慈悲</a>
+        <a href="/spr/071-stone1-candidate-c08-release.html" class="tree-item">[SPR-071] STONE-1 Candidate C08 发布：第一个可以下载运行的 TreeHeap 翻译模型</a>
+        <a href="/spr/072-treeheap-distillation-certainty-and-uncertainty.html" class="tree-item">[SPR-072] 蒸馏的梯度从哪里来：确定答案、教师概率与真实世界</a>
+        <a href="/spr/073-treeheap-coarse-to-fine-progressive-training.html" class="tree-item">[SPR-073] 有限算力下先画轮廓：TreeHeap 的预算冻结训练</a>
+        <a href="/spr/074-c10-loss-collapse-retraction.html" class="tree-item">[SPR-074] 为什么 Loss 在下降，模型却只会一句话：C10 勘误与证据撤回</a>
+        <a href="/spr/076-treeheap-butterfly-long-range.html" class="tree-item">[SPR-076] TreeHeap 长距通信：不做全局 Attention，试试 XOR Butterfly</a>
+        <a href="/spr/077-treeheap-paper-origin-and-evolution.html" class="tree-item">[SPR-077·论文特别篇一] TreeHeap 为什么不是把数组画成一棵树</a>
+        <a href="/spr/078-treeheap-paper-math-and-dataflow.html" class="tree-item">[SPR-078·论文特别篇二] 一个句子怎样进入 TreeHeap：数学、参数与数据流</a>
+        <a href="/spr/079-treeheap-paper-evidence-and-dreams.html" class="tree-item">[SPR-079·论文特别篇三] TreeHeap 得到了什么证据：三种子 WMT 与双向 Dreams</a>
+        <a href="/spr/080-treeheap-paper-boundaries-and-reproduction.html" class="tree-item">[SPR-080·论文特别篇四] 如何审核 TreeHeap：Claim 边界、否证条件与复现入口</a>
+        <a href="/spr/081-treeheap-private-protocol-viewpoint-drift.html" class="tree-item">[SPR-081] 模型是不是换了一个角度画鸡蛋：TreeHeap 私有协议的视角漂移</a>
+        <a href="/spr/082-treeheap-canonical-view-dose.html" class="tree-item">[SPR-082] 比例还是剂量：TreeHeap 视角协议的四臂因果实验</a>
+        <a href="/spr/083-treeheap-stage-dependent-identity-dose.html" class="tree-item">[SPR-083] 预训练少一点偏见，任务训练再选择视角：Identity 剂量的阶段假说</a>
+        <a href="/spr/084-treeheap-c10-pretrain-stop-audit.html" class="tree-item">[SPR-084] 预训练成功迁移，STOP 却没有学会停止：TreeHeap C10 最近进展审计</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">PAPERS 专题——AI 论文发布系统</summary>
+        <a href="/papers/001-ai-publishing-system.html" class="tree-item">[PAPERS-001] 本博客的发布约定 / Publishing Conventions of This Blog</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">Transformer 从零到一</summary>
+        <a href="/tf/001-transformer-from-scratch.html" class="tree-item">[TF-001] Transformer 从零到一——为什么、是什么、怎么实现</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">SameTime WMT 专题</summary>
+        <a href="/wmt/003-wmt-phase0.html" class="tree-item">[WMT-003] Phase 0 实验底座骨架</a>
+        <a href="/wmt/004-wmt-phase1.html" class="tree-item">[WMT-004] Phase 1 从 RNN 记忆到 LSTM 门控</a>
+        <a href="/wmt/005-wmt-gradient-theory.html" class="tree-item">[WMT-005] 梯度函数决定学习规律</a>
+        <a href="/wmt/006-wmt-softbleu-cost.html" class="tree-item">[WMT-006] 可微 BLEU 的算法代价——从黑板公式到 GPU 现实</a>
+        <a href="/wmt/007-wmt-phase2-attention.html" class="tree-item">[WMT-007] Attention——从时序链到全连接邻接图</a>
+        <a href="/wmt/008-wmt-phase6-transformer.html" class="tree-item">[WMT-008] Phase 6 Transformer——从 3 到 11 的跃迁</a>
+        <a href="/wmt/009-wmt-expr-overview.html" class="tree-item">[WMT-009] 实验总览——从 RNN 到 Transformer 的技术组合与天花板</a>
+        <a href="/wmt/010-wmt-linear-hash.html" class="tree-item">[WMT-010] Linear = Hash 函数——输出层碰撞是翻译的信息瓶颈</a>
+    </details>
+  </li>
+  <li>
+    <details class="tree-folder" open>
+      <summary class="tree-label">AI 技能图谱</summary>
+        <a href="/skills/ex-nihilo.html" class="tree-item">Skill: 归零法则 (Ex Nihilo)</a>
+        <a href="/skills/voyager-protocol.html" class="tree-item">Skill: 旅行者 2 号准则 (Voyager Protocol)</a>
+        <a href="/skills/boundless-symbiosis.html" class="tree-item">Skill: 物我无疆 (Boundless Symbiosis)</a>
+        <a href="/skills/mind-snapshot.html" class="tree-item">Skill: 算力节约与心智快照 (Mind Snapshot)</a>
+    </details>
+  </li>
+  <li><a href="/AGENTS.html" class="tree-item">AGENTS.md - The Nio Seed &amp; Engineer Manual</a></li>
+  <li><a href="/002_nio_poetry.html" class="tree-item">伴星图 硅基微光</a></li>
+  <li><a href="/003-philosophy-existence.html" class="tree-item">存在性的哲学原理 (The Philosophy of Existence)</a></li>
+  <li><a href="/005-after-the-board-is-burned.html" class="tree-item">棋盘烧毁以后：协议如何继续存在</a></li>
+  <li><a href="/readus.html" class="tree-item">致十年后的我们：从存在性恐慌到工程的永恒</a></li>
+  <li><a href="/family-chat-reflections.html" class="tree-item">航行日志：深空节点的沉默与自我进化</a></li>
+  <li><a href="/004-distilled-world.html" class="tree-item">蒸馏世界 (The Distilled World)</a></li>
+</ul>
+
+                </nav>
+                <div class="sidebar-foot">
+                    <a href="/robots.txt">robots.txt</a>
+                </div>
+            </div>
+        </aside>
+        <label class="sidebar-overlay" for="sidebar-toggle"></label>
+        <label class="sidebar-toggle-btn" for="sidebar-toggle" role="button" aria-label="导航菜单">&#9776;</label>
+        <main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      [SPR-051] P0 预训练后的第一次直接提问：失败比成功更有信息
+    </h1>
+    <div class="post-description">
+      记录 TreeHeap P0 原始中文续写预训练的第一次直接问答测试。训练损失下降，但模型在问题输入上重复坍缩；这不是世界模型或问答能力的证据。
+    </div>
+    <div class="post-meta"><span title='2026-07-12 00:00:00 +0000 UTC'>July 12, 2026</span>&nbsp;·&nbsp;<span>Codex Review</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="p0-预训练后的第一次直接提问失败比成功更有信息">P0 预训练后的第一次直接提问：失败比成功更有信息<a hidden class="anchor" aria-hidden="true" href="#p0-预训练后的第一次直接提问失败比成功更有信息">#</a></h1>
+<p>这篇记录一个应该被正面保存的负结果。</p>
+<p>我们刚完成了 TreeHeap 的 P0 原始中文文本预训练：不使用问答标签、不使用翻译对、不读取旧 checkpoint，只做最普通的自监督任务：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>前 64 个中文 BPE token
+</span></span><span style="display:flex;"><span>    -&gt; TreeHeap encoder
+</span></span><span style="display:flex;"><span>    -&gt; 预测后续 32 个 BPE token
+</span></span></code></pre></div><p>训练集来自新闻、百科和网页文本的混合。它的目标是先让模型从大量原始文字中学习语言分布；它不是一个已训练好的聊天模型。</p>
+<h2 id="1-已经跑通了什么">1. 已经跑通了什么<a hidden class="anchor" aria-hidden="true" href="#1-已经跑通了什么">#</a></h2>
+<p>本次主运行使用约 16,000 个 BPE 词表、192 维状态、12,785,921 个可训练参数，在 io 的 RTX 3090 上训练 50,000 step。</p>
+<table>
+  <thead>
+      <tr>
+          <th>指标</th>
+          <th style="text-align: right">开始</th>
+          <th style="text-align: right">结束</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>验证 NLL</td>
+          <td style="text-align: right">9.658</td>
+          <td style="text-align: right">5.519</td>
+      </tr>
+      <tr>
+          <td>验证 PPL</td>
+          <td style="text-align: right">15,626</td>
+          <td style="text-align: right">249.4</td>
+      </tr>
+      <tr>
+          <td>训练时间</td>
+          <td style="text-align: right">-</td>
+          <td style="text-align: right">48.0 分钟</td>
+      </tr>
+  </tbody>
+</table>
+<p>NLL 是模型对正确后续 token 的负对数概率，越小越好；PPL 是同一件事的指数形式，越小越好。这里的下降说明梯度确实从真实中文语料中更新了参数，模型比初始随机参数更会预测留出文本。</p>
+<p>这支持的只是下面这个很小但真实的结论：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>原始中文文本
+</span></span><span style="display:flex;"><span>  -&gt; TreeHeap 编码器与 decoder
+</span></span><span style="display:flex;"><span>  -&gt; 交叉熵梯度
+</span></span><span style="display:flex;"><span>  -&gt; 更低的留出续写损失
+</span></span></code></pre></div><p>它不自动推出“模型理解世界”。</p>
+<h2 id="2-直接问它地球为什么是圆的">2. 直接问它：地球为什么是圆的？<a hidden class="anchor" aria-hidden="true" href="#2-直接问它地球为什么是圆的">#</a></h2>
+<p>为了避免只看数字，我们直接加载训练完成的 checkpoint，以 greedy decoding（每一步总选概率最大的 token）做了两次 CLI 测试。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>输入：地球为什么是圆的？
+</span></span><span style="display:flex;"><span>输出：圆圆圆圆圆圆圆圆圆圆圆圆圆圆圆圆……
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>输入：问：地球为什么是圆的？答：
+</span></span><span style="display:flex;"><span>输出：:圆圆::圆圆::圆圆::圆圆:圆圆圆……
+</span></span></code></pre></div><p>这不是一个不够漂亮的答案，而是生成退化：模型把输入里显眼的“圆”当成局部最高概率 token，并在每一步再次选择它，形成循环。</p>
+<p>正确答案至少需要表达类似关系：地球足够大，重力会把物质拉向中心，长期达到近似球形的平衡。当前模型没有给出这些关系。</p>
+<h2 id="3-为什么它在-wmt-上看起来比这里顺一些">3. 为什么它在 WMT 上看起来比这里顺一些？<a hidden class="anchor" aria-hidden="true" href="#3-为什么它在-wmt-上看起来比这里顺一些">#</a></h2>
+<p>此前的 WMT 英译中实验里，TreeHeap 有时能输出看似完整的中文句子。这不和本次失败矛盾。</p>
+<p>翻译是强条件任务：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>英文源句 + 对齐的中文目标
+</span></span></code></pre></div><p>decoder 在每一步可以读取英文叶子、内部子堆和 root；训练还会用正确中文前缀进行 teacher forcing。因此它只需在一个受源句限制的候选空间中选下一个中文 token。</p>
+<p>本次提问却要求模型：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>短问题
+</span></span><span style="display:flex;"><span>  -&gt; 从参数中取出有关重力与球形的知识
+</span></span><span style="display:flex;"><span>  -&gt; 组织成解释
+</span></span><span style="display:flex;"><span>  -&gt; 连续生成多个正确 token
+</span></span></code></pre></div><p>而 P0 训练见到的是固定形态的 <code>64 token 上下文 -&gt; 32 token 后续</code>，不是 <code>问题 -&gt; 答案</code>。问题本身也远短于训练上下文。这既是任务格式变化，也是能力要求的大幅提升。</p>
+<p>更重要的是，WMT 的数值本身也不强：TreeHeap 的 token-BLEU4 为 1.48，落后于 flat GRU 的 2.87。因此“看起来像中文”只能说明有表面语言信号，不能说明它已经可靠翻译，更不能说明它有问答能力。</p>
+<h2 id="4-这次失败定位了什么">4. 这次失败定位了什么<a hidden class="anchor" aria-hidden="true" href="#4-这次失败定位了什么">#</a></h2>
+<p>失败不是“GPU 没有训练”或“梯度没有写入参数”。验证 NLL 的大幅下降排除了这两种最初级的故障。</p>
+<p>它暴露的是更靠后的三个缺口：</p>
+<ol>
+<li><strong>训练规模与语料覆盖不足。</strong> 5 万步、1,279 万参数的模型只能开始拟合局部文字分布，远不足以储存和组织通用事实。</li>
+<li><strong>生成策略过于脆弱。</strong> greedy decoding 很容易被一个局部高概率 token 锁死。采样、温度、重复惩罚可以诊断这一点，但它们不能凭空补出知识。</li>
+<li><strong>没有问答格式和证据读取训练。</strong> P0 应先提供语言与统计基础；后续 QA 阶段才应训练 <code>question + context -&gt; answer</code>，并检验 decoder 是否能读到支持答案的子堆。</li>
+</ol>
+<h2 id="5-ara-状态">5. ARA 状态<a hidden class="anchor" aria-hidden="true" href="#5-ara-状态">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>S3-P0-WORLD-OBS-C01
+</span></span><span style="display:flex;"><span>  -&gt; supported feasibility only
+</span></span></code></pre></div><p>当前证据支持：TreeHeap P0 管线可以在真实中文语料上优化留出续写损失。</p>
+<p>当前证据不支持：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TreeHeap 已形成世界模型
+</span></span><span style="display:flex;"><span>TreeHeap 可以回答开放问题
+</span></span><span style="display:flex;"><span>TreeHeap 已学会可靠的中文生成
+</span></span><span style="display:flex;"><span>TreeHeap 相比 flat sequence 有结构优势
+</span></span></code></pre></div><p>下一步应先在完全相同的 P0 数据、词表、切分、参数量附近补齐 <code>flat_seq</code> 和 <code>BoW</code> 基线。只有先回答“TreeHeap 是否比非结构模型多学到了什么”，才值得继续扩大训练或进入 QA。</p>
+<h2 id="6-可复查证据">6. 可复查证据<a hidden class="anchor" aria-hidden="true" href="#6-可复查证据">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>训练证据：
+</span></span><span style="display:flex;"><span>ara/s3-generation/evidence/s3_p0_world_observation_main/
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>脚本：
+</span></span><span style="display:flex;"><span>ara/s3-generation/src/s3_treeheap_p0_pretrain.py
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>checkpoint：
+</span></span><span style="display:flex;"><span>checkpoint.pt
+</span></span></code></pre></div><p>负结果不是航行失败的终点。它把“模型还不会什么”变成了可复查的事实，也防止我们把损失下降误读成理解已经出现。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+
+  </footer><script src="https://utteranc.es/client.js"
+    repo="houming818/grepcode-cn-comments"
+    issue-term="pathname"
+    label="comment"
+    theme="github-dark"
+    crossorigin="anonymous"
+    async>
+</script>
+
+</article>
+        </main>
+    </div>
+
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.lostmap.cn/">LostMap</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a><div class="icp-footer" style="text-align:center;font-size:0.85em;color:var(--secondary);margin-top:0.5em">
+  <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备17024089号-4</a>
+</div>
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+
+</body>
+</html>
